@@ -6,43 +6,27 @@ import {
   Type, User, CreditCard, Image as ImageIcon, Ruler, Type as TypeIcon, FileText,
   Columns, FileSignature, TrendingUp, UserX, Clock, Activity, ChevronDown
 } from 'lucide-react';
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
-import { 
-  getFirestore, collection, doc, setDoc, getDoc, 
-  onSnapshot, deleteDoc 
-} from 'firebase/firestore';
 
-/*
-================================================================================
-⚠️ PENTING: KODE SUPABASE UNTUK VS CODE ANDA
-================================================================================
-Karena layar pratinjau (Canvas) di web ini tidak mendukung impor library eksternal 
-seperti '@supabase/supabase-js' tanpa file package.json, kode ini dirancang 
-menggunakan Firebase agar Anda tetap bisa melihat dan menguji tampilannya di sini.
+// ⚠️ PENTING UNTUK VERCEL / VS CODE: 
+// 1. Hapus tanda komentar (//) pada baris import di bawah ini agar Vercel dapat memuat Supabase:
+// import { createClient } from '@supabase/supabase-js';
 
-Saat Anda memindahkan kode ini ke VS Code lokal Anda, GANTI bagian "1. FIREBASE SETUP"
-dan logika di AppProvider dengan koneksi Supabase Anda:
-
-================================================================================
-*/
+// 2. HAPUS baris 'mock' di bawah ini saat di VS Code Anda (ini hanya agar layar preview web tidak blank):
+const createClient = () => ({ from: () => ({ select: async () => ({data:[], error:null}), upsert: async () => ({error:null}), delete: () => ({eq: async () => ({error:null})}) }) });
 
 // ==========================================
-// 1. Supabase SETUP 
+// 1. SUPABASE SETUP
 // ==========================================
-import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = 'https://ikoqsyrvspfjyyjujfhc.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlrb3FzeXJ2c3Bmanl5anVqZmhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczNjMyMzMsImV4cCI6MjA5MjkzOTIzM30.Q0IGVZFJr9Msaq-4pNgzilvH5Bu4zHoAXdrZFgmK45E';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-
 // ==========================================
-// 2. CONTEXT & STATE
+// 2. CONTEXT & STATE MANAGEMENT
 // ==========================================
 const AppContext = createContext();
 
 const AppProvider = ({ children }) => {
-  const [firebaseUser, setFirebaseUser] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const currentUserRef = useRef(null);
   
@@ -63,58 +47,57 @@ const AppProvider = ({ children }) => {
     setTimeout(() => setNotification(null), 3000);
   };
 
-  useEffect(() => {
-    const initAuth = async () => {
-      try {
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-          await signInWithCustomToken(auth, __initial_auth_token);
-        } else {
-          await signInAnonymously(auth);
-        }
-      } catch (err) {
-        console.error("Auth Error:", err);
+  // Logika pengambilan data Supabase
+  const fetchData = async () => {
+    const collections = ['settings', 'users', 'subjects', 'classes', 'students', 'grades', 'layouts', 'fonts', 'studentFields', 'presences', 'extracurriculars', 'characterTraits', 'logs'];
+    let newData = { ...data };
+
+    for (const colName of collections) {
+      const { data: items, error } = await supabase.from(colName).select('*');
+      if (!error && items) {
+        // Unpack JSONB dari kolom 'payload'
+        newData[colName] = items.map(item => ({ id: item.id, ...item.payload }));
+      } else {
+        newData[colName] = [];
       }
-    };
-    initAuth();
-    const unsubAuth = onAuthStateChanged(auth, setFirebaseUser);
-    return () => unsubAuth();
-  }, []);
+    }
+
+    // Auto-create Admin pertama jika tabel pengguna masih kosong
+    if (newData.users.length === 0) {
+      const defaultAdmin = { username: 'admin', password: '123', role: 'admin', name: 'Administrator' };
+      await supabase.from('users').upsert([{ id: 'admin_1', payload: defaultAdmin }]);
+      newData.users = [{ id: 'admin_1', ...defaultAdmin }];
+    }
+
+    setData(newData);
+    setLoading(false);
+  };
 
   useEffect(() => {
-    if (!firebaseUser) return;
-    const collections = ['settings', 'users', 'subjects', 'classes', 'students', 'grades', 'layouts', 'fonts', 'studentFields', 'presences', 'extracurriculars', 'characterTraits', 'logs'];
-    const unsubs = collections.map(colName => {
-      const q = collection(db, 'artifacts', appId, 'public', 'data', `imamsyafii_${colName}`);
-      return onSnapshot(q, (snapshot) => {
-        const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setData(prev => ({ ...prev, [colName]: items }));
-        if (colName === 'users' && items.length === 0) {
-          saveToDb('users', 'admin_1', { username: 'admin', password: '123', role: 'admin', name: 'Administrator' }, true);
-        }
-      });
-    });
-    setLoading(false);
-    return () => unsubs.forEach(unsub => unsub());
-  }, [firebaseUser]);
+    fetchData(); // Jalankan sekali saat komponen dimuat
+  }, []);
 
   const addLog = async (message) => {
     try {
       const logId = Date.now().toString();
-      await setDoc(doc(db, 'artifacts', appId, 'public', 'data', `imamsyafii_logs`, logId), {
-        message,
-        timestamp: Date.now(),
-        user: currentUserRef.current?.name || 'Sistem'
-      });
+      await supabase.from('logs').upsert([{
+        id: logId, 
+        payload: { message, timestamp: Date.now(), user: currentUserRef.current?.name || 'Sistem' }
+      }]);
     } catch(e) {}
   };
 
   const saveToDb = async (colName, docId, payload, silent = false, customLogMsg = null) => {
     try {
-      await setDoc(doc(db, 'artifacts', appId, 'public', 'data', `imamsyafii_${colName}`, docId), payload);
+      const { error } = await supabase.from(colName).upsert([{ id: docId, payload: payload }]);
+      if (error) throw error;
+      
       if(!silent) showNotification('Data berhasil disimpan!');
       if(colName !== 'logs' && !silent) {
         addLog(customLogMsg || `Menyimpan data di menu ${colName}`);
       }
+      
+      fetchData(); // Muat ulang data terbaru agar antarmuka ter-update
     } catch (err) {
       if(!silent) showNotification('Gagal menyimpan data.', 'error');
     }
@@ -122,11 +105,15 @@ const AppProvider = ({ children }) => {
 
   const deleteFromDb = async (colName, docId, silent = false, customLogMsg = null) => {
     try {
-      await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', `imamsyafii_${colName}`, docId));
+      const { error } = await supabase.from(colName).delete().eq('id', docId);
+      if (error) throw error;
+      
       if(!silent) showNotification('Data berhasil dihapus!');
       if(colName !== 'logs' && !silent) {
         addLog(customLogMsg || `Menghapus data di menu ${colName}`);
       }
+      
+      fetchData(); // Muat ulang data terbaru agar antarmuka ter-update
     } catch (err) {
       if(!silent) showNotification('Gagal menghapus data.', 'error');
     }
@@ -205,13 +192,21 @@ const Login = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     const user = data.users.find(u => u.username === username && u.password === password);
     if (user) {
       setCurrentUser(user);
       showNotification(`Selamat datang, ${user.name}`);
-      addLog(`Login berhasil oleh ${user.name}`);
+      try {
+        const logId = Date.now().toString();
+        await supabase.from('logs').upsert([{
+          id: logId, 
+          payload: { message: `Login berhasil`, timestamp: Date.now(), user: user.name }
+        }]);
+      } catch(err) {
+        console.error("Gagal menyimpan log login", err);
+      }
     } else {
       showNotification('Username atau password salah', 'error');
     }
@@ -268,6 +263,7 @@ const HomeDashboard = () => {
             const studentsInClass = data.students.filter(s => s.kelas === c.name);
 
             if (studentsInClass.length > 0) {
+                // 1. Missing Grades
                 data.subjects.forEach(sub => {
                     let hasGrade = false;
                     studentsInClass.forEach(st => {
@@ -280,6 +276,7 @@ const HomeDashboard = () => {
                     }
                 });
 
+                // 2. Top Student & Most Absences
                 studentsInClass.forEach(st => {
                     const stGrades = classGrades[st.id] || {};
                     
@@ -957,8 +954,6 @@ const LayoutBuilder = () => {
     };
 
     const activeEl = elements.find(e => e.id === selectedElementId);
-    const mockStudentGrades = {};
-    const mockClassAverages = {};
 
     return (
         <div className="flex flex-col md:flex-row gap-6 h-[80vh]">
@@ -1159,7 +1154,7 @@ const LayoutBuilder = () => {
                                     }}
                                     className={`hover:outline hover:outline-1 hover:outline-gray-400 ${el.type === 'table_grades' ? 'bg-white' : ''}`}
                                 >
-                                    {el.type === 'table_grades' ? renderDynamicTable(el, data, mockStudentGrades, mockClassAverages) 
+                                    {el.type === 'table_grades' ? renderDynamicTable(el, data, {}, {}, false, 'raport') 
                                     : el.type === 'image' ? <img src={el.content} style={{ width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none' }} alt="elemen" />
                                     : <div style={{ whiteSpace: 'pre-wrap' }}>{el.content}</div>}
                                     
@@ -1178,10 +1173,10 @@ const LayoutBuilder = () => {
 };
 
 // ==========================================
-// INPUT NILAI (TAB-BASED AUTO SAVE MATRIX)
+// INPUT NILAI 
 // ==========================================
 const InputNilai = ({ activeInputTab }) => {
-    const { data, saveToDb, addLog } = useContext(AppContext);
+    const { data, saveToDb } = useContext(AppContext);
     const [selectedClass, setSelectedClass] = useState('');
     const [localGrades, setLocalGrades] = useState({});
     const [isSaving, setIsSaving] = useState(false);
@@ -1200,7 +1195,6 @@ const InputNilai = ({ activeInputTab }) => {
         const initialGrades = {};
         studentsInClass.forEach(st => { initialGrades[st.id] = classGrades[st.id] || {}; });
         setLocalGrades(initialGrades); setIsInitialized(true);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedClass, gradeDocId]); 
 
     const handleGradeChange = (studentId, fieldId, val) => {
