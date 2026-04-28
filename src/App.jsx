@@ -6,16 +6,10 @@ import {
   Type, User, CreditCard, Image as ImageIcon, Ruler, Type as TypeIcon, FileText,
   Columns, FileSignature, TrendingUp, UserX, Clock, Activity, ChevronDown
 } from 'lucide-react';
-
-// ⚠️ PENTING UNTUK VERCEL / VS CODE: 
-// 1. Hapus tanda komentar (//) pada baris import di bawah ini agar Vercel dapat memuat Supabase:
-// import { createClient } from '@supabase/supabase-js';
-
-// 2. HAPUS baris 'mock' di bawah ini saat di VS Code Anda (ini hanya agar layar preview web tidak blank):
-const createClient = () => ({ from: () => ({ select: async () => ({data:[], error:null}), upsert: async () => ({error:null}), delete: () => ({eq: async () => ({error:null})}) }) });
+import { createClient } from '@supabase/supabase-js';
 
 // ==========================================
-// 1. SUPABASE SETUP
+// 1. SUPABASE SETUP (Koneksi Database Anda)
 // ==========================================
 const supabaseUrl = 'https://ikoqsyrvspfjyyjujfhc.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlrb3FzeXJ2c3Bmanl5anVqZmhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczNjMyMzMsImV4cCI6MjA5MjkzOTIzM30.Q0IGVZFJr9Msaq-4pNgzilvH5Bu4zHoAXdrZFgmK45E';
@@ -47,7 +41,6 @@ const AppProvider = ({ children }) => {
     setTimeout(() => setNotification(null), 3000);
   };
 
-  // Logika pengambilan data Supabase
   const fetchData = async () => {
     const collections = ['settings', 'users', 'subjects', 'classes', 'students', 'grades', 'layouts', 'fonts', 'studentFields', 'presences', 'extracurriculars', 'characterTraits', 'logs'];
     let newData = { ...data };
@@ -55,14 +48,12 @@ const AppProvider = ({ children }) => {
     for (const colName of collections) {
       const { data: items, error } = await supabase.from(colName).select('*');
       if (!error && items) {
-        // Unpack JSONB dari kolom 'payload'
         newData[colName] = items.map(item => ({ id: item.id, ...item.payload }));
       } else {
         newData[colName] = [];
       }
     }
 
-    // Auto-create Admin pertama jika tabel pengguna masih kosong
     if (newData.users.length === 0) {
       const defaultAdmin = { username: 'admin', password: '123', role: 'admin', name: 'Administrator' };
       await supabase.from('users').upsert([{ id: 'admin_1', payload: defaultAdmin }]);
@@ -74,7 +65,7 @@ const AppProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    fetchData(); // Jalankan sekali saat komponen dimuat
+    fetchData();
   }, []);
 
   const addLog = async (message) => {
@@ -97,7 +88,7 @@ const AppProvider = ({ children }) => {
         addLog(customLogMsg || `Menyimpan data di menu ${colName}`);
       }
       
-      fetchData(); // Muat ulang data terbaru agar antarmuka ter-update
+      fetchData(); 
     } catch (err) {
       if(!silent) showNotification('Gagal menyimpan data.', 'error');
     }
@@ -113,7 +104,7 @@ const AppProvider = ({ children }) => {
         addLog(customLogMsg || `Menghapus data di menu ${colName}`);
       }
       
-      fetchData(); // Muat ulang data terbaru agar antarmuka ter-update
+      fetchData();
     } catch (err) {
       if(!silent) showNotification('Gagal menghapus data.', 'error');
     }
@@ -147,9 +138,6 @@ const Modal = ({ isOpen, onClose, title, children }) => {
   );
 };
 
-// ==========================================
-// COMPONENT WAKTU
-// ==========================================
 const CurrentTime = () => {
     const [time, setTime] = useState(new Date());
 
@@ -184,9 +172,6 @@ const CurrentTime = () => {
     );
 };
 
-// ==========================================
-// LOGIN COMPONENT
-// ==========================================
 const Login = () => {
   const { data, setCurrentUser, showNotification, addLog } = useContext(AppContext);
   const [username, setUsername] = useState('');
@@ -238,9 +223,6 @@ const Login = () => {
   );
 };
 
-// ==========================================
-// HOME DASHBOARD
-// ==========================================
 const HomeDashboard = () => {
     const { data, saveToDb, deleteFromDb, currentUser, showNotification } = useContext(AppContext);
     const activeSetting = data.settings.find(s => s.isActive) || {};
@@ -263,7 +245,6 @@ const HomeDashboard = () => {
             const studentsInClass = data.students.filter(s => s.kelas === c.name);
 
             if (studentsInClass.length > 0) {
-                // 1. Missing Grades
                 data.subjects.forEach(sub => {
                     let hasGrade = false;
                     studentsInClass.forEach(st => {
@@ -276,7 +257,6 @@ const HomeDashboard = () => {
                     }
                 });
 
-                // 2. Top Student & Most Absences
                 studentsInClass.forEach(st => {
                     const stGrades = classGrades[st.id] || {};
                     
@@ -1154,7 +1134,7 @@ const LayoutBuilder = () => {
                                     }}
                                     className={`hover:outline hover:outline-1 hover:outline-gray-400 ${el.type === 'table_grades' ? 'bg-white' : ''}`}
                                 >
-                                    {el.type === 'table_grades' ? renderDynamicTable(el, data, {}, {}, false, 'raport') 
+                                    {el.type === 'table_grades' ? renderDynamicTable(el, data, mockStudentGrades, mockClassAverages) 
                                     : el.type === 'image' ? <img src={el.content} style={{ width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none' }} alt="elemen" />
                                     : <div style={{ whiteSpace: 'pre-wrap' }}>{el.content}</div>}
                                     
