@@ -25,7 +25,7 @@ const AppProvider = ({ children }) => {
   const currentUserRef = useRef(null);
   
   const [data, setData] = useState({
-    settings: [], users: [], subjects: [], classes: [], students: [], 
+    settings: [], users: [], subjects: [], classes: [], students: [], teachers: [], 
     grades: [], layouts: [], fonts: [], studentFields: [], presences: [],
     extracurriculars: [], characterTraits: [], logs: []
   });
@@ -42,7 +42,7 @@ const AppProvider = ({ children }) => {
   };
 
   const fetchData = async () => {
-    const collections = ['settings', 'users', 'subjects', 'classes', 'students', 'grades', 'layouts', 'fonts', 'studentFields', 'presences', 'extracurriculars', 'characterTraits', 'logs'];
+    const collections = ['settings', 'users', 'subjects', 'classes', 'students', 'grades', 'layouts', 'fonts', 'studentFields', 'presences', 'extracurriculars', 'characterTraits', 'logs', 'teachers'];
     let newData = { ...data };
 
     for (const colName of collections) {
@@ -497,12 +497,27 @@ const MasterData = ({ activeTab }) => {
               ))}</tbody>
           </table>
         );
+      case 'teachers':
+        return (
+          <table className="w-full text-left border-collapse">
+            <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm"><th className="p-3 border-b">Nama Guru</th><th className="p-3 border-b">NIP / Identitas</th><th className="p-3 border-b">Posisi / Jabatan</th><th className="p-3 border-b text-center">Aksi</th></tr></thead>
+            <tbody>{data.teachers.map(t => (
+                <tr key={t.id} className="border-b hover:bg-gray-50"><td className="p-3 font-semibold">{t.nama}</td><td className="p-3 text-gray-600">{t.nip || '-'}</td><td className="p-3 text-gray-600">{t.posisi || '-'}</td><td className="p-3 text-center"><button onClick={() => handleOpenModal(t)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('teachers', t.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td></tr>
+              ))}</tbody>
+          </table>
+        );
       case 'subjects':
         return (
           <table className="w-full text-left border-collapse">
-            <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm"><th className="p-3 border-b">Kategori</th><th className="p-3 border-b">Mapel (ID)</th><th className="p-3 border-b text-right">Mapel (AR)</th><th className="p-3 border-b text-center">KKM</th><th className="p-3 border-b text-center">Aksi</th></tr></thead>
+            <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm"><th className="p-3 border-b">Kategori & Kelas</th><th className="p-3 border-b">Mapel (ID)</th><th className="p-3 border-b text-right">Mapel (AR)</th><th className="p-3 border-b text-center">KKM & Guru</th><th className="p-3 border-b text-center">Aksi</th></tr></thead>
             <tbody>{data.subjects.sort((a,b)=> (a.kategori||'').localeCompare(b.kategori||'')).map(sub => (
-                <tr key={sub.id} className="border-b hover:bg-gray-50"><td className="p-3 text-xs text-emerald-700 font-bold">{sub.kategori || '-'}</td><td className="p-3">{sub.nameId}</td><td className="p-3 text-right font-arabic" dir="rtl">{sub.nameAr}</td><td className="p-3 text-center">{sub.kkm}</td><td className="p-3 text-center"><button onClick={() => handleOpenModal(sub)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('subjects', sub.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td></tr>
+                <tr key={sub.id} className="border-b hover:bg-gray-50">
+                    <td className="p-3"><div className="text-xs text-emerald-700 font-bold">{sub.kategori || '-'}</div><div className="text-xs text-gray-500 mt-1">Kelas: <span className="font-semibold text-gray-800">{sub.kelas || 'Semua'}</span></div></td>
+                    <td className="p-3 font-semibold">{sub.nameId}</td>
+                    <td className="p-3 text-right font-arabic" dir="rtl">{sub.nameAr}</td>
+                    <td className="p-3 text-center"><div className="font-bold text-yellow-600">{sub.kkm}</div><div className="text-[11px] text-gray-500 mt-1">{sub.guru || '-'}</div></td>
+                    <td className="p-3 text-center"><button onClick={() => handleOpenModal(sub)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('subjects', sub.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td>
+                </tr>
               ))}</tbody>
           </table>
         );
@@ -595,12 +610,26 @@ const MasterData = ({ activeTab }) => {
                 <label className="flex items-center gap-2"><input type="checkbox" checked={formData.isActive || false} onChange={e => setFormData({...formData, isActive: e.target.checked})} /> Jadikan Aktif</label>
             </div>
         );
+        case 'teachers': return (
+            <div className="space-y-4">
+                <input className="w-full p-2 border rounded" placeholder="Nama Lengkap Guru" value={formData.nama || ''} onChange={e => setFormData({...formData, nama: e.target.value})} />
+                <input className="w-full p-2 border rounded" placeholder="NIP / NUPTK (Opsional)" value={formData.nip || ''} onChange={e => setFormData({...formData, nip: e.target.value})} />
+                <input className="w-full p-2 border rounded" placeholder="Posisi/Jabatan (Opsional)" value={formData.posisi || ''} onChange={e => setFormData({...formData, posisi: e.target.value})} />
+            </div>
+        );
         case 'subjects': return (
             <div className="space-y-4">
                 <input className="w-full p-2 border rounded bg-yellow-50" placeholder="Kategori (Opsional, Misal: A. Muatan Nasional)" value={formData.kategori || ''} onChange={e => setFormData({...formData, kategori: e.target.value})} />
+                <select className="w-full p-2 border rounded font-semibold text-emerald-800" value={formData.kelas || ''} onChange={e => setFormData({...formData, kelas: e.target.value})}>
+                    <option value="">-- Pilih Kelas (Atau Kosongkan untuk Semua) --</option>
+                    {data.classes.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                </select>
                 <input className="w-full p-2 border rounded" placeholder="Nama Pelajaran (Indo)" value={formData.nameId || ''} onChange={e => setFormData({...formData, nameId: e.target.value})} />
                 <input className="w-full p-2 border rounded text-right font-arabic" placeholder="Nama Pelajaran (Arab)" dir="rtl" value={formData.nameAr || ''} onChange={e => setFormData({...formData, nameAr: e.target.value})} />
-                <input className="w-full p-2 border rounded" placeholder="Nama Guru Pengampu" value={formData.guru || ''} onChange={e => setFormData({...formData, guru: e.target.value})} />
+                <select className="w-full p-2 border rounded font-semibold text-blue-800" value={formData.guru || ''} onChange={e => setFormData({...formData, guru: e.target.value})}>
+                    <option value="">-- Pilih Guru Pengampu --</option>
+                    {data.teachers.map(t => <option key={t.id} value={t.nama}>{t.nama}</option>)}
+                </select>
                 <input type="number" className="w-full p-2 border rounded" placeholder="Standar KKM" value={formData.kkm || ''} onChange={e => setFormData({...formData, kkm: e.target.value})} />
                 <label className="flex items-center gap-2"><input type="checkbox" checked={formData.isIjazah || false} onChange={e => setFormData({...formData, isIjazah: e.target.checked})} /> Tampilkan di Ijazah default</label>
             </div>
@@ -668,6 +697,7 @@ const MasterData = ({ activeTab }) => {
   const getTitle = () => {
     switch(activeTab) {
         case 'settings': return 'Tahun Ajaran & Semester';
+        case 'teachers': return 'Guru Pengampu';
         case 'subjects': return 'Mata Pelajaran';
         case 'presences': return 'Aspek Presensi';
         case 'characterTraits': return 'Sikap & Kesantrian';
@@ -1616,11 +1646,12 @@ const Dashboard = () => {
 
   const masterDataSubItems = [
     { id: 'settings', label: 'Tahun Ajaran' }, 
+    { id: 'classes', label: 'Daftar Kelas' },
+    { id: 'teachers', label: 'Guru Pengampu' },
     { id: 'subjects', label: 'Mata Pelajaran' },
     { id: 'presences', label: 'Presensi' }, 
     { id: 'characterTraits', label: 'Sikap & Kesantrian' }, 
     { id: 'extracurriculars', label: 'Ekstrakurikuler' }, 
-    { id: 'classes', label: 'Daftar Kelas' },
     { id: 'studentFields', label: 'Field Santri' }, 
     { id: 'students', label: 'Data Santri' },
     { id: 'fonts', label: 'Font Kustom' }, 
