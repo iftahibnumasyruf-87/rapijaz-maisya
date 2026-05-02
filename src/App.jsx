@@ -241,6 +241,9 @@ const HomeDashboard = () => {
 
     const [editLogModal, setEditLogModal] = useState(false);
     const [activeLog, setActiveLog] = useState({});
+    
+    // State untuk sorting tabel Log di Dashboard
+    const [logSort, setLogSort] = useState({ key: 'timestamp', direction: 'descending' });
 
     const stats = useMemo(() => {
         let missingGrades = [];
@@ -303,11 +306,48 @@ const HomeDashboard = () => {
         return { missingGrades, topStudent, mostAbsent };
     }, [data, activeSetting]);
 
-    const logs = [...data.logs].sort((a,b) => b.timestamp - a.timestamp);
+    // Logika pengurutan tabel Logs
+    const sortedLogs = useMemo(() => {
+        let sortableLogs = [...data.logs];
+        sortableLogs.sort((a, b) => {
+            let aValue = a[logSort.key];
+            let bValue = b[logSort.key];
+            
+            if (typeof aValue === 'string') aValue = aValue.toLowerCase();
+            if (typeof bValue === 'string') bValue = bValue.toLowerCase();
+            
+            if (aValue < bValue) return logSort.direction === 'ascending' ? -1 : 1;
+            if (aValue > bValue) return logSort.direction === 'ascending' ? 1 : -1;
+            return 0;
+        });
+        return sortableLogs;
+    }, [data.logs, logSort]);
+
+    const requestLogSort = (key) => {
+        let direction = 'ascending';
+        if (logSort.key === key && logSort.direction === 'ascending') {
+            direction = 'descending';
+        }
+        setLogSort({ key, direction });
+    };
+
+    const LogHeader = ({ label, sortKey, className = "" }) => {
+        const isActive = logSort.key === sortKey;
+        return (
+            <th className={`p-3 cursor-pointer select-none hover:bg-gray-200 transition-colors ${className}`} onClick={() => requestLogSort(sortKey)}>
+                <div className="flex items-center justify-between gap-1">
+                    <span>{label}</span>
+                    <span className={`text-[10px] ${isActive ? 'text-blue-600 font-bold' : 'text-gray-400'}`}>
+                        {isActive ? (logSort.direction === 'ascending' ? '▲' : '▼') : '↕'}
+                    </span>
+                </div>
+            </th>
+        );
+    };
 
     const handleClearLogs = () => {
         if(window.confirm("Apakah Anda yakin ingin menghapus semua riwayat aktivitas?")) {
-            logs.forEach(l => deleteFromDb('logs', l.id, true));
+            data.logs.forEach(l => deleteFromDb('logs', l.id, true));
             showNotification("Seluruh riwayat aktivitas berhasil dibersihkan.");
         }
     };
@@ -406,17 +446,17 @@ const HomeDashboard = () => {
                             </button>
                         </div>
                         <div className="overflow-y-auto custom-scrollbar pr-2 flex-1">
-                            <table className="w-full text-left text-sm">
-                                <thead className="bg-gray-50 text-gray-500 sticky top-0">
+                            <table className="w-full text-left text-sm border-collapse">
+                                <thead className="bg-gray-50 text-gray-500 sticky top-0 shadow-sm z-10">
                                     <tr>
-                                        <th className="p-3 rounded-l-lg w-48">Waktu</th>
-                                        <th className="p-3">Pengguna</th>
-                                        <th className="p-3">Aktivitas</th>
+                                        <LogHeader label="Waktu" sortKey="timestamp" className="rounded-l-lg w-48" />
+                                        <LogHeader label="Pengguna" sortKey="user" />
+                                        <LogHeader label="Aktivitas" sortKey="message" />
                                         <th className="p-3 rounded-r-lg text-center w-24">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {logs.length > 0 ? logs.map(log => (
+                                    {sortedLogs.length > 0 ? sortedLogs.map(log => (
                                         <tr key={log.id} className="border-b border-gray-50 hover:bg-blue-50/30 transition">
                                             <td className="p-3 text-gray-500">{new Date(log.timestamp).toLocaleString('id-ID')}</td>
                                             <td className="p-3 font-semibold text-gray-700">{log.user}</td>
@@ -461,6 +501,76 @@ const MasterData = ({ activeTab }) => {
   const [editingItem, setEditingItem] = useState(null);
   const [formData, setFormData] = useState({});
   const [isAutoSaving, setIsAutoSaving] = useState(false);
+
+  // Default pengurutan tabel berdasarkan menu (alfabetis secara bawaan)
+  const getDefaultSortKey = (tab) => {
+      switch(tab) {
+          case 'settings': return 'tahun';
+          case 'teachers': return 'nama';
+          case 'subjectCategories': return 'name';
+          case 'masterSubjects': return 'nameId';
+          case 'subjects': return 'kategori';
+          case 'presences': return 'name';
+          case 'characterTraits': return 'name';
+          case 'extracurriculars': return 'name';
+          case 'fonts': return 'name';
+          case 'studentFields': return 'name';
+          case 'students': return 'nama';
+          case 'classes': return 'name';
+          case 'users': return 'name';
+          default: return 'id';
+      }
+  };
+
+  const [sortConfig, setSortConfig] = useState({ key: getDefaultSortKey(activeTab), direction: 'ascending' });
+
+  // Reset tabel sorting saat berpindah menu (tab)
+  useEffect(() => {
+      setSortConfig({ key: getDefaultSortKey(activeTab), direction: 'ascending' });
+  }, [activeTab]);
+
+  const requestSort = (key) => {
+      let direction = 'ascending';
+      if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+          direction = 'descending';
+      }
+      setSortConfig({ key, direction });
+  };
+
+  const sortedData = useMemo(() => {
+      let sortableItems = [...(data[activeTab] || [])];
+      if (sortConfig.key) {
+          sortableItems.sort((a, b) => {
+              let aValue = a[sortConfig.key];
+              let bValue = b[sortConfig.key];
+              
+              if (aValue === undefined || aValue === null) aValue = '';
+              if (bValue === undefined || bValue === null) bValue = '';
+              
+              if (typeof aValue === 'string') aValue = aValue.toLowerCase();
+              if (typeof bValue === 'string') bValue = bValue.toLowerCase();
+
+              if (aValue < bValue) return sortConfig.direction === 'ascending' ? -1 : 1;
+              if (aValue > bValue) return sortConfig.direction === 'ascending' ? 1 : -1;
+              return 0;
+          });
+      }
+      return sortableItems;
+  }, [data, activeTab, sortConfig]);
+
+  const SortableHeader = ({ label, sortKey, className = "" }) => {
+      const isActive = sortConfig.key === sortKey;
+      return (
+          <th className={`p-3 border-b cursor-pointer select-none hover:bg-gray-200 transition-colors ${className}`} onClick={() => requestSort(sortKey)}>
+              <div className="flex items-center justify-between gap-2">
+                  <span>{label}</span>
+                  <span className={`text-[10px] ${isActive ? 'text-emerald-600 font-bold' : 'text-gray-400'}`}>
+                      {isActive ? (sortConfig.direction === 'ascending' ? '▲' : '▼') : '↕'}
+                  </span>
+              </div>
+          </th>
+      );
+  };
 
   const handleOpenModal = (item = null) => {
     const newItem = item || { id: Date.now().toString() };
@@ -530,8 +640,13 @@ const MasterData = ({ activeTab }) => {
       case 'settings':
         return (
           <table className="w-full text-left border-collapse">
-            <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm"><th className="p-3 border-b">Tahun</th><th className="p-3 border-b">Semester</th><th className="p-3 border-b text-center">Status</th><th className="p-3 border-b text-center">Aksi</th></tr></thead>
-            <tbody>{data.settings.map(s => (
+            <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm">
+                <SortableHeader label="Tahun" sortKey="tahun" />
+                <SortableHeader label="Semester" sortKey="semester" />
+                <SortableHeader label="Status" sortKey="isActive" className="text-center" />
+                <th className="p-3 border-b text-center">Aksi</th>
+            </tr></thead>
+            <tbody>{sortedData.map(s => (
                 <tr key={s.id} className="border-b hover:bg-gray-50"><td className="p-3 font-semibold">{s.tahun}</td><td className="p-3">{s.semester}</td><td className="p-3 text-center"><span className={`px-2 py-1 rounded text-xs font-medium ${s.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>{s.isActive ? 'Aktif' : 'Nonaktif'}</span></td><td className="p-3 text-center"><button onClick={() => handleOpenModal(s)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('settings', s.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td></tr>
               ))}</tbody>
           </table>
@@ -539,8 +654,13 @@ const MasterData = ({ activeTab }) => {
       case 'teachers':
         return (
           <table className="w-full text-left border-collapse">
-            <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm"><th className="p-3 border-b">Nama Guru</th><th className="p-3 border-b">NIP / Identitas</th><th className="p-3 border-b">Posisi / Jabatan</th><th className="p-3 border-b text-center">Aksi</th></tr></thead>
-            <tbody>{data.teachers.map(t => (
+            <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm">
+                <SortableHeader label="Nama Guru" sortKey="nama" />
+                <SortableHeader label="NIP / Identitas" sortKey="nip" />
+                <SortableHeader label="Posisi / Jabatan" sortKey="posisi" />
+                <th className="p-3 border-b text-center">Aksi</th>
+            </tr></thead>
+            <tbody>{sortedData.map(t => (
                 <tr key={t.id} className="border-b hover:bg-gray-50"><td className="p-3 font-semibold">{t.nama}</td><td className="p-3 text-gray-600">{t.nip || '-'}</td><td className="p-3 text-gray-600">{t.posisi || '-'}</td><td className="p-3 text-center"><button onClick={() => handleOpenModal(t)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('teachers', t.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td></tr>
               ))}</tbody>
           </table>
@@ -548,8 +668,11 @@ const MasterData = ({ activeTab }) => {
       case 'subjectCategories':
         return (
           <table className="w-full text-left border-collapse">
-            <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm"><th className="p-3 border-b">Nama Kategori Pelajaran</th><th className="p-3 border-b text-center">Aksi</th></tr></thead>
-            <tbody>{(data.subjectCategories || []).map(c => (
+            <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm">
+                <SortableHeader label="Nama Kategori Pelajaran" sortKey="name" />
+                <th className="p-3 border-b text-center">Aksi</th>
+            </tr></thead>
+            <tbody>{sortedData.map(c => (
                 <tr key={c.id} className="border-b hover:bg-gray-50"><td className="p-3 font-semibold">{c.name}</td><td className="p-3 text-center"><button onClick={() => handleOpenModal(c)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('subjectCategories', c.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td></tr>
               ))}</tbody>
           </table>
@@ -557,8 +680,12 @@ const MasterData = ({ activeTab }) => {
       case 'masterSubjects':
         return (
           <table className="w-full text-left border-collapse">
-            <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm"><th className="p-3 border-b">Pelajaran Utama (Indo)</th><th className="p-3 border-b text-right">Pelajaran Utama (Arab)</th><th className="p-3 border-b text-center">Aksi</th></tr></thead>
-            <tbody>{(data.masterSubjects || []).map(m => (
+            <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm">
+                <SortableHeader label="Pelajaran Utama (Indo)" sortKey="nameId" />
+                <SortableHeader label="Pelajaran Utama (Arab)" sortKey="nameAr" className="text-right" />
+                <th className="p-3 border-b text-center">Aksi</th>
+            </tr></thead>
+            <tbody>{sortedData.map(m => (
                 <tr key={m.id} className="border-b hover:bg-gray-50"><td className="p-3 font-semibold">{m.nameId}</td><td className="p-3 text-right font-arabic" dir="rtl">{m.nameAr}</td><td className="p-3 text-center"><button onClick={() => handleOpenModal(m)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('masterSubjects', m.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td></tr>
               ))}</tbody>
           </table>
@@ -566,8 +693,14 @@ const MasterData = ({ activeTab }) => {
       case 'subjects':
         return (
           <table className="w-full text-left border-collapse">
-            <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm"><th className="p-3 border-b">Kategori & Kelas</th><th className="p-3 border-b">Mapel (ID)</th><th className="p-3 border-b text-right">Mapel (AR)</th><th className="p-3 border-b text-center">KKM & Guru</th><th className="p-3 border-b text-center">Aksi</th></tr></thead>
-            <tbody>{data.subjects.sort((a,b)=> (a.kategori||'').localeCompare(b.kategori||'')).map(sub => (
+            <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm">
+                <SortableHeader label="Kategori & Kelas" sortKey="kategori" />
+                <SortableHeader label="Mapel (ID)" sortKey="nameId" />
+                <SortableHeader label="Mapel (AR)" sortKey="nameAr" className="text-right" />
+                <SortableHeader label="KKM & Guru" sortKey="kkm" className="text-center" />
+                <th className="p-3 border-b text-center">Aksi</th>
+            </tr></thead>
+            <tbody>{sortedData.map(sub => (
                 <tr key={sub.id} className="border-b hover:bg-gray-50">
                     <td className="p-3"><div className="text-xs text-emerald-700 font-bold">{sub.kategori || '-'}</div><div className="text-xs text-gray-500 mt-1">Kelas: <span className="font-semibold text-gray-800">{sub.kelas || 'Semua'}</span></div></td>
                     <td className="p-3 font-semibold">{sub.nameId}</td>
@@ -581,8 +714,11 @@ const MasterData = ({ activeTab }) => {
       case 'presences':
         return (
           <table className="w-full text-left border-collapse">
-            <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm"><th className="p-3 border-b">Nama Aspek Presensi</th><th className="p-3 border-b text-center">Aksi</th></tr></thead>
-            <tbody>{data.presences.map(p => (
+            <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm">
+                <SortableHeader label="Nama Aspek Presensi" sortKey="name" />
+                <th className="p-3 border-b text-center">Aksi</th>
+            </tr></thead>
+            <tbody>{sortedData.map(p => (
                 <tr key={p.id} className="border-b hover:bg-gray-50"><td className="p-3 font-semibold">{p.name}</td><td className="p-3 text-center"><button onClick={() => handleOpenModal(p)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('presences', p.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td></tr>
               ))}</tbody>
           </table>
@@ -590,8 +726,12 @@ const MasterData = ({ activeTab }) => {
       case 'characterTraits':
         return (
           <table className="w-full text-left border-collapse">
-            <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm"><th className="p-3 border-b">Aspek Sikap/Kesantrian (ID)</th><th className="p-3 border-b text-right">Nama (AR)</th><th className="p-3 border-b text-center">Aksi</th></tr></thead>
-            <tbody>{data.characterTraits.map(p => (
+            <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm">
+                <SortableHeader label="Aspek Sikap/Kesantrian (ID)" sortKey="name" />
+                <SortableHeader label="Nama (AR)" sortKey="nameAr" className="text-right" />
+                <th className="p-3 border-b text-center">Aksi</th>
+            </tr></thead>
+            <tbody>{sortedData.map(p => (
                 <tr key={p.id} className="border-b hover:bg-gray-50"><td className="p-3 font-semibold">{p.name}</td><td className="p-3 text-right font-arabic" dir="rtl">{p.nameAr}</td><td className="p-3 text-center"><button onClick={() => handleOpenModal(p)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('characterTraits', p.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td></tr>
               ))}</tbody>
           </table>
@@ -599,8 +739,12 @@ const MasterData = ({ activeTab }) => {
       case 'extracurriculars':
         return (
           <table className="w-full text-left border-collapse">
-            <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm"><th className="p-3 border-b">Nama Ekstrakurikuler (ID)</th><th className="p-3 border-b text-right">Nama (AR)</th><th className="p-3 border-b text-center">Aksi</th></tr></thead>
-            <tbody>{data.extracurriculars.map(p => (
+            <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm">
+                <SortableHeader label="Nama Ekstrakurikuler (ID)" sortKey="name" />
+                <SortableHeader label="Nama (AR)" sortKey="nameAr" className="text-right" />
+                <th className="p-3 border-b text-center">Aksi</th>
+            </tr></thead>
+            <tbody>{sortedData.map(p => (
                 <tr key={p.id} className="border-b hover:bg-gray-50"><td className="p-3 font-semibold">{p.name}</td><td className="p-3 text-right font-arabic" dir="rtl">{p.nameAr}</td><td className="p-3 text-center"><button onClick={() => handleOpenModal(p)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('extracurriculars', p.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td></tr>
               ))}</tbody>
           </table>
@@ -612,8 +756,12 @@ const MasterData = ({ activeTab }) => {
                 <b>Penting:</b> Untuk font dari luar (misal Google Fonts), Anda WAJIB mengisi <b>URL Import</b> agar PDF bisa memuatnya. Contoh URL: <i>https://fonts.googleapis.com/css2?family=Oswald&display=swap</i>
             </div>
             <table className="w-full text-left border-collapse">
-                <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm"><th className="p-3 border-b">Nama Font</th><th className="p-3 border-b">CSS Font-Family</th><th className="p-3 border-b text-center">Aksi</th></tr></thead>
-                <tbody>{data.fonts.map(f => (
+                <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm">
+                    <SortableHeader label="Nama Font" sortKey="name" />
+                    <SortableHeader label="CSS Font-Family" sortKey="value" />
+                    <th className="p-3 border-b text-center">Aksi</th>
+                </tr></thead>
+                <tbody>{sortedData.map(f => (
                     <tr key={f.id} className="border-b hover:bg-gray-50"><td className="p-3 font-semibold">{f.name}</td><td className="p-3 text-gray-500 font-mono text-xs">{f.value}</td><td className="p-3 text-center"><button onClick={() => handleOpenModal(f)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('fonts', f.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td></tr>
                 ))}</tbody>
             </table>
@@ -628,30 +776,48 @@ const MasterData = ({ activeTab }) => {
                 </label>
               </div>
               <table className="w-full text-left border-collapse">
-                <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm"><th className="p-3 border-b">NIS</th><th className="p-3 border-b">Nama Santri</th><th className="p-3 border-b">Kelas</th><th className="p-3 border-b text-center">Aksi</th></tr></thead>
-                <tbody>{data.students.map(st => (<tr key={st.id} className="border-b hover:bg-gray-50"><td className="p-3">{st.nis}</td><td className="p-3 font-semibold">{st.nama}</td><td className="p-3">{st.kelas}</td><td className="p-3 text-center"><button onClick={() => handleOpenModal(st)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('students', st.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td></tr>))}</tbody>
+                <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm">
+                    <SortableHeader label="NIS" sortKey="nis" />
+                    <SortableHeader label="Nama Santri" sortKey="nama" />
+                    <SortableHeader label="Kelas" sortKey="kelas" />
+                    <th className="p-3 border-b text-center">Aksi</th>
+                </tr></thead>
+                <tbody>{sortedData.map(st => (<tr key={st.id} className="border-b hover:bg-gray-50"><td className="p-3">{st.nis}</td><td className="p-3 font-semibold">{st.nama}</td><td className="p-3">{st.kelas}</td><td className="p-3 text-center"><button onClick={() => handleOpenModal(st)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('students', st.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td></tr>))}</tbody>
               </table>
             </div>
         );
       case 'studentFields':
         return (
             <table className="w-full text-left border-collapse">
-                <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm"><th className="p-3 border-b">Nama Label</th><th className="p-3 border-b">Variabel (Key)</th><th className="p-3 border-b text-center">Aksi</th></tr></thead>
-                <tbody>{data.studentFields.map(f => (<tr key={f.id} className="border-b hover:bg-gray-50"><td className="p-3 font-semibold">{f.name}</td><td className="p-3 font-mono text-sm text-gray-500">{`{{${f.key}}}`}</td><td className="p-3 text-center"><button onClick={() => handleOpenModal(f)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('studentFields', f.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td></tr>))}</tbody>
+                <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm">
+                    <SortableHeader label="Nama Label" sortKey="name" />
+                    <SortableHeader label="Variabel (Key)" sortKey="key" />
+                    <th className="p-3 border-b text-center">Aksi</th>
+                </tr></thead>
+                <tbody>{sortedData.map(f => (<tr key={f.id} className="border-b hover:bg-gray-50"><td className="p-3 font-semibold">{f.name}</td><td className="p-3 font-mono text-sm text-gray-500">{`{{${f.key}}}`}</td><td className="p-3 text-center"><button onClick={() => handleOpenModal(f)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('studentFields', f.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td></tr>))}</tbody>
             </table>
         );
       case 'classes':
         return (
             <table className="w-full text-left border-collapse">
-                <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm"><th className="p-3 border-b">Kelas</th><th className="p-3 border-b">Wali Kelas</th><th className="p-3 border-b text-center">Aksi</th></tr></thead>
-                <tbody>{data.classes.map(c => (<tr key={c.id} className="border-b hover:bg-gray-50"><td className="p-3">{c.name}</td><td className="p-3">{c.wali}</td><td className="p-3 text-center"><button onClick={() => handleOpenModal(c)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('classes', c.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td></tr>))}</tbody>
+                <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm">
+                    <SortableHeader label="Kelas" sortKey="name" />
+                    <SortableHeader label="Wali Kelas" sortKey="wali" />
+                    <th className="p-3 border-b text-center">Aksi</th>
+                </tr></thead>
+                <tbody>{sortedData.map(c => (<tr key={c.id} className="border-b hover:bg-gray-50"><td className="p-3">{c.name}</td><td className="p-3">{c.wali}</td><td className="p-3 text-center"><button onClick={() => handleOpenModal(c)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('classes', c.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td></tr>))}</tbody>
             </table>
         );
       case 'users':
         return (
             <table className="w-full text-left border-collapse">
-                <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm"><th className="p-3 border-b">Nama</th><th className="p-3 border-b">Username</th><th className="p-3 border-b">Role</th><th className="p-3 border-b text-center">Aksi</th></tr></thead>
-                <tbody>{data.users.map(u => (<tr key={u.id} className="border-b hover:bg-gray-50"><td className="p-3">{u.name}</td><td className="p-3">{u.username}</td><td className="p-3">{u.role}</td><td className="p-3 text-center"><button onClick={() => handleOpenModal(u)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('users', u.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td></tr>))}</tbody>
+                <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm">
+                    <SortableHeader label="Nama" sortKey="name" />
+                    <SortableHeader label="Username" sortKey="username" />
+                    <SortableHeader label="Role" sortKey="role" />
+                    <th className="p-3 border-b text-center">Aksi</th>
+                </tr></thead>
+                <tbody>{sortedData.map(u => (<tr key={u.id} className="border-b hover:bg-gray-50"><td className="p-3">{u.name}</td><td className="p-3">{u.username}</td><td className="p-3">{u.role}</td><td className="p-3 text-center"><button onClick={() => handleOpenModal(u)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('users', u.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td></tr>))}</tbody>
             </table>
         );
       default: return null;
@@ -1830,7 +1996,7 @@ const Dashboard = () => {
       <div className={`fixed inset-y-0 left-0 w-64 bg-emerald-800 text-emerald-50 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 transition-transform duration-200 ease-in-out z-50 flex flex-col`}>
         <div className="p-6 flex items-center justify-between border-b border-emerald-700/50">
           <div className="flex items-center gap-3">
-            <img src="https://i.ibb.co.com/DfZSFRsP/Chat-GPT-Image-3-Mei-2026-04-08-56.png" alt="Logo" className="w-20 h-20 object-contain drop-shadow-md shrink-0" />
+            <img src="https://i.ibb.co.com/DfZSFRsP/Chat-GPT-Image-3-Mei-2026-04-08-56.png" alt="Logo" className="w-14 h-14 object-contain drop-shadow-sm shrink-0" />
             <div className="font-bold text-xl leading-tight">
               Rapijaz-Maisya<br/>
               <span className="text-emerald-300 text-[10px] font-normal leading-tight block mt-1">
