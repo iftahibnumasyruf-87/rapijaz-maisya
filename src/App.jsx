@@ -1,31 +1,17 @@
-import React, { useState, useEffect, useRef, useMemo, createContext, useContext } from 'react';
-import { 
-  Menu, X, Home, Users, BookOpen, Settings, LayoutTemplate, 
-  Printer, CheckSquare, LogOut, Plus, Trash2, Edit2, Save,
-  Download, Upload, Share2, AlertCircle, CheckCircle, GripHorizontal,
-  Type, User, CreditCard, Image as ImageIcon, Ruler, Type as TypeIcon, FileText,
-  Columns, FileSignature, TrendingUp, UserX, Clock, Activity, ChevronDown
-} from 'lucide-react';
-import { createClient } from '@supabase/supabase-js';
-
-// ==========================================
-// 1. SUPABASE SETUP (Koneksi Database Anda)
-// ==========================================
-const supabaseUrl = 'https://ikoqsyrvspfjyyjujfhc.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlrb3FzeXJ2c3Bmanl5anVqZmhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczNjMyMzMsImV4cCI6MjA5MjkzOTIzM30.Q0IGVZFJr9Msaq-4pNgzilvH5Bu4zHoAXdrZFgmK45E';
-const supabase = createClient(supabaseUrl, supabaseKey);
-
 // ==========================================
 // 2. CONTEXT & STATE MANAGEMENT
 // ==========================================
 const AppContext = createContext();
 
 const AppProvider = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState(null);
+  const [currentUser, setCurrentUser] = useState(() => {
+    const saved = localStorage.getItem('rapijaz_user');
+    return saved ? JSON.parse(saved) : null;
+  });
   const currentUserRef = useRef(null);
   
   const [data, setData] = useState({
-    settings: [], users: [], subjects: [], classes: [], students: [], teachers: [], 
+    settings: [], users: [], subjectCategories: [], masterSubjects: [], subjects: [], classes: [], students: [], teachers: [], 
     grades: [], layouts: [], fonts: [], studentFields: [], presences: [],
     extracurriculars: [], characterTraits: [], logs: []
   });
@@ -34,6 +20,11 @@ const AppProvider = ({ children }) => {
 
   useEffect(() => {
     currentUserRef.current = currentUser;
+    if (currentUser) {
+      localStorage.setItem('rapijaz_user', JSON.stringify(currentUser));
+    } else {
+      localStorage.removeItem('rapijaz_user');
+    }
   }, [currentUser]);
 
   const showNotification = (message, type = 'success') => {
@@ -42,7 +33,7 @@ const AppProvider = ({ children }) => {
   };
 
   const fetchData = async () => {
-    const collections = ['settings', 'users', 'subjects', 'classes', 'students', 'grades', 'layouts', 'fonts', 'studentFields', 'presences', 'extracurriculars', 'characterTraits', 'logs', 'teachers'];
+    const collections = ['settings', 'users', 'subjectCategories', 'masterSubjects', 'subjects', 'classes', 'students', 'grades', 'layouts', 'fonts', 'studentFields', 'presences', 'extracurriculars', 'characterTraits', 'logs', 'teachers'];
     let newData = { ...data };
 
     for (const colName of collections) {
@@ -56,8 +47,12 @@ const AppProvider = ({ children }) => {
 
     if (newData.users.length === 0) {
       const defaultAdmin = { username: 'admin', password: '123', role: 'admin', name: 'Administrator' };
-      await supabase.from('users').upsert([{ id: 'admin_1', payload: defaultAdmin }]);
-      newData.users = [{ id: 'admin_1', ...defaultAdmin }];
+      const { error } = await supabase.from('users').upsert([{ id: 'admin_1', payload: defaultAdmin }]);
+      if (!error) {
+         newData.users = [{ id: 'admin_1', ...defaultAdmin }];
+      } else {
+         console.error("Gagal membuat admin default di Supabase:", error);
+      }
     }
 
     setData(newData);
@@ -201,8 +196,8 @@ const Login = () => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-800 to-emerald-600 p-4">
       <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="mx-auto w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-4">
-            <BookOpen size={32} className="text-emerald-600" />
+          <div className="mx-auto w-36 h-36 flex items-center justify-center mb-2">
+            <img src="https://i.ibb.co.com/DfZSFRsP/Chat-GPT-Image-3-Mei-2026-04-08-56.png" alt="Logo Ponpes" className="w-full h-full object-contain drop-shadow-md" />
           </div>
           <h1 className="text-3xl font-bold text-gray-800 tracking-tight">Rapijaz-Maisya</h1>
           <p className="text-gray-500 mt-2 text-sm">Aplikasi Raport dan Ijazah<br/>Ponpes Imam Syafi'i Brebes</p>
@@ -448,19 +443,46 @@ const MasterData = ({ activeTab }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [formData, setFormData] = useState({});
+  const [isAutoSaving, setIsAutoSaving] = useState(false);
 
   const handleOpenModal = (item = null) => {
-    setEditingItem(item);
-    setFormData(item || {});
+    const newItem = item || { id: Date.now().toString() };
+    setEditingItem(newItem);
+    setFormData(newItem);
     setIsModalOpen(true);
   };
 
   const handleSave = () => {
-    const id = editingItem?.id || Date.now().toString();
     let payload = { ...formData };
     if (activeTab === 'users' && !payload.role) payload.role = 'user';
-    saveToDb(activeTab, id, payload, false, `Menyimpan data di Master Data (${activeTab})`);
+    saveToDb(activeTab, formData.id, payload, false, `Menyimpan data di Master Data (${activeTab})`);
     setIsModalOpen(false);
+  };
+
+  useEffect(() => {
+    if (!isModalOpen) return;
+    const timer = setTimeout(() => {
+        if (Object.keys(formData).length > 1) {
+            setIsAutoSaving(true);
+            let payload = { ...formData };
+            if (activeTab === 'users' && !payload.role) payload.role = 'user';
+            saveToDb(activeTab, formData.id, payload, true);
+            setTimeout(() => setIsAutoSaving(false), 800);
+        }
+    }, 1000); 
+    return () => clearTimeout(timer);
+  }, [formData, isModalOpen, activeTab, saveToDb]);
+
+  const translateToArabic = async (text) => {
+      if (!text) return '';
+      try {
+          const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=id&tl=ar&dt=t&q=${encodeURIComponent(text)}`);
+          const json = await res.json();
+          return json[0][0][0] || '';
+      } catch (e) {
+          console.error('Terjadi kesalahan translasi:', e);
+          return '';
+      }
   };
 
   const handleImportCSV = (e, type) => {
@@ -503,6 +525,24 @@ const MasterData = ({ activeTab }) => {
             <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm"><th className="p-3 border-b">Nama Guru</th><th className="p-3 border-b">NIP / Identitas</th><th className="p-3 border-b">Posisi / Jabatan</th><th className="p-3 border-b text-center">Aksi</th></tr></thead>
             <tbody>{data.teachers.map(t => (
                 <tr key={t.id} className="border-b hover:bg-gray-50"><td className="p-3 font-semibold">{t.nama}</td><td className="p-3 text-gray-600">{t.nip || '-'}</td><td className="p-3 text-gray-600">{t.posisi || '-'}</td><td className="p-3 text-center"><button onClick={() => handleOpenModal(t)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('teachers', t.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td></tr>
+              ))}</tbody>
+          </table>
+        );
+      case 'subjectCategories':
+        return (
+          <table className="w-full text-left border-collapse">
+            <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm"><th className="p-3 border-b">Nama Kategori Pelajaran</th><th className="p-3 border-b text-center">Aksi</th></tr></thead>
+            <tbody>{(data.subjectCategories || []).map(c => (
+                <tr key={c.id} className="border-b hover:bg-gray-50"><td className="p-3 font-semibold">{c.name}</td><td className="p-3 text-center"><button onClick={() => handleOpenModal(c)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('subjectCategories', c.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td></tr>
+              ))}</tbody>
+          </table>
+        );
+      case 'masterSubjects':
+        return (
+          <table className="w-full text-left border-collapse">
+            <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm"><th className="p-3 border-b">Pelajaran Utama (Indo)</th><th className="p-3 border-b text-right">Pelajaran Utama (Arab)</th><th className="p-3 border-b text-center">Aksi</th></tr></thead>
+            <tbody>{(data.masterSubjects || []).map(m => (
+                <tr key={m.id} className="border-b hover:bg-gray-50"><td className="p-3 font-semibold">{m.nameId}</td><td className="p-3 text-right font-arabic" dir="rtl">{m.nameAr}</td><td className="p-3 text-center"><button onClick={() => handleOpenModal(m)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('masterSubjects', m.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td></tr>
               ))}</tbody>
           </table>
         );
@@ -617,16 +657,45 @@ const MasterData = ({ activeTab }) => {
                 <input className="w-full p-2 border rounded" placeholder="Posisi/Jabatan (Opsional)" value={formData.posisi || ''} onChange={e => setFormData({...formData, posisi: e.target.value})} />
             </div>
         );
+        case 'subjectCategories': return (
+            <div className="space-y-4">
+                <input className="w-full p-2 border rounded font-semibold" placeholder="Kategori Pelajaran (Misal: A. Muatan Nasional)" value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} />
+            </div>
+        );
+        case 'masterSubjects': return (
+            <div className="space-y-4">
+                <input className="w-full p-2 border rounded font-semibold" placeholder="Nama Pelajaran (Indo)" value={formData.nameId || ''} 
+                    onChange={e => setFormData({...formData, nameId: e.target.value})} 
+                    onBlur={async (e) => {
+                        if (e.target.value && !formData.nameAr) {
+                            const translated = await translateToArabic(e.target.value);
+                            setFormData(prev => ({...prev, nameAr: translated}));
+                        }
+                    }}
+                />
+                <input className="w-full p-2 border rounded text-right font-arabic" placeholder="Nama Pelajaran (Arab) - Terisi Otomatis" dir="rtl" value={formData.nameAr || ''} onChange={e => setFormData({...formData, nameAr: e.target.value})} />
+                <p className="text-[10px] text-gray-500 italic">*Ketik nama pelajaran (Indonesia) dan klik sembarang di luar kotak. Kolom Arab akan otomatis diterjemahkan menggunakan Google Translate.</p>
+            </div>
+        );
         case 'subjects': return (
             <div className="space-y-4">
-                <input className="w-full p-2 border rounded bg-yellow-50" placeholder="Kategori (Opsional, Misal: A. Muatan Nasional)" value={formData.kategori || ''} onChange={e => setFormData({...formData, kategori: e.target.value})} />
-                <select className="w-full p-2 border rounded font-semibold text-emerald-800" value={formData.kelas || ''} onChange={e => setFormData({...formData, kelas: e.target.value})}>
+                <select className="w-full p-2 border rounded bg-yellow-50 font-bold" value={formData.kategori || ''} onChange={e => setFormData({...formData, kategori: e.target.value})}>
+                    <option value="">-- Pilih Kategori Pelajaran --</option>
+                    {(data.subjectCategories || []).map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                </select>
+                <select className="w-full p-2 border rounded font-bold text-emerald-800" value={formData.kelas || ''} onChange={e => setFormData({...formData, kelas: e.target.value})}>
                     <option value="">-- Pilih Kelas (Atau Kosongkan untuk Semua) --</option>
                     {data.classes.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                 </select>
-                <input className="w-full p-2 border rounded" placeholder="Nama Pelajaran (Indo)" value={formData.nameId || ''} onChange={e => setFormData({...formData, nameId: e.target.value})} />
-                <input className="w-full p-2 border rounded text-right font-arabic" placeholder="Nama Pelajaran (Arab)" dir="rtl" value={formData.nameAr || ''} onChange={e => setFormData({...formData, nameAr: e.target.value})} />
-                <select className="w-full p-2 border rounded font-semibold text-blue-800" value={formData.guru || ''} onChange={e => setFormData({...formData, guru: e.target.value})}>
+                <select className="w-full p-2 border rounded font-bold text-blue-800" value={formData.nameId || ''} onChange={e => {
+                    const selectedMaster = (data.masterSubjects || []).find(m => m.nameId === e.target.value);
+                    setFormData({...formData, nameId: e.target.value, nameAr: selectedMaster ? selectedMaster.nameAr : formData.nameAr});
+                }}>
+                    <option value="">-- Pilih Pelajaran --</option>
+                    {(data.masterSubjects || []).map(m => <option key={m.id} value={m.nameId}>{m.nameId}</option>)}
+                </select>
+                <input className="w-full p-2 border rounded text-right font-arabic bg-gray-100" placeholder="Nama Pelajaran (Arab)" dir="rtl" value={formData.nameAr || ''} disabled title="Otomatis mengikuti pilihan pelajaran di atas" />
+                <select className="w-full p-2 border rounded font-bold text-purple-800" value={formData.guru || ''} onChange={e => setFormData({...formData, guru: e.target.value})}>
                     <option value="">-- Pilih Guru Pengampu --</option>
                     {data.teachers.map(t => <option key={t.id} value={t.nama}>{t.nama}</option>)}
                 </select>
@@ -641,14 +710,32 @@ const MasterData = ({ activeTab }) => {
         );
         case 'characterTraits': return (
             <div className="space-y-4">
-                <input className="w-full p-2 border rounded" placeholder="Aspek Kesantrian/Sikap (Misal: Kedisiplinan)" value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} />
-                <input className="w-full p-2 border rounded text-right font-arabic" placeholder="Nama Arab (Opsional)" dir="rtl" value={formData.nameAr || ''} onChange={e => setFormData({...formData, nameAr: e.target.value})} />
+                <input className="w-full p-2 border rounded" placeholder="Aspek Kesantrian/Sikap (Misal: Kedisiplinan)" value={formData.name || ''} 
+                    onChange={e => setFormData({...formData, name: e.target.value})} 
+                    onBlur={async (e) => {
+                        if (e.target.value && !formData.nameAr) {
+                            const translated = await translateToArabic(e.target.value);
+                            setFormData(prev => ({...prev, nameAr: translated}));
+                        }
+                    }}
+                />
+                <input className="w-full p-2 border rounded text-right font-arabic" placeholder="Nama Arab (Terisi Otomatis Google Translate)" dir="rtl" value={formData.nameAr || ''} onChange={e => setFormData({...formData, nameAr: e.target.value})} />
+                <p className="text-[10px] text-gray-500 italic">*Ketik nama aspek (Indonesia) lalu klik di luar kotak untuk Google Translate otomatis.</p>
             </div>
         );
         case 'extracurriculars': return (
             <div className="space-y-4">
-                <input className="w-full p-2 border rounded" placeholder="Nama Ekstrakurikuler (Misal: Komputer)" value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} />
-                <input className="w-full p-2 border rounded text-right font-arabic" placeholder="Nama Arab (Opsional)" dir="rtl" value={formData.nameAr || ''} onChange={e => setFormData({...formData, nameAr: e.target.value})} />
+                <input className="w-full p-2 border rounded" placeholder="Nama Ekstrakurikuler (Misal: Komputer)" value={formData.name || ''} 
+                    onChange={e => setFormData({...formData, name: e.target.value})} 
+                    onBlur={async (e) => {
+                        if (e.target.value && !formData.nameAr) {
+                            const translated = await translateToArabic(e.target.value);
+                            setFormData(prev => ({...prev, nameAr: translated}));
+                        }
+                    }}
+                />
+                <input className="w-full p-2 border rounded text-right font-arabic" placeholder="Nama Arab (Terisi Otomatis Google Translate)" dir="rtl" value={formData.nameAr || ''} onChange={e => setFormData({...formData, nameAr: e.target.value})} />
+                <p className="text-[10px] text-gray-500 italic">*Ketik nama ekskul (Indonesia) lalu klik di luar kotak untuk Google Translate otomatis.</p>
             </div>
         );
         case 'fonts': return (
@@ -698,7 +785,9 @@ const MasterData = ({ activeTab }) => {
     switch(activeTab) {
         case 'settings': return 'Tahun Ajaran & Semester';
         case 'teachers': return 'Guru Pengampu';
-        case 'subjects': return 'Mata Pelajaran';
+        case 'subjectCategories': return 'Kategori Pelajaran';
+        case 'masterSubjects': return 'Daftar Pelajaran Utama';
+        case 'subjects': return 'Plotting Pelajaran';
         case 'presences': return 'Aspek Presensi';
         case 'characterTraits': return 'Sikap & Kesantrian';
         case 'extracurriculars': return 'Ekstrakurikuler';
@@ -721,7 +810,10 @@ const MasterData = ({ activeTab }) => {
       
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={`Form ${getTitle()}`}>
         {renderForm()}
-        <div className="mt-6 flex justify-end"><button onClick={handleSave} className="bg-emerald-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-emerald-700 transition">Simpan</button></div>
+        <div className="mt-6 flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-200">
+            {isAutoSaving ? <span className="text-xs font-bold text-emerald-600 animate-pulse flex items-center gap-1"><Save size={14}/> Menyimpan otomatis...</span> : <span className="text-xs text-gray-500 font-medium">✅ Tersimpan aman di Cloud</span>}
+            <button onClick={() => setIsModalOpen(false)} className="bg-gray-800 text-white px-6 py-2 rounded-lg font-medium hover:bg-gray-900 transition shadow-sm">Tutup Form</button>
+        </div>
       </Modal>
     </div>
   );
@@ -964,6 +1056,10 @@ const LayoutBuilder = () => {
     };
 
     const activeEl = elements.find(e => e.id === selectedElementId);
+    
+    // Memberikan objek dummy default agar renderDynamicTable tidak crash saat proses desain layout
+    const mockStudentGrades = {};
+    const mockClassAverages = {};
 
     return (
         <div className="flex flex-col md:flex-row gap-6 h-[80vh]">
@@ -1643,12 +1739,15 @@ const Dashboard = () => {
   const [activeMenu, setActiveMenu] = useState('dashboard');
   const [expandedMenu, setExpandedMenu] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
   const masterDataSubItems = [
     { id: 'settings', label: 'Tahun Ajaran' }, 
     { id: 'classes', label: 'Daftar Kelas' },
     { id: 'teachers', label: 'Guru Pengampu' },
-    { id: 'subjects', label: 'Mata Pelajaran' },
+    { id: 'subjectCategories', label: 'Kategori Pelajaran' },
+    { id: 'masterSubjects', label: 'Daftar Pelajaran Utama' },
+    { id: 'subjects', label: 'Plotting Pelajaran' },
     { id: 'presences', label: 'Presensi' }, 
     { id: 'characterTraits', label: 'Sikap & Kesantrian' }, 
     { id: 'extracurriculars', label: 'Ekstrakurikuler' }, 
@@ -1712,11 +1811,14 @@ const Dashboard = () => {
       {isSidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setIsSidebarOpen(false)} />}
       <div className={`fixed inset-y-0 left-0 w-64 bg-emerald-800 text-emerald-50 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 transition-transform duration-200 ease-in-out z-50 flex flex-col`}>
         <div className="p-6 flex items-center justify-between border-b border-emerald-700/50">
-          <div className="font-bold text-xl leading-tight">
-            Rapijaz-Maisya<br/>
-            <span className="text-emerald-300 text-[10px] font-normal leading-tight block mt-1">
-              Aplikasi Raport dan Ijazah<br/>Ponpes Imam Syafi'i Brebes
-            </span>
+          <div className="flex items-center gap-3">
+            <img src="https://i.ibb.co.com/DfZSFRsP/Chat-GPT-Image-3-Mei-2026-04-08-56.png" alt="Logo" className="w-20 h-20 object-contain drop-shadow-md shrink-0" />
+            <div className="font-bold text-xl leading-tight">
+              Rapijaz-Maisya<br/>
+              <span className="text-emerald-300 text-[10px] font-normal leading-tight block mt-1">
+                Aplikasi Raport dan Ijazah<br/>Ponpes Imam Syafi'i Brebes
+              </span>
+            </div>
           </div>
           <button className="md:hidden text-emerald-200" onClick={() => setIsSidebarOpen(false)}><X size={24}/></button>
         </div>
@@ -1776,7 +1878,7 @@ const Dashboard = () => {
               <p className="text-xs text-emerald-300 uppercase">{currentUser?.role}</p>
             </div>
           </div>
-          <button onClick={() => setCurrentUser(null)} className="w-full flex items-center justify-center gap-2 px-4 py-2 text-emerald-200 hover:text-white hover:bg-red-500/20 rounded-lg transition"><LogOut size={18} /> Keluar</button>
+          <button onClick={() => setIsLogoutModalOpen(true)} className="w-full flex items-center justify-center gap-2 px-4 py-2 text-emerald-200 hover:text-white hover:bg-red-500/20 rounded-lg transition"><LogOut size={18} /> Keluar</button>
         </div>
       </div>
       
@@ -1794,10 +1896,31 @@ const Dashboard = () => {
         
         <main className="flex-1 overflow-hidden p-4 md:p-6 print:p-0 print:overflow-visible relative flex flex-col">{renderContent()}</main>
       </div>
+
+      <Modal isOpen={isLogoutModalOpen} onClose={() => setIsLogoutModalOpen(false)} title="Konfirmasi Keluar">
+        <div className="space-y-4">
+            <p className="text-gray-700">Apakah Anda yakin ingin keluar dari aplikasi?</p>
+            <div className="flex justify-end gap-3 pt-4 border-t">
+                <button onClick={() => setIsLogoutModalOpen(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-medium transition">Batal</button>
+                <button onClick={() => { setCurrentUser(null); setIsLogoutModalOpen(false); }} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition">Ya, Keluar</button>
+            </div>
+        </div>
+      </Modal>
     </div>
   );
 };
 
 export default function App() {
+  useEffect(() => {
+    let link = document.querySelector("link[rel~='icon']");
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'icon';
+      document.head.appendChild(link);
+    }
+    link.href = 'https://i.ibb.co.com/DfZSFRsP/Chat-GPT-Image-3-Mei-2026-04-08-56.png';
+    document.title = "Rapijaz - Ponpes Imam Syafi'i";
+  }, []);
+
   return <AppProvider><AppContext.Consumer>{({ currentUser }) => currentUser ? <Dashboard /> : <Login />}</AppContext.Consumer></AppProvider>;
 }
