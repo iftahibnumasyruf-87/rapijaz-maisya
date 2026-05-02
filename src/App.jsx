@@ -1,3 +1,19 @@
+import React, { useState, useEffect, useRef, useMemo, createContext, useContext } from 'react';
+import { 
+  Menu, X, Home, Users, BookOpen, Settings, LayoutTemplate, 
+  Printer, CheckSquare, LogOut, Plus, Trash2, Edit2, Save,
+  Download, Upload, Share2, AlertCircle, CheckCircle, GripHorizontal,
+  Type, User, CreditCard, Image as ImageIcon, Ruler, Type as TypeIcon, FileText,
+  Columns, FileSignature, TrendingUp, UserX, Clock, Activity, ChevronDown
+} from 'lucide-react';
+
+// ==========================================
+// 1. SUPABASE SETUP (Koneksi Database Anda)
+// ==========================================
+const supabaseUrl = 'https://ikoqsyrvspfjyyjujfhc.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlrb3FzeXJ2c3Bmanl5anVqZmhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczNjMyMzMsImV4cCI6MjA5MjkzOTIzM30.Q0IGVZFJr9Msaq-4pNgzilvH5Bu4zHoAXdrZFgmK45E';
+const supabase = createClient(supabaseUrl, supabaseKey);
+
 // ==========================================
 // 2. CONTEXT & STATE MANAGEMENT
 // ==========================================
