@@ -6,6 +6,7 @@ import {
   Type, User, CreditCard, Image as ImageIcon, Ruler, Type as TypeIcon, FileText,
   Columns, FileSignature, TrendingUp, UserX, Clock, Activity, ChevronDown
 } from 'lucide-react';
+import { createClient } from '@supabase/supabase-js';
 
 // ==========================================
 // 1. SUPABASE SETUP (Koneksi Database Anda)
@@ -1651,6 +1652,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                     <div className="pt-4 flex flex-col gap-3">
                         <button onClick={handlePrint} disabled={!selectedStudent} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-bold flex justify-center items-center gap-2 transition"><Printer size={18}/> Print Langsung</button>
                         <button onClick={handleSavePDF} disabled={!selectedStudent} className="w-full bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-lg font-bold flex justify-center items-center gap-2 transition"><Download size={18}/> Simpan sbg PDF</button>
+                        <button onClick={handleWA} disabled={!selectedStudent} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-lg font-bold flex justify-center items-center gap-2 transition"><Share2 size={18}/> Kirim Info via WA</button>
                     </div>
                 </div>
             </div>
