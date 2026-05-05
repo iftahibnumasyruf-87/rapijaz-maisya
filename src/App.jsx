@@ -589,16 +589,23 @@ const MasterData = ({ activeTab }) => {
   useEffect(() => {
     if (!isModalOpen) return;
     const timer = setTimeout(() => {
-        if (Object.keys(formData).length > 1) {
+        // CEK KOTOR (DIRTY CHECK): Cek apakah data benar-benar berubah dari data acuan (editingItem)
+        const hasChanged = JSON.stringify(formData) !== JSON.stringify(editingItem);
+        
+        // HANYA autosave jika ada minimal 1 field terisi DAN terjadi perubahan nyata
+        if (Object.keys(formData).length > 1 && hasChanged) {
             setIsAutoSaving(true);
             let payload = { ...formData };
             if (activeTab === 'users' && !payload.role) payload.role = 'user';
+            
             saveToDb(activeTab, formData.id, payload, true);
+            setEditingItem(payload); // Set data saat ini sebagai acuan baru agar tidak disave ulang terus-menerus
+            
             setTimeout(() => setIsAutoSaving(false), 800);
         }
     }, 1000); 
     return () => clearTimeout(timer);
-  }, [formData, isModalOpen, activeTab, saveToDb]);
+  }, [formData, isModalOpen, activeTab, saveToDb, editingItem]);
 
   const translateToArabic = async (text) => {
       if (!text) return '';
@@ -669,11 +676,19 @@ const MasterData = ({ activeTab }) => {
         return (
           <table className="w-full text-left border-collapse">
             <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm">
-                <SortableHeader label="Nama Kategori Pelajaran" sortKey="name" />
+                <SortableHeader label="Kategori Pelajaran (ID)" sortKey="name" />
+                <SortableHeader label="Kategori Pelajaran (AR)" sortKey="nameAr" className="text-right" />
                 <th className="p-3 border-b text-center">Aksi</th>
             </tr></thead>
             <tbody>{sortedData.map(c => (
-                <tr key={c.id} className="border-b hover:bg-gray-50"><td className="p-3 font-semibold">{c.name}</td><td className="p-3 text-center"><button onClick={() => handleOpenModal(c)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('subjectCategories', c.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td></tr>
+                <tr key={c.id} className="border-b hover:bg-gray-50">
+                  <td className="p-3 font-semibold">{c.name}</td>
+                  <td className="p-3 text-right font-arabic" dir="rtl">{c.nameAr}</td>
+                  <td className="p-3 text-center">
+                    <button onClick={() => handleOpenModal(c)} className="text-blue-500 p-1"><Edit2 size={16}/></button>
+                    <button onClick={() => deleteFromDb('subjectCategories', c.id)} className="text-red-500 p-1"><Trash2 size={16}/></button>
+                  </td>
+                </tr>
               ))}</tbody>
           </table>
         );
@@ -842,7 +857,17 @@ const MasterData = ({ activeTab }) => {
         );
         case 'subjectCategories': return (
             <div className="space-y-4">
-                <input className="w-full p-2 border rounded font-semibold" placeholder="Kategori Pelajaran (Misal: A. Muatan Nasional)" value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} />
+                <input className="w-full p-2 border rounded font-semibold" placeholder="Kategori Pelajaran (ID)" value={formData.name || ''} 
+                    onChange={e => setFormData({...formData, name: e.target.value})} 
+                    onBlur={async (e) => {
+                        if (e.target.value && !formData.nameAr) {
+                            const translated = await translateToArabic(e.target.value);
+                            setFormData(prev => ({...prev, nameAr: translated}));
+                        }
+                    }}
+                />
+                <input className="w-full p-2 border rounded text-right font-arabic" placeholder="Kategori (Arab) - Terisi Otomatis" dir="rtl" value={formData.nameAr || ''} onChange={e => setFormData({...formData, nameAr: e.target.value})} />
+                <p className="text-[10px] text-gray-500 italic">*Ketik nama kategori (Indonesia) dan klik sembarang di luar kotak untuk Google Translate otomatis.</p>
             </div>
         );
         case 'masterSubjects': return (
@@ -1471,6 +1496,9 @@ const InputNilai = ({ activeInputTab }) => {
     const [isSaving, setIsSaving] = useState(false);
     const [lastSaved, setLastSaved] = useState(null);
     const [isInitialized, setIsInitialized] = useState(false);
+    
+    // Gunakan useRef untuk melacak status terakhir yang disave ke database (Debouncing Check)
+    const lastSavedGradesRef = useRef(null);
 
     const activeSetting = data.settings.find(s => s.isActive);
     const studentsInClass = data.students.filter(s => s.kelas === selectedClass);
@@ -1483,21 +1511,31 @@ const InputNilai = ({ activeInputTab }) => {
         const classGrades = data.grades.find(g => g.id === gradeDocId)?.data || {};
         const initialGrades = {};
         studentsInClass.forEach(st => { initialGrades[st.id] = classGrades[st.id] || {}; });
-        setLocalGrades(initialGrades); setIsInitialized(true);
+        
+        setLocalGrades(initialGrades);
+        // Tandai initialGrades ini sebagai acuan versi data yang terakhir 'disimpan'
+        lastSavedGradesRef.current = JSON.stringify(initialGrades);
+        setIsInitialized(true);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedClass, gradeDocId]); 
 
     const handleGradeChange = (studentId, fieldId, val) => {
         setLocalGrades(prev => ({ ...prev, [studentId]: { ...prev[studentId], [fieldId]: val } }));
     };
 
-    const localGradesRef = useRef(localGrades);
-    useEffect(() => { localGradesRef.current = localGrades; }, [localGrades]);
-
     useEffect(() => {
         if (!isInitialized || !gradeDocId) return;
+
+        const currentGradesStr = JSON.stringify(localGrades);
+        
+        // CEK KOTOR (DIRTY CHECK): Jangan jalankan fungsi simpan jika data ketikan tidak berubah dari yang terakhir di-save.
+        // Ini yang akan mencegah aplikasi Anda auto-save terus menerus tiada henti!
+        if (lastSavedGradesRef.current === currentGradesStr) return;
+
         const timer = setTimeout(async () => {
             setIsSaving(true);
-            await saveToDb('grades', gradeDocId, { data: localGradesRef.current, class: selectedClass, tahun: activeSetting.tahun, semester: activeSetting.semester }, true);
+            await saveToDb('grades', gradeDocId, { data: localGrades, class: selectedClass, tahun: activeSetting.tahun, semester: activeSetting.semester }, true);
+            lastSavedGradesRef.current = currentGradesStr; // Perbarui acuan dengan data yang baru saja disave
             setIsSaving(false); setLastSaved(new Date());
         }, 1500); 
         return () => clearTimeout(timer);
@@ -1507,6 +1545,7 @@ const InputNilai = ({ activeInputTab }) => {
         if (!gradeDocId) return;
         setIsSaving(true);
         await saveToDb('grades', gradeDocId, { data: localGrades, class: selectedClass, tahun: activeSetting.tahun, semester: activeSetting.semester }, false, `Menyimpan data Input Nilai kelas ${selectedClass}`);
+        lastSavedGradesRef.current = JSON.stringify(localGrades);
         setIsSaving(false); setLastSaved(new Date());
     };
 
