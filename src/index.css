@@ -1,3 +1,20 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Arabic Text Support */
+.font-arabic {
+  font-family: 'Cairo', 'Traditional Arabic', 'Arial', sans-serif;
+  font-size: 1rem;
+  line-height: 1.8;
+}
+
+input::placeholder {
+  text-align: inherit;
+}
+
+input[placeholder*="Arab"]::placeholder {
+  font-family: 'Cairo', 'Traditional Arabic', 'Arial', sans-serif;
+}

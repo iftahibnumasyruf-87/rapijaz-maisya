@@ -649,12 +649,14 @@ const MasterData = ({ activeTab }) => {
           <table className="w-full text-left border-collapse">
             <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm">
                 <SortableHeader label="Tahun" sortKey="tahun" />
+                <SortableHeader label="Tahun Arab" sortKey="tahun_arab" />
                 <SortableHeader label="Semester" sortKey="semester" />
+                <SortableHeader label="Semester Arab" sortKey="semester_arab" />
                 <SortableHeader label="Status" sortKey="isActive" className="text-center" />
                 <th className="p-3 border-b text-center">Aksi</th>
             </tr></thead>
             <tbody>{sortedData.map(s => (
-                <tr key={s.id} className="border-b hover:bg-gray-50"><td className="p-3 font-semibold">{s.tahun}</td><td className="p-3">{s.semester}</td><td className="p-3 text-center"><span className={`px-2 py-1 rounded text-xs font-medium ${s.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>{s.isActive ? 'Aktif' : 'Nonaktif'}</span></td><td className="p-3 text-center"><button onClick={() => handleOpenModal(s)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('settings', s.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td></tr>
+                <tr key={s.id} className="border-b hover:bg-gray-50"><td className="p-3 font-semibold">{s.tahun}</td><td className="p-3 font-arabic" dir="rtl">{s.tahun_arab}</td><td className="p-3">{s.semester}</td><td className="p-3 font-arabic" dir="rtl">{s.semester_arab}</td><td className="p-3 text-center"><span className={`px-2 py-1 rounded text-xs font-medium ${s.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>{s.isActive ? 'Aktif' : 'Nonaktif'}</span></td><td className="p-3 text-center"><button onClick={() => handleOpenModal(s)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('settings', s.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td></tr>
               ))}</tbody>
           </table>
         );
@@ -794,10 +796,11 @@ const MasterData = ({ activeTab }) => {
                 <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm">
                     <SortableHeader label="NIS" sortKey="nis" />
                     <SortableHeader label="Nama Santri" sortKey="nama" />
+                    <SortableHeader label="Nama Arab" sortKey="nama_arab" />
                     <SortableHeader label="Kelas" sortKey="kelas" />
                     <th className="p-3 border-b text-center">Aksi</th>
                 </tr></thead>
-                <tbody>{sortedData.map(st => (<tr key={st.id} className="border-b hover:bg-gray-50"><td className="p-3">{st.nis}</td><td className="p-3 font-semibold">{st.nama}</td><td className="p-3">{st.kelas}</td><td className="p-3 text-center"><button onClick={() => handleOpenModal(st)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('students', st.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td></tr>))}</tbody>
+                <tbody>{sortedData.map(st => (<tr key={st.id} className="border-b hover:bg-gray-50"><td className="p-3">{st.nis}</td><td className="p-3 font-semibold">{st.nama}</td><td className="p-3 font-arabic" dir="rtl">{st.nama_arab}</td><td className="p-3">{st.kelas}</td><td className="p-3 text-center"><button onClick={() => handleOpenModal(st)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('students', st.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td></tr>))}</tbody>
               </table>
             </div>
         );
@@ -817,10 +820,11 @@ const MasterData = ({ activeTab }) => {
             <table className="w-full text-left border-collapse">
                 <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm">
                     <SortableHeader label="Kelas" sortKey="name" />
+                    <SortableHeader label="Kelas Arab" sortKey="name_arab" />
                     <SortableHeader label="Wali Kelas" sortKey="wali" />
                     <th className="p-3 border-b text-center">Aksi</th>
                 </tr></thead>
-                <tbody>{sortedData.map(c => (<tr key={c.id} className="border-b hover:bg-gray-50"><td className="p-3">{c.name}</td><td className="p-3">{c.wali}</td><td className="p-3 text-center"><button onClick={() => handleOpenModal(c)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('classes', c.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td></tr>))}</tbody>
+                <tbody>{sortedData.map(c => (<tr key={c.id} className="border-b hover:bg-gray-50"><td className="p-3">{c.name}</td><td className="p-3 font-arabic" dir="rtl">{c.name_arab}</td><td className="p-3">{c.wali}</td><td className="p-3 text-center"><button onClick={() => handleOpenModal(c)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('classes', c.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td></tr>))}</tbody>
             </table>
         );
       case 'users':
@@ -844,7 +848,9 @@ const MasterData = ({ activeTab }) => {
         case 'settings': return (
             <div className="space-y-4">
                 <input className="w-full p-2 border rounded" placeholder="Tahun Ajaran (Misal: 2024/2025)" value={formData.tahun || ''} onChange={e => setFormData({...formData, tahun: e.target.value})} />
+                <input className="w-full p-2 border rounded" placeholder="Tahun Arab (السنة)" value={formData.tahun_arab || ''} onChange={e => setFormData({...formData, tahun_arab: e.target.value})} />
                 <select className="w-full p-2 border rounded" value={formData.semester || 'Ganjil'} onChange={e => setFormData({...formData, semester: e.target.value})}><option value="Ganjil">Ganjil</option><option value="Genap">Genap</option></select>
+                <input className="w-full p-2 border rounded" placeholder="Semester Arab (الفصل)" value={formData.semester_arab || ''} onChange={e => setFormData({...formData, semester_arab: e.target.value})} />
                 <label className="flex items-center gap-2"><input type="checkbox" checked={formData.isActive || false} onChange={e => setFormData({...formData, isActive: e.target.checked})} /> Jadikan Aktif</label>
             </div>
         );
@@ -963,6 +969,7 @@ const MasterData = ({ activeTab }) => {
             <div className="space-y-4">
                 <input className="w-full p-2 border rounded" placeholder="NIS" value={formData.nis || ''} onChange={e => setFormData({...formData, nis: e.target.value})} />
                 <input className="w-full p-2 border rounded" placeholder="Nama Lengkap" value={formData.nama || ''} onChange={e => setFormData({...formData, nama: e.target.value})} />
+                <input className="w-full p-2 border rounded" placeholder="Nama Arab (النام)" value={formData.nama_arab || ''} onChange={e => setFormData({...formData, nama_arab: e.target.value})} />
                 <select className="w-full p-2 border rounded" value={formData.kelas || ''} onChange={e => setFormData({...formData, kelas: e.target.value})}>
                     <option value="">Pilih Kelas</option>{data.classes.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                 </select>
@@ -974,6 +981,7 @@ const MasterData = ({ activeTab }) => {
         case 'classes': return (
             <div className="space-y-4">
                 <input className="w-full p-2 border rounded" placeholder="Nama Kelas" value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} />
+                <input className="w-full p-2 border rounded" placeholder="Nama Kelas Arab (الفصل)" value={formData.name_arab || ''} onChange={e => setFormData({...formData, name_arab: e.target.value})} />
                 <input className="w-full p-2 border rounded" placeholder="Wali Kelas" value={formData.wali || ''} onChange={e => setFormData({...formData, wali: e.target.value})} />
             </div>
         );
