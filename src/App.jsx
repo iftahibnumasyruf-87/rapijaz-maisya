@@ -16,6 +16,24 @@ const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // ==========================================
+// 1.5 UTILITY FUNCTIONS - KONVERSI ANGKA ARAB
+// ==========================================
+const convertArabicToLatin = (value) => {
+  if (typeof value !== 'string') return value;
+  
+  // Pemetaan angka Arab (٠-٩) ke angka Latin (0-9)
+  const arabicNumbers = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+  const latinNumbers = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+  
+  let result = value;
+  arabicNumbers.forEach((arabic, index) => {
+    result = result.replace(new RegExp(arabic, 'g'), latinNumbers[index]);
+  });
+  
+  return result;
+};
+
+// ==========================================
 // 2. CONTEXT & STATE MANAGEMENT
 // ==========================================
 const AppContext = createContext();
@@ -619,6 +637,12 @@ const MasterData = ({ activeTab }) => {
       }
   };
 
+  const convertLatinDigitsToArabic = (value) => {
+      if (typeof value !== 'string') return value;
+      const map = { '0': '٠', '1': '١', '2': '٢', '3': '٣', '4': '٤', '5': '٥', '6': '٦', '7': '٧', '8': '٨', '9': '٩' };
+      return value.replace(/[0-9]/g, digit => map[digit] || digit);
+  };
+
   const handleImportCSV = (e, type) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -847,11 +871,40 @@ const MasterData = ({ activeTab }) => {
     switch(activeTab) {
         case 'settings': return (
             <div className="space-y-4">
-                <input className="w-full p-2 border rounded" placeholder="Tahun Ajaran (Misal: 2024/2025)" value={formData.tahun || ''} onChange={e => setFormData({...formData, tahun: e.target.value})} />
-                <input className="w-full p-2 border rounded" placeholder="Tahun Arab (السنة)" value={formData.tahun_arab || ''} onChange={e => setFormData({...formData, tahun_arab: e.target.value})} />
-                <select className="w-full p-2 border rounded" value={formData.semester || 'Ganjil'} onChange={e => setFormData({...formData, semester: e.target.value})}><option value="Ganjil">Ganjil</option><option value="Genap">Genap</option></select>
-                <input className="w-full p-2 border rounded" placeholder="Semester Arab (الفصل)" value={formData.semester_arab || ''} onChange={e => setFormData({...formData, semester_arab: e.target.value})} />
+                <div>
+                    <input 
+                        className="w-full p-2 border rounded" 
+                        placeholder="Tahun Ajaran (Misal: 2024/2025)" 
+                        value={formData.tahun || ''} 
+                        onChange={e => setFormData({...formData, tahun: e.target.value})}
+                        onBlur={async (e) => {
+                            if (!e.target.value) return;
+                            const translated = await translateToArabic(e.target.value);
+                            const arabicDigits = convertLatinDigitsToArabic(translated || e.target.value);
+                            setFormData(prev => ({...prev, tahun_arab: arabicDigits}));
+                        }}
+                    />
+                </div>
+                <input className="w-full p-2 border rounded text-right font-arabic" placeholder="Tahun Arab (السنة) - Terisi Otomatis" dir="rtl" value={formData.tahun_arab || ''} onChange={e => setFormData({...formData, tahun_arab: e.target.value})} />
+                <div>
+                    <select 
+                        className="w-full p-2 border rounded" 
+                        value={formData.semester || 'Ganjil'} 
+                        onChange={async (e) => {
+                            const semester = e.target.value;
+                            setFormData(prev => ({...prev, semester}));
+                            if (!semester) return;
+                            const translated = await translateToArabic(semester);
+                            setFormData(prev => ({...prev, semester_arab: translated || semester}));
+                        }}
+                    >
+                        <option value="Ganjil">Ganjil</option>
+                        <option value="Genap">Genap</option>
+                    </select>
+                </div>
+                <input className="w-full p-2 border rounded text-right font-arabic" placeholder="Semester Arab (الفصل) - Terisi Otomatis" dir="rtl" value={formData.semester_arab || ''} onChange={e => setFormData({...formData, semester_arab: e.target.value})} />
                 <label className="flex items-center gap-2"><input type="checkbox" checked={formData.isActive || false} onChange={e => setFormData({...formData, isActive: e.target.checked})} /> Jadikan Aktif</label>
+                <p className="text-[10px] text-gray-500 italic">*Kolom Arab akan otomatis terisi menggunakan Google Translate saat Anda selesai mengetik atau memilih.</p>
             </div>
         );
         case 'teachers': return (
@@ -1528,6 +1581,7 @@ const InputNilai = ({ activeInputTab }) => {
     }, [selectedClass, gradeDocId]); 
 
     const handleGradeChange = (studentId, fieldId, val) => {
+        // Konversi angka Arab ke Latin terjadi di global event listener
         setLocalGrades(prev => ({ ...prev, [studentId]: { ...prev[studentId], [fieldId]: val } }));
     };
 
@@ -1601,7 +1655,7 @@ const InputNilai = ({ activeInputTab }) => {
                                         const isRed = val !== '' && !isNaN(val) && Number(val) < Number(sub.kkm);
                                         return (
                                             <td key={sub.id} className="p-2 border-r bg-white hover:bg-emerald-50">
-                                                <input type="text" className={`w-full p-2 border rounded text-center font-bold outline-none transition ${isRed ? 'text-red-600 bg-red-50 border-red-200' : 'text-gray-800 focus:border-emerald-500'}`}
+                                                <input type="text" dir="auto" title="Ketik angka Arab atau Latin (٠-٩ atau 0-9)" className={`w-full p-2 border rounded text-center font-bold outline-none transition ${isRed ? 'text-red-600 bg-red-50 border-red-200' : 'text-gray-800 focus:border-emerald-500'}`}
                                                     value={val} onChange={e => handleGradeChange(st.id, sub.id, e.target.value)} />
                                             </td>
                                         );
@@ -1642,7 +1696,7 @@ const InputNilai = ({ activeInputTab }) => {
                                 <td className="p-3 font-semibold sticky left-12 bg-white border-r shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] z-10">{st.nama}</td>
                                 {data.presences.map(p => (
                                     <td key={p.id} className="p-2 border-r bg-white hover:bg-indigo-50">
-                                        <input type="text" className="w-full p-2 border rounded text-center font-bold outline-none focus:border-indigo-500 text-indigo-900"
+                                        <input type="text" dir="auto" title="Ketik angka Arab atau Latin (٠-٩ atau 0-9)" className="w-full p-2 border rounded text-center font-bold outline-none focus:border-indigo-500 text-indigo-900"
                                             value={localGrades[st.id]?.[p.id] || ''} onChange={e => handleGradeChange(st.id, p.id, e.target.value)} placeholder="-" />
                                     </td>
                                 ))}
@@ -1670,7 +1724,7 @@ const InputNilai = ({ activeInputTab }) => {
                                 <td className="p-3 font-semibold sticky left-12 bg-white border-r shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] z-10">{st.nama}</td>
                                 {data.characterTraits.map(p => (
                                     <td key={p.id} className="p-2 border-r bg-white hover:bg-blue-50">
-                                        <input type="text" className="w-full p-2 border rounded text-center font-bold outline-none focus:border-blue-500 text-blue-900"
+                                        <input type="text" dir="auto" title="Ketik nilai (A/B/C atau angka Arab/Latin)" className="w-full p-2 border rounded text-center font-bold outline-none focus:border-blue-500 text-blue-900"
                                             value={localGrades[st.id]?.[p.id] || ''} onChange={e => handleGradeChange(st.id, p.id, e.target.value)} placeholder="A/B/C" />
                                     </td>
                                 ))}
@@ -1698,7 +1752,7 @@ const InputNilai = ({ activeInputTab }) => {
                                 <td className="p-3 font-semibold sticky left-12 bg-white border-r shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] z-10">{st.nama}</td>
                                 {data.extracurriculars.map(p => (
                                     <td key={p.id} className="p-2 border-r bg-white hover:bg-orange-50">
-                                        <input type="text" className="w-full p-2 border rounded text-center font-bold outline-none focus:border-orange-500 text-orange-900"
+                                        <input type="text" dir="auto" title="Ketik nilai (A/B/C atau angka Arab/Latin)" className="w-full p-2 border rounded text-center font-bold outline-none focus:border-orange-500 text-orange-900"
                                             value={localGrades[st.id]?.[p.id] || ''} onChange={e => handleGradeChange(st.id, p.id, e.target.value)} placeholder="A/B/C" />
                                     </td>
                                 ))}
@@ -1971,6 +2025,41 @@ const Dashboard = () => {
   const [expandedMenu, setExpandedMenu] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+
+  // ==========================================
+  // GLOBAL EVENT LISTENER - KONVERSI ANGKA ARAB
+  // ==========================================
+  useEffect(() => {
+    const handleInput = (e) => {
+      const target = e.target;
+      // Hanya konversi untuk input[type="text"] dan textarea
+      if ((target.tagName === 'INPUT' && target.type === 'text') || target.tagName === 'TEXTAREA') {
+        const convertedValue = convertArabicToLatin(target.value);
+        if (convertedValue !== target.value) {
+          // Preservasi cursor position
+          const cursorPos = target.selectionStart;
+          target.value = convertedValue;
+          target.selectionStart = target.selectionEnd = cursorPos;
+          // Trigger onChange event untuk React
+          const event = new Event('input', { bubbles: true });
+          target.dispatchEvent(event);
+          const changeEvent = new Event('change', { bubbles: true });
+          target.dispatchEvent(changeEvent);
+        }
+      }
+    };
+
+    // Event listeners untuk input dan paste
+    document.addEventListener('input', handleInput);
+    document.addEventListener('paste', (e) => {
+      setTimeout(() => handleInput({ target: e.target }), 0);
+    });
+
+    return () => {
+      document.removeEventListener('input', handleInput);
+      document.removeEventListener('paste', handleInput);
+    };
+  }, []);
 
   const masterDataSubItems = [
     { id: 'settings', label: 'Tahun Ajaran' }, 
