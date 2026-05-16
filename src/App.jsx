@@ -527,7 +527,7 @@ const MasterData = ({ activeTab }) => {
           case 'teachers': return 'nama';
           case 'subjectCategories': return 'name';
           case 'masterSubjects': return 'nameId';
-          case 'subjects': return 'kategori';
+          case 'subjects': return 'nameId';
           case 'presences': return 'name';
           case 'characterTraits': return 'name';
           case 'extracurriculars': return 'name';
@@ -565,6 +565,19 @@ const MasterData = ({ activeTab }) => {
               if (aValue === undefined || aValue === null) aValue = '';
               if (bValue === undefined || bValue === null) bValue = '';
               
+              if (activeTab === 'subjects') {
+                  const aClass = (a.kelas || '').toLowerCase();
+                  const bClass = (b.kelas || '').toLowerCase();
+                  if (aClass !== bClass) {
+                      if (sortConfig.key === 'kelas') {
+                          return sortConfig.direction === 'ascending'
+                              ? (aClass < bClass ? -1 : 1)
+                              : (aClass > bClass ? -1 : 1);
+                      }
+                      return aClass < bClass ? -1 : 1;
+                  }
+              }
+
               if (typeof aValue === 'string') aValue = aValue.toLowerCase();
               if (typeof bValue === 'string') bValue = bValue.toLowerCase();
 
@@ -575,6 +588,24 @@ const MasterData = ({ activeTab }) => {
       }
       return sortableItems;
   }, [data, activeTab, sortConfig]);
+
+  const groupedSubjects = useMemo(() => {
+      if (activeTab !== 'subjects') return sortedData;
+      const groups = [];
+      let currentKelas = null;
+      let classIndex = 0;
+      sortedData.forEach(sub => {
+          const kelasLabel = sub.kelas || 'Semua Kelas';
+          if (kelasLabel !== currentKelas) {
+              currentKelas = kelasLabel;
+              classIndex = 0;
+              groups.push({ type: 'group', kelas: kelasLabel });
+          }
+          classIndex += 1;
+          groups.push({ type: 'item', subject: sub, number: classIndex });
+      });
+      return groups;
+  }, [sortedData, activeTab]);
 
   const SortableHeader = ({ label, sortKey, className = "" }) => {
       const isActive = sortConfig.key === sortKey;
@@ -735,21 +766,35 @@ const MasterData = ({ activeTab }) => {
         return (
           <table className="w-full text-left border-collapse">
             <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm">
-                <SortableHeader label="Kategori & Kelas" sortKey="kategori" />
+                <th className="p-3 border-b text-center">No.</th>
+                <SortableHeader label="Kelas" sortKey="kelas" className="text-center" />
+                <SortableHeader label="Kategori" sortKey="kategori" />
                 <SortableHeader label="Mapel (ID)" sortKey="nameId" />
                 <SortableHeader label="Mapel (AR)" sortKey="nameAr" className="text-right" />
                 <SortableHeader label="KKM & Guru" sortKey="kkm" className="text-center" />
                 <th className="p-3 border-b text-center">Aksi</th>
             </tr></thead>
-            <tbody>{sortedData.map(sub => (
-                <tr key={sub.id} className="border-b hover:bg-gray-50">
-                    <td className="p-3"><div className="text-xs text-emerald-700 font-bold">{sub.kategori || '-'}</div><div className="text-xs text-gray-500 mt-1">Kelas: <span className="font-semibold text-gray-800">{sub.kelas || 'Semua'}</span></div></td>
-                    <td className="p-3 font-semibold">{sub.nameId}</td>
-                    <td className="p-3 text-right font-arabic" dir="rtl">{sub.nameAr}</td>
-                    <td className="p-3 text-center"><div className="font-bold text-yellow-600">{sub.kkm}</div><div className="text-[11px] text-gray-500 mt-1">{sub.guru || '-'}</div></td>
-                    <td className="p-3 text-center"><button onClick={() => handleOpenModal(sub)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('subjects', sub.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td>
-                </tr>
-              ))}</tbody>
+            <tbody>{groupedSubjects.map((row, index) => {
+                  if (row.type === 'group') {
+                      return (
+                          <tr key={`group-${row.kelas}-${index}`} className="bg-emerald-50">
+                              <td colSpan="7" className="p-3 font-semibold text-emerald-800">Kelas: {row.kelas}</td>
+                          </tr>
+                      );
+                  }
+                  const sub = row.subject;
+                  return (
+                      <tr key={sub.id} className="border-b hover:bg-gray-50">
+                          <td className="p-3 text-center font-semibold text-gray-700">{row.number}</td>
+                          <td className="p-3 text-center font-semibold text-gray-800">{sub.kelas || 'Semua'}</td>
+                          <td className="p-3"><div className="text-xs text-emerald-700 font-bold">{sub.kategori || '-'}</div></td>
+                          <td className="p-3 font-semibold">{sub.nameId}</td>
+                          <td className="p-3 text-right font-arabic" dir="rtl">{sub.nameAr}</td>
+                          <td className="p-3 text-center"><div className="font-bold text-yellow-600">{sub.kkm}</div><div className="text-[11px] text-gray-500 mt-1">{sub.guru || '-'}</div></td>
+                          <td className="p-3 text-center"><button onClick={() => handleOpenModal(sub)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('subjects', sub.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td>
+                      </tr>
+                  );
+              })}</tbody>
           </table>
         );
       case 'presences':
