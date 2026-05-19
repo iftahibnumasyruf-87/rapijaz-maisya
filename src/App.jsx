@@ -39,6 +39,80 @@ const convertArabicToLatin = (value) => {
 // ==========================================
 const AppContext = createContext();
 
+const normalizeValue = (value) => {
+  if (value === undefined || value === null) return '';
+  return String(value).trim().toLowerCase();
+};
+
+const getClassNameFromValue = (classes, classValue) => {
+  if (!classValue) return '';
+  const normalizedInput = normalizeValue(classValue);
+  const found = classes.find(c => normalizeValue(c.name) === normalizedInput || normalizeValue(c.id) === normalizedInput);
+  return found?.name || classValue;
+};
+
+const getStudentsInClass = (students, classes, selectedClass) => {
+  const normalizedSelected = normalizeValue(selectedClass);
+  if (!normalizedSelected) return [];
+
+  const className = getClassNameFromValue(classes, selectedClass);
+  const normalizedClassName = normalizeValue(className);
+
+  return students.filter((s) => {
+    const studentClass = normalizeValue(s.kelas);
+    return (
+      studentClass === normalizedSelected ||
+      studentClass === normalizedClassName ||
+      studentClass.includes(normalizedSelected) ||
+      studentClass.includes(normalizedClassName)
+    );
+  });
+};
+
+const normalizeSubjectClasses = (kelas) => {
+  if (Array.isArray(kelas)) {
+    return kelas.map(c => String(c).trim()).filter(Boolean);
+  }
+  if (typeof kelas === 'string') {
+    return kelas.split(',').map(c => c.trim()).filter(Boolean);
+  }
+  return [];
+};
+
+const getSubjectClassLabel = (subject) => {
+  const kelasValues = normalizeSubjectClasses(subject.kelas);
+  if (kelasValues.length === 0) return 'Semua';
+  return kelasValues.join(', ');
+};
+
+const parseGradeValue = (value) => {
+  if (value === undefined || value === null || String(value).trim() === '') return null;
+  const normalized = String(value).replace(/,/g, '.').trim();
+  const number = Number(normalized);
+  return Number.isFinite(number) ? number : null;
+};
+
+const computeRaportScore = (uts, uas) => {
+  const parsedUts = parseGradeValue(uts);
+  const parsedUas = parseGradeValue(uas);
+  if (parsedUts === null && parsedUas === null) return '';
+  const u = parsedUts ?? 0;
+  const a = parsedUas ?? 0;
+  return Number((u * 0.4 + a * 0.6).toFixed(2));
+};
+
+const isSubjectVisibleInClass = (subject, selectedClass) => {
+  if (!selectedClass) return true;
+  const normalizedSelected = normalizeValue(selectedClass);
+  const kelasValues = normalizeSubjectClasses(subject.kelas);
+  if (kelasValues.length === 0) return true;
+  return kelasValues.some(c => normalizeValue(c) === normalizedSelected || normalizeValue(c).includes(normalizedSelected));
+};
+
+const filterSubjectsByClass = (subjects, selectedClass) => {
+  return subjects.filter(subject => isSubjectVisibleInClass(subject, selectedClass));
+};
+
 const AppProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(() => {
     const saved = localStorage.getItem('rapijaz_user');
@@ -567,17 +641,9 @@ const MasterData = ({ activeTab }) => {
               if (aValue === undefined || aValue === null) aValue = '';
               if (bValue === undefined || bValue === null) bValue = '';
               
-              if (activeTab === 'subjects') {
-                  const aClass = (a.kelas || '').toLowerCase();
-                  const bClass = (b.kelas || '').toLowerCase();
-                  if (aClass !== bClass) {
-                      if (sortConfig.key === 'kelas') {
-                          return sortConfig.direction === 'ascending'
-                              ? (aClass < bClass ? -1 : 1)
-                              : (aClass > bClass ? -1 : 1);
-                      }
-                      return aClass < bClass ? -1 : 1;
-                  }
+              if (activeTab === 'subjects' && sortConfig.key === 'kelas') {
+                  aValue = getSubjectClassLabel(a);
+                  bValue = getSubjectClassLabel(b);
               }
 
               if (typeof aValue === 'string') aValue = aValue.toLowerCase();
@@ -597,7 +663,7 @@ const MasterData = ({ activeTab }) => {
       let currentKelas = null;
       let classIndex = 0;
       sortedData.forEach(sub => {
-          const kelasLabel = sub.kelas || 'Semua Kelas';
+          const kelasLabel = getSubjectClassLabel(sub);
           if (kelasLabel !== currentKelas) {
               currentKelas = kelasLabel;
               classIndex = 0;
@@ -624,7 +690,10 @@ const MasterData = ({ activeTab }) => {
   };
 
   const handleOpenModal = (item = null) => {
-    const newItem = item || { id: Date.now().toString() };
+    const newItem = item ? { ...item } : { id: Date.now().toString() };
+    if (item && activeTab === 'subjects') {
+      newItem.kelas = normalizeSubjectClasses(item.kelas);
+    }
     setEditingItem(newItem);
     setFormData(newItem);
     setIsModalOpen(true);
@@ -1039,10 +1108,13 @@ const MasterData = ({ activeTab }) => {
                     <option value="">-- Pilih Kategori Pelajaran --</option>
                     {(data.subjectCategories || []).map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                 </select>
-                <select className="w-full p-2 border rounded font-bold text-emerald-800" value={formData.kelas || ''} onChange={e => setFormData({...formData, kelas: e.target.value})}>
-                    <option value="">-- Pilih Kelas (Atau Kosongkan untuk Semua) --</option>
+                <select className="w-full p-2 border rounded font-bold text-emerald-800" multiple value={Array.isArray(formData.kelas) ? formData.kelas : formData.kelas ? [formData.kelas] : []} onChange={e => {
+                    const selected = Array.from(e.target.selectedOptions).map(o => o.value);
+                    setFormData({...formData, kelas: selected});
+                }}>
                     {data.classes.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                 </select>
+                <p className="text-[10px] text-gray-500 italic">*Pilih beberapa kelas jika pelajaran ini berlaku untuk lebih dari satu kelas. Biarkan kosong untuk semua kelas.</p>
                 <select className="w-full p-2 border rounded font-bold text-blue-800" value={formData.nameId || ''} onChange={e => {
                     const selectedMaster = (data.masterSubjects || []).find(m => m.nameId === e.target.value);
                     setFormData({...formData, nameId: e.target.value, nameAr: selectedMaster ? selectedMaster.nameAr : formData.nameAr});
@@ -1671,7 +1743,8 @@ const InputNilai = ({ activeInputTab }) => {
     const lastSavedGradesRef = useRef(null);
 
     const activeSetting = data.settings.find(s => s.isActive);
-    const studentsInClass = data.students.filter(s => s.kelas === selectedClass);
+    const studentsInClass = getStudentsInClass(data.students, data.classes, selectedClass);
+    const subjectsInClass = useMemo(() => filterSubjectsByClass(data.subjects, selectedClass), [data.subjects, selectedClass]);
     const gradeDocId = activeSetting && selectedClass ? `${selectedClass}_${(activeSetting.tahun || 'default').replace(/\//g, '-')}_${activeSetting.semester || '1'}` : null;
 
     useEffect(() => {
@@ -1680,7 +1753,23 @@ const InputNilai = ({ activeInputTab }) => {
         }
         const classGrades = data.grades.find(g => g.id === gradeDocId)?.data || {};
         const initialGrades = {};
-        studentsInClass.forEach(st => { initialGrades[st.id] = classGrades[st.id] || {}; });
+        studentsInClass.forEach(st => {
+            const raw = classGrades[st.id] || {};
+            const normalized = {};
+            Object.entries(raw).forEach(([key, value]) => {
+                const isSubject = data.subjects.some(sub => sub.id === key);
+                if (isSubject) {
+                    if (value && typeof value === 'object' && ('uts' in value || 'uas' in value)) {
+                        normalized[key] = { uts: value.uts || '', uas: value.uas || '', ...value };
+                    } else {
+                        normalized[key] = { uts: value == null ? '' : String(value), uas: '' };
+                    }
+                } else {
+                    normalized[key] = value;
+                }
+            });
+            initialGrades[st.id] = normalized;
+        });
         
         setLocalGrades(initialGrades);
         // Tandai initialGrades ini sebagai acuan versi data yang terakhir 'disimpan'
@@ -1689,9 +1778,19 @@ const InputNilai = ({ activeInputTab }) => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedClass, gradeDocId]); 
 
-    const handleGradeChange = (studentId, fieldId, val) => {
+    const handleGradeChange = (studentId, fieldId, val, category = null) => {
         // Konversi angka Arab ke Latin terjadi di global event listener
-        setLocalGrades(prev => ({ ...prev, [studentId]: { ...prev[studentId], [fieldId]: val } }));
+        setLocalGrades(prev => {
+            const studentGrades = prev[studentId] || {};
+            if (category === 'uts' || category === 'uas') {
+                const existing = studentGrades[fieldId] && typeof studentGrades[fieldId] === 'object'
+                    ? { ...studentGrades[fieldId] }
+                    : { uts: '', uas: '' };
+                existing[category] = val;
+                return { ...prev, [studentId]: { ...studentGrades, [fieldId]: existing } };
+            }
+            return { ...prev, [studentId]: { ...studentGrades, [fieldId]: val } };
+        });
     };
 
     useEffect(() => {
@@ -1725,63 +1824,80 @@ const InputNilai = ({ activeInputTab }) => {
     );
 
     const classTotals = {}; const classCounts = {};
-    data.subjects.forEach(sub => { classTotals[sub.id] = 0; classCounts[sub.id] = 0; });
+    subjectsInClass.forEach(sub => { classTotals[sub.id] = 0; classCounts[sub.id] = 0; });
 
     const renderTableContent = () => {
+        if (activeInputTab === 'pelajaran' && subjectsInClass.length === 0) {
+            return (
+                <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 text-center">
+                    <h3 className="text-lg font-semibold text-gray-800">Belum ada mata pelajaran untuk kelas ini</h3>
+                    <p className="text-gray-500">Atur pelajaran di Master Data dan pilih kelas yang sesuai untuk menampilkan Input Nilai.</p>
+                </div>
+            );
+        }
         if (activeInputTab === 'pelajaran') {
             return (
                 <table className="w-full text-left border-collapse whitespace-nowrap">
                     <thead className="sticky top-0 z-20">
                         <tr className="bg-emerald-700 text-white text-sm">
                             <th rowSpan={2} className="p-3 border-b border-r border-emerald-600 text-center w-12 sticky left-0 z-30 bg-emerald-800">No</th>
+                            <th rowSpan={2} className="p-3 border-b border-r border-emerald-600 text-center w-20 bg-emerald-800">NIS</th>
                             <th rowSpan={2} className="p-3 border-b border-r border-emerald-600 sticky left-12 z-30 bg-emerald-800">Nama Santri</th>
-                            {data.subjects.length > 0 && <th colSpan={data.subjects.length} className="p-2 border-b border-r border-emerald-600 text-center font-bold bg-emerald-800">NILAI MATA PELAJARAN</th>}
-                            <th rowSpan={2} className="p-3 border-b border-r border-emerald-600 text-center w-20 bg-emerald-900">Total<br/>Nilai</th>
-                            <th rowSpan={2} className="p-3 border-b border-emerald-600 text-center w-20 bg-emerald-900">Rata-rata</th>
+                            {subjectsInClass.length > 0 && <th colSpan={subjectsInClass.length} className="p-2 border-b border-r border-emerald-600 text-center font-bold bg-emerald-800">NILAI MATA PELAJARAN</th>}
+                            <th rowSpan={2} className="p-3 border-b border-r border-emerald-600 text-center w-20 bg-emerald-900">Total<br/>Raport</th>
+                            <th rowSpan={2} className="p-3 border-b border-emerald-600 text-center w-20 bg-emerald-900">Rata-rata<br/>Raport</th>
                         </tr>
                         <tr className="bg-emerald-600 text-white text-sm">
-                            {data.subjects.map(sub => (
+                            {subjectsInClass.map(sub => (
                                 <th key={sub.id} className="p-2 border-b border-r border-emerald-500 text-center min-w-[120px] bg-emerald-700">
                                     <div className="font-bold truncate">{sub.nameId}</div>
                                     <div className="text-[10px] text-emerald-200 font-normal truncate mt-0.5">(Guru: {sub.guru || '-'})</div>
                                     <div className="text-[10px] text-yellow-300 font-bold truncate mt-0.5">KKM: {sub.kkm || '-'}</div>
+                                    <div className="text-[11px] text-slate-100 font-semibold mt-2">UTS / UAS / Raport</div>
                                 </th>
                             ))}
                         </tr>
                     </thead>
                     <tbody>
                         {studentsInClass.map((st, idx) => {
-                            let rowTotal = 0; let rowCount = 0;
+                            let rowRaportTotal = 0; let rowRaportCount = 0;
                             return (
                                 <tr key={st.id} className="border-b hover:bg-gray-50 transition-colors">
                                     <td className="p-3 text-center text-gray-500 sticky left-0 bg-white border-r z-10">{idx + 1}</td>
-                                    <td className="p-3 font-semibold sticky left-12 bg-white border-r shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] z-10 text-gray-800">
-                                        {st.nama} <div className="text-xs text-gray-400 font-normal">{st.nis}</div>
-                                    </td>
-                                    {data.subjects.map(sub => {
-                                        const val = localGrades[st.id]?.[sub.id] || '';
-                                        if (val !== '' && !isNaN(val)) { rowTotal += Number(val); rowCount++; classTotals[sub.id] += Number(val); classCounts[sub.id]++; }
-                                        const isRed = val !== '' && !isNaN(val) && Number(val) < Number(sub.kkm);
+                                    <td className="p-3 text-center bg-white border-r font-semibold">{st.nis || '-'}</td>
+                                    <td className="p-3 font-semibold sticky left-12 bg-white border-r shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] z-10 text-gray-800">{st.nama}</td>
+                                    {subjectsInClass.map(sub => {
+                                        const uts = localGrades[st.id]?.[sub.id]?.uts || '';
+                                        const uas = localGrades[st.id]?.[sub.id]?.uas || '';
+                                        const raport = computeRaportScore(uts, uas);
+                                        if (raport !== '') { rowRaportTotal += raport; rowRaportCount++; classTotals[sub.id] += raport; classCounts[sub.id]++; }
+                                        const isRed = raport !== '' && raport < Number(sub.kkm || 0);
                                         return (
                                             <td key={sub.id} className="p-2 border-r bg-white hover:bg-emerald-50">
-                                                <input type="text" dir="auto" title="Ketik angka Arab atau Latin (٠-٩ atau 0-9)" className={`w-full p-2 border rounded text-center font-bold outline-none transition ${isRed ? 'text-red-600 bg-red-50 border-red-200' : 'text-gray-800 focus:border-emerald-500'}`}
-                                                    value={val} onChange={e => handleGradeChange(st.id, sub.id, e.target.value)} />
+                                                <div className="grid grid-cols-3 gap-2 items-center">
+                                                    <input type="text" dir="auto" title="Nilai UTS (angka)" placeholder="UTS" className="w-full p-2 border rounded text-center font-semibold outline-none text-gray-800 focus:border-emerald-500" value={uts} onChange={e => handleGradeChange(st.id, sub.id, e.target.value, 'uts')} />
+                                                    <input type="text" dir="auto" title="Nilai UAS (angka)" placeholder="UAS" className="w-full p-2 border rounded text-center font-semibold outline-none text-gray-800 focus:border-emerald-500" value={uas} onChange={e => handleGradeChange(st.id, sub.id, e.target.value, 'uas')} />
+                                                    <div className={`rounded border p-2 text-sm font-bold text-center ${isRed ? 'text-red-600 bg-red-50 border-red-200' : 'text-gray-800 bg-gray-50 border-gray-200'}`}>
+                                                        {raport === '' ? '-' : raport}
+                                                    </div>
+                                                </div>
                                             </td>
                                         );
                                     })}
-                                    <td className="p-3 text-center font-bold text-emerald-800 bg-emerald-50 border-r">{rowTotal || '-'}</td>
-                                    <td className="p-3 text-center font-bold text-blue-800 bg-blue-50">{rowCount > 0 ? (rowTotal / rowCount).toFixed(2) : '-'}</td>
+                                    <td className="p-3 text-center font-bold text-emerald-800 bg-emerald-50 border-r">{rowRaportTotal !== 0 ? rowRaportTotal.toFixed(2) : '-'}</td>
+                                    <td className="p-3 text-center font-bold text-blue-800 bg-blue-50">{rowRaportCount > 0 ? (rowRaportTotal / rowRaportCount).toFixed(2) : '-'}</td>
                                 </tr>
                             );
                         })}
                     </tbody>
                     <tfoot className="sticky bottom-0 z-20 shadow-[0_-2px_5px_rgba(0,0,0,0.05)]">
                         <tr className="bg-gray-100 text-gray-800">
-                            <td colSpan="2" className="p-3 text-right font-bold border-r sticky left-0 z-30 bg-gray-200">Rata-rata Kelas</td>
-                            {data.subjects.map(sub => (
+                            <td colSpan="3" className="p-3 text-right font-bold border-r sticky left-0 z-30 bg-gray-200">Rata-rata Raport per Pelajaran</td>
+                            {subjectsInClass.map(sub => (
                                 <td key={sub.id} className="p-3 text-center font-bold border-r text-blue-700">{classCounts[sub.id] > 0 ? (classTotals[sub.id] / classCounts[sub.id]).toFixed(2) : '-'}</td>
                             ))}
-                            <td colSpan="2" className="bg-gray-200 border-l"></td>
+                            <td className="p-3 text-center font-bold border-r text-blue-700">-</td>
+                            <td className="bg-gray-200 border-l"></td>
                         </tr>
                     </tfoot>
                 </table>
@@ -1794,6 +1910,7 @@ const InputNilai = ({ activeInputTab }) => {
                     <thead className="sticky top-0 z-20">
                         <tr className="bg-indigo-700 text-white text-sm">
                             <th className="p-3 border-b border-r border-indigo-600 text-center w-12 sticky left-0 z-30 bg-indigo-800">No</th>
+                            <th className="p-3 border-b border-r border-indigo-600 text-center w-20 bg-indigo-800">NIS</th>
                             <th className="p-3 border-b border-r border-indigo-600 sticky left-12 z-30 bg-indigo-800">Nama Santri</th>
                             {data.presences.map(p => <th key={p.id} className="p-3 border-b border-r border-indigo-600 text-center min-w-[100px]">{p.name}</th>)}
                         </tr>
@@ -1802,6 +1919,7 @@ const InputNilai = ({ activeInputTab }) => {
                         {studentsInClass.map((st, idx) => (
                             <tr key={st.id} className="border-b hover:bg-gray-50 transition-colors">
                                 <td className="p-3 text-center text-gray-500 sticky left-0 bg-white border-r z-10">{idx + 1}</td>
+                                <td className="p-3 text-center bg-white border-r font-semibold">{st.nis || '-'}</td>
                                 <td className="p-3 font-semibold sticky left-12 bg-white border-r shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] z-10">{st.nama}</td>
                                 {data.presences.map(p => (
                                     <td key={p.id} className="p-2 border-r bg-white hover:bg-indigo-50">
@@ -1822,6 +1940,7 @@ const InputNilai = ({ activeInputTab }) => {
                     <thead className="sticky top-0 z-20">
                         <tr className="bg-blue-700 text-white text-sm">
                             <th className="p-3 border-b border-r border-blue-600 text-center w-12 sticky left-0 z-30 bg-blue-800">No</th>
+                            <th className="p-3 border-b border-r border-blue-600 text-center w-20 bg-blue-800">NIS</th>
                             <th className="p-3 border-b border-r border-blue-600 sticky left-12 z-30 bg-blue-800">Nama Santri</th>
                             {data.characterTraits.map(p => <th key={p.id} className="p-3 border-b border-r border-blue-600 text-center min-w-[120px]">{p.name}</th>)}
                         </tr>
@@ -1830,6 +1949,7 @@ const InputNilai = ({ activeInputTab }) => {
                         {studentsInClass.map((st, idx) => (
                             <tr key={st.id} className="border-b hover:bg-gray-50 transition-colors">
                                 <td className="p-3 text-center text-gray-500 sticky left-0 bg-white border-r z-10">{idx + 1}</td>
+                                <td className="p-3 text-center bg-white border-r font-semibold">{st.nis || '-'}</td>
                                 <td className="p-3 font-semibold sticky left-12 bg-white border-r shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] z-10">{st.nama}</td>
                                 {data.characterTraits.map(p => (
                                     <td key={p.id} className="p-2 border-r bg-white hover:bg-blue-50">
@@ -1850,6 +1970,7 @@ const InputNilai = ({ activeInputTab }) => {
                     <thead className="sticky top-0 z-20">
                         <tr className="bg-orange-700 text-white text-sm">
                             <th className="p-3 border-b border-r border-orange-600 text-center w-12 sticky left-0 z-30 bg-orange-800">No</th>
+                            <th className="p-3 border-b border-r border-orange-600 text-center w-20 bg-orange-800">NIS</th>
                             <th className="p-3 border-b border-r border-orange-600 sticky left-12 z-30 bg-orange-800">Nama Santri</th>
                             {data.extracurriculars.map(p => <th key={p.id} className="p-3 border-b border-r border-orange-600 text-center min-w-[120px]">{p.name}</th>)}
                         </tr>
@@ -1858,6 +1979,7 @@ const InputNilai = ({ activeInputTab }) => {
                         {studentsInClass.map((st, idx) => (
                             <tr key={st.id} className="border-b hover:bg-gray-50 transition-colors">
                                 <td className="p-3 text-center text-gray-500 sticky left-0 bg-white border-r z-10">{idx + 1}</td>
+                                <td className="p-3 text-center bg-white border-r font-semibold">{st.nis || '-'}</td>
                                 <td className="p-3 font-semibold sticky left-12 bg-white border-r shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] z-10">{st.nama}</td>
                                 {data.extracurriculars.map(p => (
                                     <td key={p.id} className="p-2 border-r bg-white hover:bg-orange-50">
@@ -1878,6 +2000,7 @@ const InputNilai = ({ activeInputTab }) => {
                     <thead className="sticky top-0 z-20">
                         <tr className="bg-pink-700 text-white text-sm">
                             <th className="p-3 border-b border-r border-pink-600 text-center w-12">No</th>
+                            <th className="p-3 border-b border-r border-pink-600 text-center w-20">NIS</th>
                             <th className="p-3 border-b border-r border-pink-600 w-48">Nama Santri</th>
                             <th className="p-3 border-b border-pink-600">Isi Catatan Wali Kelas</th>
                         </tr>
@@ -1886,6 +2009,7 @@ const InputNilai = ({ activeInputTab }) => {
                         {studentsInClass.map((st, idx) => (
                             <tr key={st.id} className="border-b hover:bg-gray-50 transition-colors">
                                 <td className="p-3 text-center text-gray-500 bg-white border-r">{idx + 1}</td>
+                                <td className="p-3 text-center bg-white border-r font-semibold">{st.nis || '-'}</td>
                                 <td className="p-3 font-semibold bg-white border-r">{st.nama}</td>
                                 <td className="p-2 bg-white">
                                     <textarea className="w-full p-2 border rounded font-medium outline-none focus:border-pink-500 text-pink-900 min-h-[60px]"
@@ -1939,7 +2063,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
     const [useKatrol, setUseKatrol] = useState(false);
     
     const activeSetting = data.settings.find(s => s.isActive) || {};
-    const studentsInClass = data.students.filter(s => s.kelas === selectedClass);
+    const studentsInClass = getStudentsInClass(data.students, data.classes, selectedClass);
     const studentData = data.students.find(s => s.id === selectedStudent);
     
     const layoutSettings = data.layouts.find(l => l.id === mode) || {};
@@ -2052,7 +2176,7 @@ const LeggerKelas = () => {
     const [selectedClass, setSelectedClass] = useState('');
     
     const activeSetting = data.settings.find(s => s.isActive) || {};
-    const students = useMemo(() => data.students.filter(s => s.kelas === selectedClass), [data.students, selectedClass]);
+    const students = useMemo(() => getStudentsInClass(data.students, data.classes, selectedClass), [data.students, data.classes, selectedClass]);
     const subjects = data.subjects;
     
     const gradeDocId = selectedClass 
@@ -2133,6 +2257,7 @@ const Dashboard = () => {
   const [activeMenu, setActiveMenu] = useState('dashboard');
   const [expandedMenu, setExpandedMenu] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarCompact, setIsSidebarCompact] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
   // ==========================================
@@ -2238,18 +2363,23 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {isSidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setIsSidebarOpen(false)} />}
-      <div className={`fixed inset-y-0 left-0 w-64 bg-emerald-800 text-emerald-50 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 transition-transform duration-200 ease-in-out z-50 flex flex-col`}>
-        <div className="p-6 flex items-center justify-between border-b border-emerald-700/50">
-          <div className="flex items-center gap-3">
-            <img src="https://i.ibb.co.com/DfZSFRsP/Chat-GPT-Image-3-Mei-2026-04-08-56.png" alt="Logo" className="w-14 h-14 object-contain drop-shadow-sm shrink-0" />
-            <div className="font-bold text-xl leading-tight">
+      <div className={`fixed inset-y-0 left-0 ${isSidebarCompact ? 'w-16' : 'w-64'} bg-emerald-800 text-emerald-50 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 transition-transform duration-200 ease-in-out z-50 flex flex-col`}>
+        <div className={`p-3 ${isSidebarCompact ? 'px-0' : 'p-6'} flex items-center justify-between border-b border-emerald-700/50`}>
+          <div className={`flex items-center ${isSidebarCompact ? 'justify-center w-full gap-0' : 'gap-3'}`}>
+            <img src="https://i.ibb.co.com/DfZSFRsP/Chat-GPT-Image-3-Mei-2026-04-08-56.png" alt="Logo" className="w-12 h-12 object-contain drop-shadow-sm shrink-0" />
+            <div className={`${isSidebarCompact ? 'hidden' : 'font-bold text-xl leading-tight'}`}>
               Rapijaz-Maisya<br/>
               <span className="text-emerald-300 text-[10px] font-normal leading-tight block mt-1">
                 Aplikasi Raport dan Ijazah<br/>Ponpes Imam Syafi'i Brebes
               </span>
             </div>
           </div>
-          <button className="md:hidden text-emerald-200" onClick={() => setIsSidebarOpen(false)}><X size={24}/></button>
+          <div className="flex items-center gap-2">
+            <button className="hidden md:inline-flex text-emerald-200 hover:text-white" onClick={() => setIsSidebarCompact(prev => !prev)} title="Ciutkan Sidebar">
+              <LayoutTemplate size={20} />
+            </button>
+            <button className="md:hidden text-emerald-200" onClick={() => setIsSidebarOpen(false)}><X size={24}/></button>
+          </div>
         </div>
         
         <div className="p-4 flex-1 overflow-y-auto custom-scrollbar">
@@ -2272,15 +2402,17 @@ const Dashboard = () => {
                                         setActiveMenu(menu.id); setIsSidebarOpen(false); setExpandedMenu('');
                                     }
                                 }} 
-                                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition ${isActive && !menu.subItems ? 'bg-emerald-600 text-white shadow-lg' : 'text-emerald-100 hover:bg-emerald-700/50'}`}
+                                title={menu.label}
+                                className={`w-full flex items-center ${isSidebarCompact ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'} rounded-xl transition ${isActive && !menu.subItems ? 'bg-emerald-600 text-white shadow-lg' : 'text-emerald-100 hover:bg-emerald-700/50'}`}
                             >
-                                <div className="flex items-center gap-3">
-                                    <Icon size={20} /> <span className="font-medium">{menu.label}</span>
+                                <div className={`flex items-center ${isSidebarCompact ? 'justify-center gap-0' : 'gap-3'}`}>
+                                    <Icon size={20} />
+                                    <span className={`${isSidebarCompact ? 'hidden' : 'font-medium'}`}>{menu.label}</span>
                                 </div>
-                                {menu.subItems && <ChevronDown size={16} className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`} />}
+                                {menu.subItems && !isSidebarCompact && <ChevronDown size={16} className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`} />}
                             </button>
 
-                            {menu.subItems && isExpanded && (
+                            {menu.subItems && isExpanded && !isSidebarCompact && (
                                 <div className="ml-4 mt-1 space-y-1 border-l border-emerald-700/50 pl-2">
                                     {menu.subItems.map(sub => (
                                         <button
@@ -2300,14 +2432,19 @@ const Dashboard = () => {
         </div>
         
         <div className="p-4 border-t border-emerald-700/50">
-          <div className="flex items-center gap-3 px-4 py-3 bg-emerald-900/50 rounded-xl mb-4">
+          <div className={`flex items-center ${isSidebarCompact ? 'justify-center' : 'gap-3'} ${isSidebarCompact ? 'px-0 py-3' : 'px-4 py-3'} bg-emerald-900/50 rounded-xl mb-4`}>
             <div className="w-10 h-10 rounded-full bg-emerald-600 flex items-center justify-center font-bold text-white">{currentUser?.name?.charAt(0) || 'U'}</div>
-            <div className="flex-1 overflow-hidden">
-              <p className="font-bold text-sm truncate text-white">{currentUser?.name}</p>
-              <p className="text-xs text-emerald-300 uppercase">{currentUser?.role}</p>
-            </div>
+            {!isSidebarCompact && (
+              <div className="flex-1 overflow-hidden">
+                <p className="font-bold text-sm truncate text-white">{currentUser?.name}</p>
+                <p className="text-xs text-emerald-300 uppercase">{currentUser?.role}</p>
+              </div>
+            )}
           </div>
-          <button onClick={() => setIsLogoutModalOpen(true)} className="w-full flex items-center justify-center gap-2 px-4 py-2 text-emerald-200 hover:text-white hover:bg-red-500/20 rounded-lg transition"><LogOut size={18} /> Keluar</button>
+          <button onClick={() => setIsLogoutModalOpen(true)} className={`w-full flex items-center justify-center ${isSidebarCompact ? 'px-0 py-3' : 'gap-2 px-4 py-2'} text-emerald-200 hover:text-white hover:bg-red-500/20 rounded-lg transition`} title="Keluar">
+            <LogOut size={18} />
+            {!isSidebarCompact && 'Keluar'}
+          </button>
         </div>
       </div>
       
