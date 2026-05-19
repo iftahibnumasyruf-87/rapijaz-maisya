@@ -520,6 +520,7 @@ const MasterData = ({ activeTab }) => {
   const [editingItem, setEditingItem] = useState(null);
   const [formData, setFormData] = useState({});
   const [isAutoSaving, setIsAutoSaving] = useState(false);
+    const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
 
   // Default pengurutan tabel berdasarkan menu (alfabetis secara bawaan)
   const getDefaultSortKey = (tab) => {
@@ -636,26 +637,27 @@ const MasterData = ({ activeTab }) => {
     setIsModalOpen(false);
   };
 
-  useEffect(() => {
-    if (!isModalOpen) return;
-    const timer = setTimeout(() => {
-        // CEK KOTOR (DIRTY CHECK): Cek apakah data benar-benar berubah dari data acuan (editingItem)
-        const hasChanged = JSON.stringify(formData) !== JSON.stringify(editingItem);
+    useEffect(() => {
+        if (!isModalOpen) return;
+        if (!autoSaveEnabled) return; // skip autosave when disabled
+        const timer = setTimeout(() => {
+                // CEK KOTOR (DIRTY CHECK): Cek apakah data benar-benar berubah dari data acuan (editingItem)
+                const hasChanged = JSON.stringify(formData) !== JSON.stringify(editingItem);
         
-        // HANYA autosave jika ada minimal 1 field terisi DAN terjadi perubahan nyata
-        if (Object.keys(formData).length > 1 && hasChanged) {
-            setIsAutoSaving(true);
-            let payload = { ...formData };
-            if (activeTab === 'users' && !payload.role) payload.role = 'user';
+                // HANYA autosave jika ada minimal 1 field terisi DAN terjadi perubahan nyata
+                if (Object.keys(formData).length > 1 && hasChanged) {
+                        setIsAutoSaving(true);
+                        let payload = { ...formData };
+                        if (activeTab === 'users' && !payload.role) payload.role = 'user';
             
-            saveToDb(activeTab, formData.id, payload, true);
-            setEditingItem(payload); // Set data saat ini sebagai acuan baru agar tidak disave ulang terus-menerus
+                        saveToDb(activeTab, formData.id, payload, true);
+                        setEditingItem(payload); // Set data saat ini sebagai acuan baru agar tidak disave ulang terus-menerus
             
-            setTimeout(() => setIsAutoSaving(false), 800);
-        }
-    }, 1000); 
-    return () => clearTimeout(timer);
-  }, [formData, isModalOpen, activeTab, saveToDb, editingItem]);
+                        setTimeout(() => setIsAutoSaving(false), 800);
+                }
+        }, 5000); 
+        return () => clearTimeout(timer);
+    }, [formData, isModalOpen, activeTab, saveToDb, editingItem, autoSaveEnabled]);
 
   const translateToArabic = async (text) => {
       if (!text) return '';
@@ -1176,8 +1178,19 @@ const MasterData = ({ activeTab }) => {
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={`Form ${getTitle()}`}>
         {renderForm()}
         <div className="mt-6 flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-200">
-            {isAutoSaving ? <span className="text-xs font-bold text-emerald-600 animate-pulse flex items-center gap-1"><Save size={14}/> Menyimpan otomatis...</span> : <span className="text-xs text-gray-500 font-medium">✅ Tersimpan aman di Cloud</span>}
-            <button onClick={() => setIsModalOpen(false)} className="bg-gray-800 text-white px-6 py-2 rounded-lg font-medium hover:bg-gray-900 transition shadow-sm">Tutup Form</button>
+            <div className="flex items-center gap-4">
+                <label className="flex items-center gap-2 text-sm">
+                    <input type="checkbox" checked={autoSaveEnabled} onChange={e => setAutoSaveEnabled(e.target.checked)} />
+                    <span>{autoSaveEnabled ? 'Autosave: Aktif (5s)' : 'Autosave: Nonaktif'}</span>
+                </label>
+                <div>
+                    {isAutoSaving ? <span className="text-xs font-bold text-emerald-600 animate-pulse flex items-center gap-1"><Save size={14}/> Menyimpan otomatis...</span> : <span className="text-xs text-gray-500 font-medium">✅ Tersimpan aman di Cloud</span>}
+                </div>
+            </div>
+            <div className="flex items-center gap-3">
+                <button onClick={handleSave} className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-emerald-700 transition shadow-sm">Simpan</button>
+                <button onClick={() => setIsModalOpen(false)} className="bg-gray-800 text-white px-6 py-2 rounded-lg font-medium hover:bg-gray-900 transition shadow-sm">Tutup Form</button>
+            </div>
         </div>
       </Modal>
     </div>
