@@ -7,6 +7,7 @@ import {
   Columns, FileSignature, TrendingUp, UserX, Clock, Activity, ChevronDown
 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
+import * as XLSX from 'xlsx';
 
 // ==========================================
 // 1. SUPABASE SETUP (Koneksi Database Anda)
@@ -674,28 +675,67 @@ const MasterData = ({ activeTab }) => {
       return value.replace(/[0-9]/g, digit => map[digit] || digit);
   };
 
-  const handleImportCSV = (e, type) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const csvData = event.target.result;
-      const lines = csvData.split('\n');
-      const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-      let count = 0;
-      for (let i = 1; i < lines.length; i++) {
-        if (!lines[i].trim()) continue;
-        const values = lines[i].split(',').map(v => v.trim());
-        const item = {};
-        headers.forEach((h, idx) => { item[h] = values[idx]; });
-        item.id = Date.now().toString() + i;
-        saveToDb(type, item.id, item, true);
-        count++;
-      }
-      showNotification(`${count} data berhasil diimpor!`);
+    const generateExcelTemplate = (type) => {
+        const headers = ['NIS', 'Nama Lengkap', 'Nama Arab', 'Kelas'];
+        try {
+            (data.studentFields || []).forEach(f => {
+                if (f && f.name) headers.push(f.name);
+            });
+        } catch (e) {}
+
+        const ws = XLSX.utils.aoa_to_sheet([headers]);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'TemplateSantri');
+        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([wbout], { type: 'application/octet-stream' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'template_data_santri.xlsx';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
     };
-    reader.readAsText(file);
-  };
+
+    const handleImportExcel = async (e, type) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        try {
+            const dataBuf = await file.arrayBuffer();
+            const workbook = XLSX.read(dataBuf, { type: 'array' });
+            const sheetName = workbook.SheetNames[0];
+            const sheet = workbook.Sheets[sheetName];
+            const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+            let count = 0;
+            for (let i = 0; i < rows.length; i++) {
+                const row = rows[i];
+                const item = {};
+                // Normalisasi kunci umum ke field yang dipakai aplikasi
+                Object.keys(row).forEach(k => {
+                    const key = k.toString().trim().toLowerCase();
+                    const val = row[k];
+                    if (key === 'nis') item.nis = val;
+                    else if (key.includes('nama') && key.includes('arab')) item.nama_arab = val;
+                    else if (key.includes('nama')) item.nama = val;
+                    else if (key === 'kelas') item.kelas = val;
+                    else item[key] = val;
+                });
+                item.id = Date.now().toString() + i;
+                // Simpan (silent)
+                // await memastikan urutan pengiriman ke DB sehingga tidak melebihi batas antrian
+                // namun kita jalankan secara serial untuk kesederhanaan
+                // Jika ada banyak data, pengguna disarankan memecah file.
+                // eslint-disable-next-line no-await-in-loop
+                await saveToDb(type, item.id, item, true);
+                count++;
+            }
+            showNotification(`${count} data berhasil diimpor dari Excel!`);
+        } catch (err) {
+            console.error(err);
+            showNotification('Gagal memproses file Excel. Pastikan format benar.', 'error');
+        }
+    };
 
   const renderFullTable = () => {
     switch (activeTab) {
@@ -797,18 +837,19 @@ const MasterData = ({ activeTab }) => {
               })}</tbody>
           </table>
         );
-      case 'presences':
-        return (
-          <table className="w-full text-left border-collapse">
-            <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm">
-                <SortableHeader label="Nama Aspek Presensi" sortKey="name" />
-                <th className="p-3 border-b text-center">Aksi</th>
-            </tr></thead>
-            <tbody>{sortedData.map(p => (
-                <tr key={p.id} className="border-b hover:bg-gray-50"><td className="p-3 font-semibold">{p.name}</td><td className="p-3 text-center"><button onClick={() => handleOpenModal(p)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('presences', p.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td></tr>
-              ))}</tbody>
-          </table>
-        );
+            case 'presences':
+                return (
+                    <table className="w-full text-left border-collapse">
+                        <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm">
+                                <SortableHeader label="Nama Aspek Presensi" sortKey="name" />
+                                <SortableHeader label="Nama (AR)" sortKey="nameAr" className="text-right" />
+                                <th className="p-3 border-b text-center">Aksi</th>
+                        </tr></thead>
+                        <tbody>{sortedData.map(p => (
+                                <tr key={p.id} className="border-b hover:bg-gray-50"><td className="p-3 font-semibold">{p.name}</td><td className="p-3 text-right font-arabic" dir="rtl">{p.nameAr}</td><td className="p-3 text-center"><button onClick={() => handleOpenModal(p)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('presences', p.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td></tr>
+                            ))}</tbody>
+                    </table>
+                );
       case 'characterTraits':
         return (
           <table className="w-full text-left border-collapse">
@@ -853,15 +894,16 @@ const MasterData = ({ activeTab }) => {
             </table>
           </div>
         );
-      case 'students':
-        return (
-            <div>
-              <div className="mb-4 flex gap-2">
-                <label className="bg-emerald-100 text-emerald-700 px-4 py-2 rounded-lg cursor-pointer flex items-center gap-2 hover:bg-emerald-200">
-                  <Upload size={18} /> Impor CSV <input type="file" accept=".csv" className="hidden" onChange={(e) => handleImportCSV(e, 'students')} />
-                </label>
-              </div>
-              <table className="w-full text-left border-collapse">
+            case 'students':
+                return (
+                        <div>
+                            <div className="mb-4 flex gap-2">
+                                <button onClick={() => generateExcelTemplate('students')} className="bg-emerald-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-emerald-700 shadow-sm"><Download size={16}/> Download Template Excel</button>
+                                <label className="bg-emerald-100 text-emerald-700 px-4 py-2 rounded-lg cursor-pointer flex items-center gap-2 hover:bg-emerald-200">
+                                    <Upload size={18} /> Impor Excel <input type="file" accept=".xlsx,.xls" className="hidden" onChange={(e) => handleImportExcel(e, 'students')} />
+                                </label>
+                            </div>
+                            <table className="w-full text-left border-collapse">
                 <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm">
                     <SortableHeader label="NIS" sortKey="nis" />
                     <SortableHeader label="Nama Santri" sortKey="nama" />
@@ -1017,7 +1059,16 @@ const MasterData = ({ activeTab }) => {
         );
         case 'presences': return (
             <div className="space-y-4">
-                <input className="w-full p-2 border rounded" placeholder="Nama Aspek (Misal: Sakit, Izin, Tanpa Keterangan)" value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} />
+                <input className="w-full p-2 border rounded" placeholder="Nama Aspek (Misal: Sakit, Izin, Tanpa Keterangan)" value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})}
+                    onBlur={async (e) => {
+                        if (e.target.value && !formData.nameAr) {
+                            const translated = await translateToArabic(e.target.value);
+                            setFormData(prev => ({...prev, nameAr: translated}));
+                        }
+                    }}
+                />
+                <input className="w-full p-2 border rounded text-right font-arabic" placeholder="Nama Arab (Terisi Otomatis Google Translate)" dir="rtl" value={formData.nameAr || ''} onChange={e => setFormData({...formData, nameAr: e.target.value})} />
+                <p className="text-[10px] text-gray-500 italic">*Ketik nama aspek (Indonesia) lalu klik di luar kotak untuk Google Translate otomatis.</p>
             </div>
         );
         case 'characterTraits': return (
