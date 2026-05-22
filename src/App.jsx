@@ -4,7 +4,8 @@ import {
   Printer, CheckSquare, LogOut, Plus, Trash2, Edit2, Save,
   Download, Upload, Share2, AlertCircle, CheckCircle, GripHorizontal,
   Type, User, CreditCard, Image as ImageIcon, Ruler, Type as TypeIcon, FileText,
-  Columns, FileSignature, TrendingUp, UserX, Clock, Activity, ChevronDown
+  Columns, FileSignature, TrendingUp, UserX, Clock, Activity, ChevronDown,
+  ZoomIn, ZoomOut, Maximize, Minimize, ChevronUp
 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 import * as XLSX from 'xlsx';
@@ -44,11 +45,165 @@ const normalizeValue = (value) => {
   return String(value).trim().toLowerCase();
 };
 
+const normalizeLookupValue = (value) => {
+  if (value === undefined || value === null) return '';
+  return String(value).trim().toLowerCase().replace(/[^a-z0-9\u0600-\u06FF]+/g, '');
+};
+
 const getClassNameFromValue = (classes, classValue) => {
   if (!classValue) return '';
-  const normalizedInput = normalizeValue(classValue);
-  const found = classes.find(c => normalizeValue(c.name) === normalizedInput || normalizeValue(c.id) === normalizedInput);
+  const normalizedInput = normalizeLookupValue(classValue);
+  const found = classes.find(c => normalizeLookupValue(c.name) === normalizedInput || normalizeLookupValue(c.id) === normalizedInput);
   return found?.name || classValue;
+};
+
+const getClassIdFromValue = (classes, classValue) => {
+  if (!classValue) return '';
+  const normalizedInput = normalizeLookupValue(classValue);
+  const found = classes.find(c => normalizeLookupValue(c.id) === normalizedInput || normalizeLookupValue(c.name) === normalizedInput);
+  return found?.id || classValue;
+};
+
+const buildStableGradeDocId = (classId, activeSetting) => {
+  if (!classId || !activeSetting) return null;
+  const year = (activeSetting.tahun || 'default').replace(/\//g, '-');
+  const semester = activeSetting.semester || '1';
+  return `${classId}_${year}_${semester}`;
+};
+
+const buildLegacyGradeDocId = (className, activeSetting) => {
+  if (!className || !activeSetting) return null;
+  const year = (activeSetting.tahun || 'default').replace(/\//g, '-');
+  const semester = activeSetting.semester || '1';
+  return `${className}_${year}_${semester}`;
+};
+
+const getGradeDocId = (selectedClass, classes, activeSetting, grades = []) => {
+  if (!selectedClass || !activeSetting) return null;
+  const classId = getClassIdFromValue(classes, selectedClass);
+  const className = getClassNameFromValue(classes, selectedClass);
+  const stableId = buildStableGradeDocId(classId, activeSetting);
+  const legacyNameId = buildLegacyGradeDocId(className, activeSetting);
+  const fallbackId = `${selectedClass}_${(activeSetting.tahun || 'default').replace(/\//g, '-')}_${activeSetting.semester || '1'}`;
+  if (grades.some(g => g.id === stableId)) return stableId;
+  if (grades.some(g => g.id === legacyNameId)) return legacyNameId;
+  if (grades.some(g => g.id === fallbackId)) return fallbackId;
+  return stableId;
+};
+
+const arraysAreEqual = (a, b) => {
+  if (!Array.isArray(a) || !Array.isArray(b)) return false;
+  if (a.length !== b.length) return false;
+  return a.every((value, index) => value === b[index]);
+};
+
+const normalizeSubjectClassIds = (classes, kelas) => {
+  const values = normalizeSubjectClasses(kelas);
+  return Array.from(new Set(values.map(v => getClassIdFromValue(classes, v) || v).filter(Boolean)));
+};
+
+const mergeGradePayloads = (targetPayload, sourcePayload) => {
+  const merged = { ...targetPayload };
+  merged.data = { ...targetPayload.data };
+
+  Object.entries(sourcePayload.data || {}).forEach(([studentId, studentGrades]) => {
+    if (!merged.data[studentId]) {
+      merged.data[studentId] = studentGrades;
+      return;
+    }
+    const existing = merged.data[studentId];
+    if (typeof existing !== 'object' || existing === null) {
+      merged.data[studentId] = existing ?? studentGrades;
+      return;
+    }
+    if (typeof studentGrades !== 'object' || studentGrades === null) return;
+    merged.data[studentId] = { ...studentGrades, ...existing };
+  });
+
+  if (!merged.class) merged.class = sourcePayload.class;
+  if (!merged.tahun) merged.tahun = sourcePayload.tahun;
+  if (!merged.semester) merged.semester = sourcePayload.semester;
+  return merged;
+};
+
+const upsertPayload = async (colName, id, payload) => {
+  const { error } = await supabase.from(colName).upsert([{ id, payload }]);
+  return !error;
+};
+
+const deleteDocumentById = async (colName, id) => {
+  const { error } = await supabase.from(colName).delete().eq('id', id);
+  return !error;
+};
+
+const migrateLegacyData = async (newData) => {
+  const activeSetting = newData.settings.find(s => s.isActive);
+  if (!activeSetting) return false;
+
+  let didMigrate = false;
+
+  if (Array.isArray(newData.students)) {
+    for (const student of newData.students) {
+      const normalizedId = getClassIdFromValue(newData.classes, student.kelas);
+      if (normalizedId && normalizedId !== student.kelas) {
+        const payload = { ...student, kelas: normalizedId };
+        delete payload.id;
+        const success = await upsertPayload('students', student.id, payload);
+        if (success) didMigrate = true;
+      }
+    }
+  }
+
+  if (Array.isArray(newData.subjects)) {
+    for (const subject of newData.subjects) {
+      const normalizedIds = normalizeSubjectClassIds(newData.classes, subject.kelas);
+      const originalIds = Array.isArray(subject.kelas) ? subject.kelas : normalizeSubjectClasses(subject.kelas);
+      if (!arraysAreEqual(normalizedIds, originalIds)) {
+        const payload = { ...subject, kelas: normalizedIds };
+        delete payload.id;
+        const success = await upsertPayload('subjects', subject.id, payload);
+        if (success) didMigrate = true;
+      }
+    }
+  }
+
+  if (Array.isArray(newData.grades)) {
+    const year = (activeSetting.tahun || 'default').replace(/\//g, '-');
+    const semester = activeSetting.semester || '1';
+    for (const cls of newData.classes) {
+      const stableId = buildStableGradeDocId(cls.id, activeSetting);
+      const legacyId = buildLegacyGradeDocId(cls.name, activeSetting);
+      if (!stableId || stableId === legacyId) continue;
+      const legacyDoc = newData.grades.find(g => g.id === legacyId);
+      if (!legacyDoc) continue;
+      const existingDoc = newData.grades.find(g => g.id === stableId);
+      const legacyPayload = { ...legacyDoc };
+      delete legacyPayload.id;
+
+      if (existingDoc) {
+        const currentPayload = { ...existingDoc };
+        delete currentPayload.id;
+        const mergedPayload = mergeGradePayloads(currentPayload, legacyPayload);
+        mergedPayload.class = cls.id;
+        mergedPayload.tahun = activeSetting.tahun;
+        mergedPayload.semester = activeSetting.semester;
+        const success = await upsertPayload('grades', stableId, mergedPayload);
+        if (success) {
+          await deleteDocumentById('grades', legacyId);
+          didMigrate = true;
+        }
+      } else {
+        const payload = { ...legacyPayload, class: cls.id, tahun: activeSetting.tahun, semester: activeSetting.semester };
+        const success = await upsertPayload('grades', stableId, payload);
+        if (success) {
+          await deleteDocumentById('grades', legacyId);
+          didMigrate = true;
+        }
+      }
+    }
+  }
+
+  return didMigrate;
 };
 
 const getStudentsInClass = (students, classes, selectedClass) => {
@@ -59,10 +214,15 @@ const getStudentsInClass = (students, classes, selectedClass) => {
   const normalizedClassName = normalizeValue(className);
 
   return students.filter((s) => {
-    const studentClass = normalizeValue(s.kelas);
+    const studentClass = normalizeLookupValue(s.kelas);
+    const studentClassName = getClassNameFromValue(classes, s.kelas);
+    const normalizedStudentClassName = normalizeLookupValue(studentClassName);
+
     return (
       studentClass === normalizedSelected ||
       studentClass === normalizedClassName ||
+      normalizedStudentClassName === normalizedSelected ||
+      normalizedStudentClassName === normalizedClassName ||
       studentClass.includes(normalizedSelected) ||
       studentClass.includes(normalizedClassName)
     );
@@ -79,10 +239,11 @@ const normalizeSubjectClasses = (kelas) => {
   return [];
 };
 
-const getSubjectClassLabel = (subject) => {
+const getSubjectClassLabel = (subject, classes = []) => {
   const kelasValues = normalizeSubjectClasses(subject.kelas);
   if (kelasValues.length === 0) return 'Semua';
-  return kelasValues.join(', ');
+  const resolved = kelasValues.map((value) => getClassNameFromValue(classes, value) || value);
+  return resolved.join(', ');
 };
 
 const parseGradeValue = (value) => {
@@ -101,16 +262,46 @@ const computeRaportScore = (uts, uas) => {
   return Number((u * 0.4 + a * 0.6).toFixed(2));
 };
 
-const isSubjectVisibleInClass = (subject, selectedClass) => {
+const isSubjectVisibleInClass = (subject, selectedClass, classes = []) => {
   if (!selectedClass) return true;
-  const normalizedSelected = normalizeValue(selectedClass);
+  const normalizedSelected = normalizeLookupValue(selectedClass);
+  const className = getClassNameFromValue(classes, selectedClass);
+  const normalizedClassName = normalizeLookupValue(className);
   const kelasValues = normalizeSubjectClasses(subject.kelas);
   if (kelasValues.length === 0) return true;
-  return kelasValues.some(c => normalizeValue(c) === normalizedSelected || normalizeValue(c).includes(normalizedSelected));
+  return kelasValues.some(c => {
+    const normalizedClassValue = normalizeLookupValue(c);
+    const mappedName = getClassNameFromValue(classes, c);
+    const normalizedMappedName = normalizeLookupValue(mappedName);
+    return (
+      normalizedClassValue === normalizedSelected ||
+      normalizedClassValue === normalizedClassName ||
+      normalizedMappedName === normalizedSelected ||
+      normalizedMappedName === normalizedClassName
+    );
+  });
 };
 
-const filterSubjectsByClass = (subjects, selectedClass) => {
-  return subjects.filter(subject => isSubjectVisibleInClass(subject, selectedClass));
+const sortSubjectsByCategory = (subjects, subjectCategories = []) => {
+  const categoryOrder = new Map(subjectCategories.map((cat, idx) => [normalizeValue(cat.name), idx]));
+
+  return [...subjects].sort((a, b) => {
+    const aCategory = normalizeValue(a.kategori || '');
+    const bCategory = normalizeValue(b.kategori || '');
+    const aCatOrder = categoryOrder.has(aCategory) ? categoryOrder.get(aCategory) : Number.MAX_SAFE_INTEGER;
+    const bCatOrder = categoryOrder.has(bCategory) ? categoryOrder.get(bCategory) : Number.MAX_SAFE_INTEGER;
+    if (aCatOrder !== bCatOrder) return aCatOrder - bCatOrder;
+    if (aCategory !== bCategory) return aCategory.localeCompare(bCategory);
+    return normalizeValue(a.nameId || a.id).localeCompare(normalizeValue(b.nameId || b.id));
+  });
+};
+
+const filterSubjectsByClass = (subjects, selectedClass, classes = []) => {
+  const filtered = subjects.filter(subject => isSubjectVisibleInClass(subject, selectedClass, classes));
+  const deduped = Array.from(
+    new Map(filtered.map(s => [normalizeValue(s.nameId) || normalizeValue(s.id), s])).values()
+  );
+  return deduped;
 };
 
 const AppProvider = ({ children }) => {
@@ -142,7 +333,7 @@ const AppProvider = ({ children }) => {
     setTimeout(() => setNotification(null), 3000);
   };
 
-  const fetchData = async () => {
+  const fetchData = async (skipMigration = false) => {
     const collections = ['settings', 'users', 'subjectCategories', 'masterSubjects', 'subjects', 'classes', 'students', 'grades', 'layouts', 'fonts', 'studentFields', 'presences', 'extracurriculars', 'characterTraits', 'logs', 'teachers'];
     let newData = { ...data };
 
@@ -162,6 +353,13 @@ const AppProvider = ({ children }) => {
          newData.users = [{ id: 'admin_1', ...defaultAdmin }];
       } else {
          console.error("Gagal membuat admin default di Supabase:", error);
+      }
+    }
+
+    if (!skipMigration) {
+      const migrated = await migrateLegacyData(newData);
+      if (migrated) {
+        return fetchData(true);
       }
     }
 
@@ -348,9 +546,10 @@ const HomeDashboard = () => {
         const subjectIds = data.subjects.map(s => s.id);
 
         data.classes.forEach(c => {
-            const gradeDocId = `${c.name}_${activeSetting.tahun.replace(/\//g, '-')}_${activeSetting.semester}`;
+            const gradeDocId = getGradeDocId(c.id, data.classes, activeSetting, data.grades);
             const classGrades = data.grades.find(g => g.id === gradeDocId)?.data || {};
-            const studentsInClass = data.students.filter(s => s.kelas === c.name);
+            const studentsInClass = getStudentsInClass(data.students, data.classes, c.id);
+            const className = getClassNameFromValue(data.classes, c.id);
 
             if (studentsInClass.length > 0) {
                 data.subjects.forEach(sub => {
@@ -361,7 +560,7 @@ const HomeDashboard = () => {
                         }
                     });
                     if (!hasGrade) {
-                        missingGrades.push({ subject: sub.nameId, guru: sub.guru || '-', kelas: c.name });
+                        missingGrades.push({ subject: sub.nameId, guru: sub.guru || '-', kelas: className });
                     }
                 });
 
@@ -377,7 +576,7 @@ const HomeDashboard = () => {
                     });
                     const avg = countGrade > 0 ? (totalGrade / countGrade) : 0;
                     if (avg > topStudent.avg) {
-                        topStudent = { name: st.nama, avg: avg.toFixed(2), kelas: c.name };
+                        topStudent = { name: st.nama, avg: avg.toFixed(2), kelas: className };
                     }
 
                     let totalAbs = 0;
@@ -390,7 +589,7 @@ const HomeDashboard = () => {
                         }
                     });
                     if (totalAbs > mostAbsent.total) {
-                        mostAbsent = { name: st.nama, total: totalAbs, kelas: c.name, detail: absDetail.join(', ') };
+                        mostAbsent = { name: st.nama, total: totalAbs, kelas: className, detail: absDetail.join(', ') };
                     }
                 });
             }
@@ -642,8 +841,8 @@ const MasterData = ({ activeTab }) => {
               if (bValue === undefined || bValue === null) bValue = '';
               
               if (activeTab === 'subjects' && sortConfig.key === 'kelas') {
-                  aValue = getSubjectClassLabel(a);
-                  bValue = getSubjectClassLabel(b);
+                  aValue = getSubjectClassLabel(a, data.classes);
+                  bValue = getSubjectClassLabel(b, data.classes);
               }
 
               if (typeof aValue === 'string') aValue = aValue.toLowerCase();
@@ -663,7 +862,7 @@ const MasterData = ({ activeTab }) => {
       let currentKelas = null;
       let classIndex = 0;
       sortedData.forEach(sub => {
-          const kelasLabel = getSubjectClassLabel(sub);
+          const kelasLabel = getSubjectClassLabel(sub, data.classes);
           if (kelasLabel !== currentKelas) {
               currentKelas = kelasLabel;
               classIndex = 0;
@@ -692,7 +891,11 @@ const MasterData = ({ activeTab }) => {
   const handleOpenModal = (item = null) => {
     const newItem = item ? { ...item } : { id: Date.now().toString() };
     if (item && activeTab === 'subjects') {
-      newItem.kelas = normalizeSubjectClasses(item.kelas);
+      const kelasValues = normalizeSubjectClasses(item.kelas);
+      newItem.kelas = kelasValues.map(k => getClassIdFromValue(data.classes, k));
+    }
+    if (item && activeTab === 'students') {
+      newItem.kelas = getClassIdFromValue(data.classes, item.kelas);
     }
     setEditingItem(newItem);
     setFormData(newItem);
@@ -897,7 +1100,7 @@ const MasterData = ({ activeTab }) => {
                   return (
                       <tr key={sub.id} className="border-b hover:bg-gray-50">
                           <td className="p-3 text-center font-semibold text-gray-700">{row.number}</td>
-                          <td className="p-3 text-center font-semibold text-gray-800">{sub.kelas || 'Semua'}</td>
+                          <td className="p-3 text-center font-semibold text-gray-800">{getSubjectClassLabel(sub, data.classes) || 'Semua'}</td>
                           <td className="p-3"><div className="text-xs text-emerald-700 font-bold">{sub.kategori || '-'}</div></td>
                           <td className="p-3 font-semibold">{sub.nameId}</td>
                           <td className="p-3 text-right font-arabic" dir="rtl">{sub.nameAr}</td>
@@ -982,7 +1185,7 @@ const MasterData = ({ activeTab }) => {
                     <SortableHeader label="Kelas" sortKey="kelas" />
                     <th className="p-3 border-b text-center">Aksi</th>
                 </tr></thead>
-                <tbody>{sortedData.map(st => (<tr key={st.id} className="border-b hover:bg-gray-50"><td className="p-3">{st.nis}</td><td className="p-3 font-semibold">{st.nama}</td><td className="p-3 font-arabic" dir="rtl">{st.nama_arab}</td><td className="p-3">{st.kelas}</td><td className="p-3 text-center"><button onClick={() => handleOpenModal(st)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('students', st.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td></tr>))}</tbody>
+                <tbody>{sortedData.map(st => (<tr key={st.id} className="border-b hover:bg-gray-50"><td className="p-3">{st.nis}</td><td className="p-3 font-semibold">{st.nama}</td><td className="p-3 font-arabic" dir="rtl">{st.nama_arab}</td><td className="p-3">{getClassNameFromValue(data.classes, st.kelas)}</td><td className="p-3 text-center"><button onClick={() => handleOpenModal(st)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('students', st.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td></tr>))}</tbody>
               </table>
             </div>
         );
@@ -1112,7 +1315,7 @@ const MasterData = ({ activeTab }) => {
                     const selected = Array.from(e.target.selectedOptions).map(o => o.value);
                     setFormData({...formData, kelas: selected});
                 }}>
-                    {data.classes.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                    {data.classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
                 <p className="text-[10px] text-gray-500 italic">*Pilih beberapa kelas jika pelajaran ini berlaku untuk lebih dari satu kelas. Biarkan kosong untuk semua kelas.</p>
                 <select className="w-full p-2 border rounded font-bold text-blue-800" value={formData.nameId || ''} onChange={e => {
@@ -1194,7 +1397,7 @@ const MasterData = ({ activeTab }) => {
                 <input className="w-full p-2 border rounded" placeholder="Nama Lengkap" value={formData.nama || ''} onChange={e => setFormData({...formData, nama: e.target.value})} />
                 <input className="w-full p-2 border rounded" placeholder="Nama Arab (النام)" value={formData.nama_arab || ''} onChange={e => setFormData({...formData, nama_arab: e.target.value})} />
                 <select className="w-full p-2 border rounded" value={formData.kelas || ''} onChange={e => setFormData({...formData, kelas: e.target.value})}>
-                    <option value="">Pilih Kelas</option>{data.classes.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                    <option value="">Pilih Kelas</option>{data.classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
                 {data.studentFields.map(f => (
                     <input key={f.key} className="w-full p-2 border rounded" placeholder={`Isi ${f.name}`} value={formData[f.key] || ''} onChange={e => setFormData({...formData, [f.key]: e.target.value})} />
@@ -1729,23 +1932,149 @@ const LayoutBuilder = () => {
 };
 
 // ==========================================
+// ==========================================
+// UTILITY: EXCEL IMPORT/EXPORT FOR GRADES
+// ==========================================
+const generateGradesExcelTemplate = (studentsInClass, subjectsInClass, className) => {
+    const headers = ['No', 'NIS', 'Nama Santri'];
+    subjectsInClass.forEach(sub => {
+        headers.push(`${sub.nameId} - UTS`);
+        headers.push(`${sub.nameId} - UAS`);
+    });
+    
+    const rows = [headers];
+    studentsInClass.forEach((st, idx) => {
+        const row = [idx + 1, st.nis || '', st.nama];
+        subjectsInClass.forEach(() => {
+            row.push('');
+            row.push('');
+        });
+        rows.push(row);
+    });
+    
+    return rows;
+};
+
+const exportGradesToExcel = (grades, studentsInClass, subjectsInClass, className) => {
+    const rows = generateGradesExcelTemplate(studentsInClass, subjectsInClass, className);
+    
+    // Fill in existing grades
+    studentsInClass.forEach((st, idx) => {
+        subjectsInClass.forEach((sub, subIdx) => {
+            const uts = grades[st.id]?.[sub.id]?.uts || '';
+            const uas = grades[st.id]?.[sub.id]?.uas || '';
+            rows[idx + 1][3 + subIdx * 2] = uts;
+            rows[idx + 1][3 + subIdx * 2 + 1] = uas;
+        });
+    });
+    
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    const colWidths = [8, 15, 25];
+    subjectsInClass.forEach(() => {
+        colWidths.push(12, 12);
+    });
+    ws['!cols'] = colWidths.map(w => ({ wch: w }));
+    
+    // Freeze panes (first row + left 3 columns)
+    ws['!freeze'] = { xSplit: 3, ySplit: 1 };
+    
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Nilai');
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([wbout], { type: 'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `template_nilai_${className.replace(/\//g, '-')}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+};
+
+const importGradesFromExcel = async (file, studentsInClass, subjectsInClass) => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const dataBuf = e.target.result;
+                const workbook = XLSX.read(dataBuf, { type: 'array' });
+                const sheetName = workbook.SheetNames[0];
+                const sheet = workbook.Sheets[sheetName];
+                const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+                
+                const importedGrades = {};
+                rows.forEach((row, rowIdx) => {
+                    const nisKey = Object.keys(row).find(k => k.toLowerCase().includes('nis'));
+                    const namaKey = Object.keys(row).find(k => k.toLowerCase().includes('nama') && !k.toLowerCase().includes('arab'));
+                    
+                    const nis = row[nisKey];
+                    const nama = row[namaKey];
+                    
+                    // Find matching student
+                    const student = studentsInClass.find(st => 
+                        (st.nis && st.nis.toString() === nis.toString()) ||
+                        (st.nama && st.nama.toLowerCase().includes(nama.toString().toLowerCase()))
+                    );
+                    
+                    if (!student) {
+                        console.warn(`Siswa dengan NIS ${nis} atau nama ${nama} tidak ditemukan.`);
+                        return;
+                    }
+                    
+                    if (!importedGrades[student.id]) {
+                        importedGrades[student.id] = {};
+                    }
+                    
+                    // Parse each subject's UTS/UAS
+                    subjectsInClass.forEach(sub => {
+                        const utsKey = Object.keys(row).find(k => k.includes(sub.nameId) && k.includes('UTS'));
+                        const uasKey = Object.keys(row).find(k => k.includes(sub.nameId) && k.includes('UAS'));
+                        
+                        const uts = utsKey ? String(row[utsKey]).trim() : '';
+                        const uas = uasKey ? String(row[uasKey]).trim() : '';
+                        
+                        if (uts || uas) {
+                            importedGrades[student.id][sub.id] = {
+                                uts: uts ? convertArabicToLatin(uts) : '',
+                                uas: uas ? convertArabicToLatin(uas) : ''
+                            };
+                        }
+                    });
+                });
+                
+                resolve(importedGrades);
+            } catch (err) {
+                reject(err);
+            }
+        };
+        reader.onerror = () => reject(new Error('Gagal membaca file'));
+        reader.readAsArrayBuffer(file);
+    });
+};
+
 // INPUT NILAI 
 // ==========================================
 const InputNilai = ({ activeInputTab }) => {
-    const { data, saveToDb } = useContext(AppContext);
+    const { data, saveToDb, showNotification } = useContext(AppContext);
     const [selectedClass, setSelectedClass] = useState('');
     const [localGrades, setLocalGrades] = useState({});
     const [isSaving, setIsSaving] = useState(false);
     const [lastSaved, setLastSaved] = useState(null);
     const [isInitialized, setIsInitialized] = useState(false);
+    const [isImporting, setIsImporting] = useState(false);
+    const [zoomLevel, setZoomLevel] = useState(100);
+    const [isHeaderHidden, setIsHeaderHidden] = useState(false);
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    const containerRef = useRef(null);
     
     // Gunakan useRef untuk melacak status terakhir yang disave ke database (Debouncing Check)
     const lastSavedGradesRef = useRef(null);
 
     const activeSetting = data.settings.find(s => s.isActive);
     const studentsInClass = getStudentsInClass(data.students, data.classes, selectedClass);
-    const subjectsInClass = useMemo(() => filterSubjectsByClass(data.subjects, selectedClass), [data.subjects, selectedClass]);
-    const gradeDocId = activeSetting && selectedClass ? `${selectedClass}_${(activeSetting.tahun || 'default').replace(/\//g, '-')}_${activeSetting.semester || '1'}` : null;
+    const subjectsInClass = useMemo(() => sortSubjectsByCategory(filterSubjectsByClass(data.subjects, selectedClass, data.classes), data.subjectCategories), [data.subjects, data.subjectCategories, selectedClass, data.classes]);
+    const gradeDocId = getGradeDocId(selectedClass, data.classes, activeSetting, data.grades);
 
     useEffect(() => {
         if (!gradeDocId) {
@@ -1819,6 +2148,90 @@ const InputNilai = ({ activeInputTab }) => {
         setIsSaving(false); setLastSaved(new Date());
     };
 
+    const handleExportGrades = () => {
+        if (!selectedClass || subjectsInClass.length === 0) {
+            showNotification('Pilih kelas dan pastikan ada mata pelajaran.', 'error');
+            return;
+        }
+        const className = getClassNameFromValue(data.classes, selectedClass);
+        exportGradesToExcel(localGrades, studentsInClass, subjectsInClass, className);
+    };
+
+    const handleImportGrades = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        
+        if (!selectedClass || subjectsInClass.length === 0) {
+            showNotification('Pilih kelas dan pastikan ada mata pelajaran.', 'error');
+            return;
+        }
+
+        try {
+            setIsImporting(true);
+            const importedGrades = await importGradesFromExcel(file, studentsInClass, subjectsInClass);
+            
+            // Merge dengan grades yang sudah ada
+            setLocalGrades(prev => {
+                const merged = { ...prev };
+                Object.entries(importedGrades).forEach(([studentId, subjectGrades]) => {
+                    merged[studentId] = { ...prev[studentId], ...subjectGrades };
+                });
+                return merged;
+            });
+            
+            showNotification(`✓ ${Object.keys(importedGrades).length} siswa berhasil diimpor!`);
+            // Reset file input
+            e.target.value = '';
+        } catch (err) {
+            console.error(err);
+            showNotification('Gagal mengimpor file Excel. Pastikan format sesuai template.', 'error');
+        } finally {
+            setIsImporting(false);
+        }
+    };
+
+    const handleZoom = (direction) => {
+        setZoomLevel(prev => {
+            const newLevel = direction === 'in' ? prev + 10 : prev - 10;
+            return Math.max(50, Math.min(200, newLevel));
+        });
+    };
+
+    const handleResetZoom = () => {
+        setZoomLevel(100);
+    };
+
+    const toggleHeaderHidden = () => {
+        setIsHeaderHidden(!isHeaderHidden);
+    };
+
+    const toggleFullscreen = async () => {
+        if (!containerRef.current) return;
+        
+        try {
+            if (!document.fullscreenElement) {
+                await containerRef.current.requestFullscreen();
+                setIsFullscreen(true);
+            } else {
+                await document.exitFullscreen();
+                setIsFullscreen(false);
+            }
+        } catch (err) {
+            console.error('Fullscreen error:', err);
+            showNotification('Fullscreen tidak tersedia di browser Anda', 'error');
+        }
+    };
+
+    // Listen for fullscreen change
+    useEffect(() => {
+        const handleFullscreenChange = () => {
+            setIsFullscreen(!!document.fullscreenElement);
+        };
+        
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    }, []);
+
     if (!activeSetting) return (
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 text-center py-12"><AlertCircle className="mx-auto text-yellow-500 mb-4" size={48} /><h3 className="text-xl font-bold text-gray-800 mb-2">Tahun Ajaran Belum Aktif</h3><p className="text-gray-500">Silakan Minta Admin mengaktifkan Tahun Ajaran di Master Data.</p></div>
     );
@@ -1836,17 +2249,28 @@ const InputNilai = ({ activeInputTab }) => {
             );
         }
         if (activeInputTab === 'pelajaran') {
+            const groupedSubjects = groupBy(subjectsInClass, 'kategori');
+            const orderedGroups = Object.entries(groupedSubjects);
             return (
                 <table className="w-full text-left border-collapse whitespace-nowrap">
                     <thead className="sticky top-0 z-20">
                         <tr className="bg-emerald-700 text-white text-sm">
-                            <th rowSpan={2} className="p-3 border-b border-r border-emerald-600 text-center w-12 sticky left-0 z-30 bg-emerald-800">No</th>
-                            <th rowSpan={2} className="p-3 border-b border-r border-emerald-600 text-center w-20 bg-emerald-800">NIS</th>
-                            <th rowSpan={2} className="p-3 border-b border-r border-emerald-600 sticky left-12 z-30 bg-emerald-800">Nama Santri</th>
+                            <th rowSpan={3} className="p-3 border-b border-r border-emerald-600 text-center w-12 sticky left-0 z-30 bg-emerald-800">No</th>
+                            <th rowSpan={3} className="p-3 border-b border-r border-emerald-600 text-center w-20 bg-emerald-800">NIS</th>
+                            <th rowSpan={3} className="p-3 border-b border-r border-emerald-600 sticky left-12 z-30 bg-emerald-800">Nama Santri</th>
                             {subjectsInClass.length > 0 && <th colSpan={subjectsInClass.length} className="p-2 border-b border-r border-emerald-600 text-center font-bold bg-emerald-800">NILAI MATA PELAJARAN</th>}
-                            <th rowSpan={2} className="p-3 border-b border-r border-emerald-600 text-center w-20 bg-emerald-900">Total<br/>Raport</th>
-                            <th rowSpan={2} className="p-3 border-b border-emerald-600 text-center w-20 bg-emerald-900">Rata-rata<br/>Raport</th>
+                            <th rowSpan={3} className="p-3 border-b border-r border-emerald-600 text-center w-20 bg-emerald-900">Total<br/>Raport</th>
+                            <th rowSpan={3} className="p-3 border-b border-emerald-600 text-center w-20 bg-emerald-900">Rata-rata<br/>Raport</th>
                         </tr>
+                        {subjectsInClass.length > 0 && (
+                        <tr className="bg-emerald-600 text-white text-sm">
+                            {orderedGroups.map(([cat, subs]) => (
+                                <th key={cat || 'umum'} colSpan={subs.length} className="p-2 border-b border-r border-emerald-500 text-center bg-emerald-700">
+                                    {cat || 'Umum'}
+                                </th>
+                            ))}
+                        </tr>
+                        )}
                         <tr className="bg-emerald-600 text-white text-sm">
                             {subjectsInClass.map(sub => (
                                 <th key={sub.id} className="p-2 border-b border-r border-emerald-500 text-center min-w-[120px] bg-emerald-700">
@@ -2024,13 +2448,26 @@ const InputNilai = ({ activeInputTab }) => {
     };
 
     return (
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 flex flex-col h-[85vh]">
+        <div ref={containerRef} className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 flex flex-col h-[85vh]">
+            <div className="flex flex-col gap-3 mb-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex flex-wrap gap-2">
+                        <button onClick={() => handleZoom('in')} className="bg-slate-600 hover:bg-slate-700 text-white px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition"><ZoomIn size={16}/>+</button>
+                        <button onClick={() => handleZoom('out')} className="bg-slate-600 hover:bg-slate-700 text-white px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition"><ZoomOut size={16}/>−</button>
+                        <button onClick={handleResetZoom} className="bg-slate-600 hover:bg-slate-700 text-white px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition"><Maximize size={16}/>100%</button>
+                        <button onClick={toggleHeaderHidden} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition">{isHeaderHidden ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}{isHeaderHidden ? 'Tampilkan Header' : 'Sembunyikan Header'}</button>
+                        <button onClick={toggleFullscreen} className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition">{isFullscreen ? <Minimize size={16}/> : <Maximize size={16}/>} {isFullscreen ? 'Keluar Fullscreen' : 'Fullscreen'}</button>
+                    </div>
+                    <div className="text-xs text-gray-500">Zoom: {zoomLevel}% | Header: {isHeaderHidden ? 'Tersembunyi' : 'Tampil'}</div>
+                </div>
+            </div>
+            {!isHeaderHidden && (
             <div className="flex flex-col mb-4 shrink-0 gap-4 border-b pb-4">
                 <div className="flex justify-between items-start">
                     <div className="flex gap-4 items-center bg-gray-50 p-3 rounded-xl border flex-1">
                         <div className="flex-1 flex items-center gap-2">
                             <label className="text-sm font-medium text-gray-700 whitespace-nowrap">Pilih Kelas:</label>
-                            <select className="w-full p-2 border rounded-lg focus:ring-2 outline-none font-bold" value={selectedClass} onChange={e => setSelectedClass(e.target.value)}><option value="">-- Kelas --</option>{data.classes.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}</select>
+                            <select className="w-full p-2 border rounded-lg focus:ring-2 outline-none font-bold" value={selectedClass} onChange={e => setSelectedClass(e.target.value)}><option value="">-- Kelas --</option>{data.classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
                         </div>
                         <div className="px-4 border-l border-r"><p className="text-xs text-gray-500">Tahun Ajaran</p><p className="font-bold text-gray-800">{activeSetting.tahun}</p></div>
                         <div className="px-4"><p className="text-xs text-gray-500">Semester</p><p className="font-bold text-gray-800">{activeSetting.semester}</p></div>
@@ -2040,10 +2477,34 @@ const InputNilai = ({ activeInputTab }) => {
                         <button onClick={handleManualSave} disabled={!selectedClass} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 disabled:opacity-50 transition"><Save size={16}/> Simpan Manual</button>
                     </div>
                 </div>
+                {/* Excel Import/Export Buttons */}
+                {selectedClass && (
+                    <div className="flex gap-3 items-center bg-blue-50 p-3 rounded-xl border border-blue-200">
+                        <button 
+                            onClick={handleExportGrades}
+                            disabled={!selectedClass || subjectsInClass.length === 0}
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 disabled:opacity-50 transition"
+                        >
+                            <Download size={16}/> Unduh Template Excel
+                        </button>
+                        <label className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 cursor-pointer disabled:opacity-50 transition">
+                            <Upload size={16}/> {isImporting ? 'Mengimpor...' : 'Impor dari Excel'}
+                            <input 
+                                type="file" 
+                                accept=".xlsx,.xls" 
+                                className="hidden" 
+                                onChange={handleImportGrades}
+                                disabled={!selectedClass || subjectsInClass.length === 0 || isImporting}
+                            />
+                        </label>
+                        <p className="text-xs text-gray-600 ml-auto">💡 Unduh template, isi nilainya, lalu impor kembali untuk update massal</p>
+                    </div>
+                )}
             </div>
+            )}
 
             {selectedClass ? (
-                <div className="overflow-auto border rounded-xl flex-1 relative custom-scrollbar">
+                <div className="overflow-auto border rounded-xl flex-1 relative custom-scrollbar" style={{ zoom: `${zoomLevel}%`, transformOrigin: 'top left' }}>
                     {renderTableContent()}
                 </div>
             ) : (
@@ -2080,7 +2541,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
         styleTag.innerHTML = imports;
     }, [data.fonts]);
 
-    const gradeDocId = selectedClass ? `${selectedClass}_${(activeSetting.tahun || 'default').replace(/\//g, '-')}_${activeSetting.semester || '1'}` : null;
+    const gradeDocId = getGradeDocId(selectedClass, data.classes, activeSetting, data.grades);
     const classGradesDoc = data.grades.find(g => g.id === gradeDocId)?.data || {};
     const studentGrades = classGradesDoc[selectedStudent] || {};
 
@@ -2109,7 +2570,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
         const ts = activeSetting.tahun ? activeSetting.tahun.replace(/\//g, '-') : 'tahun';
         const ss = activeSetting.semester || '1';
         const ns = studentData.nama.replace(/\s+/g, '_');
-        const ks = selectedClass.replace(/\s+/g, '_');
+        const ks = getClassNameFromValue(data.classes, selectedClass).replace(/\s+/g, '_');
         document.title = mode === 'raport' ? `raport_${ts}_${ss}_${ns}_${ks}` : `ijazah_${ts}_${ns}_${ks}`;
         addLog(`Menyimpan ${mode} sebagai PDF untuk ${studentData.nama}`);
         window.print();
@@ -2118,7 +2579,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
 
     const handleWA = () => {
         if(!studentData) return;
-        const text = `Assalamu'alaikum. Berikut adalah pemberitahuan nilai ${mode} ananda *${studentData.nama}* kelas *${selectedClass}*. Harap hubungi sekolah untuk mengambil berkas cetak fisiknya.`;
+        const text = `Assalamu'alaikum. Berikut adalah pemberitahuan nilai ${mode} ananda *${studentData.nama}* kelas *${getClassNameFromValue(data.classes, selectedClass)}*. Harap hubungi sekolah untuk mengambil berkas cetak fisiknya.`;
         addLog(`Membagikan Info ${mode} via WA untuk ${studentData.nama}`);
         window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
     };
@@ -2128,7 +2589,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
     const renderElement = (el) => {
         let content = el.content;
         if (studentData && typeof content === 'string') {
-            content = content.replace('{{nama_santri}}', studentData.nama || '').replace('{{nis}}', studentData.nis || '').replace('{{kelas}}', studentData.kelas || '')
+            content = content.replace('{{nama_santri}}', studentData.nama || '').replace('{{nis}}', studentData.nis || '').replace('{{kelas}}', getClassNameFromValue(data.classes, studentData.kelas) || '')
                              .replace('{{catatan_wali}}', studentGrades['catatan_wali'] || '');
             if (data.studentFields) data.studentFields.forEach(f => content = content.replace(new RegExp(`{{${f.key}}}`, 'g'), studentData[f.key] || ''));
         }
@@ -2146,7 +2607,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                 <h3 className="text-xl font-bold mb-4 capitalize">Cetak {mode}</h3>
                 {!activeSetting.tahun && <div className="bg-yellow-50 text-yellow-800 p-3 rounded-lg text-sm mb-4 border border-yellow-200">Pastikan Admin mengaktifkan Tahun Ajaran di Master Data terlebih dahulu.</div>}
                 <div className="space-y-4">
-                    <select className="w-full p-2 border rounded-lg" value={selectedClass} onChange={e => {setSelectedClass(e.target.value); setSelectedStudent('');}}><option value="">-- Kelas --</option>{data.classes.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}</select>
+                    <select className="w-full p-2 border rounded-lg" value={selectedClass} onChange={e => {setSelectedClass(e.target.value); setSelectedStudent('');}}><option value="">-- Kelas --</option>{data.classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
                     <select className="w-full p-2 border rounded-lg" value={selectedStudent} onChange={e => setSelectedStudent(e.target.value)} disabled={!selectedClass}><option value="">-- Santri --</option>{studentsInClass.map(s => <option key={s.id} value={s.id}>{s.nama}</option>)}</select>
                     <div className="pt-4 border-t"><label className="flex items-center gap-2 bg-yellow-50 p-3 rounded-lg border border-yellow-200 cursor-pointer"><input type="checkbox" className="w-5 h-5 text-yellow-600" checked={useKatrol} onChange={e => setUseKatrol(e.target.checked)} /><div><p className="font-bold text-yellow-800 text-sm">Gunakan Nilai Katrol</p><p className="text-xs text-yellow-700">Nilai merah otomatis menjadi KKM</p></div></label></div>
                     <div className="pt-4 flex flex-col gap-3">
@@ -2177,21 +2638,53 @@ const LeggerKelas = () => {
     
     const activeSetting = data.settings.find(s => s.isActive) || {};
     const students = useMemo(() => getStudentsInClass(data.students, data.classes, selectedClass), [data.students, data.classes, selectedClass]);
-    const subjects = data.subjects;
+    const subjects = useMemo(() => sortSubjectsByCategory(filterSubjectsByClass(data.subjects, selectedClass, data.classes), data.subjectCategories), [data.subjects, data.subjectCategories, selectedClass, data.classes]);
     
-    const gradeDocId = selectedClass 
-        ? `${selectedClass}_${(activeSetting.tahun || 'default').replace(/\//g, '-')}_${activeSetting.semester || '1'}` 
-        : null;
+    const gradeDocId = getGradeDocId(selectedClass, data.classes, activeSetting, data.grades);
 
     const grades = data.grades.find(g => g.id === gradeDocId)?.data || {};
+
+    const getSubjectGradeValue = (grade) => {
+        if (grade === null || grade === undefined || grade === '') return null;
+        if (typeof grade === 'object') {
+            if ('raport' in grade) {
+                const raportValue = parseGradeValue(grade.raport);
+                if (raportValue !== null) return raportValue;
+            }
+            const raportScore = computeRaportScore(grade.uts, grade.uas);
+            return raportScore !== '' ? raportScore : null;
+        }
+        return parseGradeValue(grade);
+    };
+
+    const formatSubjectGradeDisplay = (grade) => {
+        if (grade === null || grade === undefined || grade === '') return '-';
+        if (typeof grade === 'object') {
+            const uts = grade.uts ?? '';
+            const uas = grade.uas ?? '';
+            const raport = grade.raport ?? '';
+            if (raport !== '') {
+                const raportValue = parseGradeValue(raport);
+                if (raportValue !== null) return raportValue;
+            }
+            if (uts !== '' || uas !== '') {
+                const formattedUts = uts === '' ? '-' : uts;
+                const formattedUas = uas === '' ? '-' : uas;
+                const raportScore = computeRaportScore(uts, uas);
+                return raportScore !== '' ? `${formattedUts}/${formattedUas} (${raportScore})` : `${formattedUts}/${formattedUas}`;
+            }
+            return '-';
+        }
+        return parseGradeValue(grade) ?? '-';
+    };
 
     const leggerData = useMemo(() => {
         if (!selectedClass) return [];
         let r = students.map(st => {
             let total = 0; let count = 0;
             subjects.forEach(sub => {
-                const val = Number(grades[st.id]?.[sub.id]);
-                if (!isNaN(val) && val > 0) { total += val; count++; }
+                const value = getSubjectGradeValue(grades[st.id]?.[sub.id]);
+                if (value !== null && !isNaN(value)) { total += value; count++; }
             });
             const avg = count > 0 ? (total / count).toFixed(2) : 0;
             let predikat = 'D'; if (avg >= 90) predikat = 'A'; else if (avg >= 80) predikat = 'B'; else if (avg >= 70) predikat = 'C';
@@ -2201,15 +2694,30 @@ const LeggerKelas = () => {
     }, [students, subjects, grades, selectedClass]);
 
     const exportCSV = () => {
-        addLog(`Mengekspor Legger Kelas ${selectedClass}`);
-        let csv = 'Peringkat,NIS,Nama Santri,'; subjects.forEach(s => csv += `${s.nameId},`); csv += 'Total,Rata-rata,Predikat\n';
+        const className = getClassNameFromValue(data.classes, selectedClass);
+        addLog(`Mengekspor Legger Kelas ${className}`);
+        let csv = 'Peringkat,NIS,Nama Santri,';
+        subjects.forEach(s => csv += `${s.nameId},`);
+        csv += 'Total,Rata-rata,Predikat\n';
+
         leggerData.forEach((row, idx) => {
             let line = `${idx + 1},${row.nis},${row.nama},`;
-            subjects.forEach(s => line += `${row.grades[s.id] || 0},`);
-            line += `${row.total},${row.avg},${row.predikat}\n`; csv += line;
+            subjects.forEach(s => {
+                const raw = row.grades[s.id];
+                const value = formatSubjectGradeDisplay(raw);
+                const escapedValue = typeof value === 'string' ? `"${String(value).replace(/"/g, '""')}"` : String(value);
+                line += `${escapedValue},`;
+            });
+            line += `${row.total},${row.avg},${row.predikat}\n`;
+            csv += line;
         });
-        const blob = new Blob([csv], { type: 'text/csv' }); const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a'); a.href = url; a.download = `Legger_Kelas_${selectedClass}.csv`; a.click();
+
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Legger_Kelas_${getClassNameFromValue(data.classes, selectedClass).replace(/\s+/g, '_')}.csv`;
+        a.click();
     };
 
     return (
@@ -2217,7 +2725,7 @@ const LeggerKelas = () => {
             <div className="flex justify-between items-center mb-6 shrink-0">
                 <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2"><BookOpen /> Legger Kelas</h2>
                 <div className="flex gap-4">
-                    <select className="p-2 border rounded-lg min-w-[150px]" value={selectedClass} onChange={e => setSelectedClass(e.target.value)}><option value="">-- Pilih Kelas --</option>{data.classes.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}</select>
+                    <select className="p-2 border rounded-lg min-w-[150px]" value={selectedClass} onChange={e => setSelectedClass(e.target.value)}><option value="">-- Pilih Kelas --</option>{data.classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
                     <button onClick={exportCSV} disabled={!selectedClass} className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 disabled:opacity-50"><Download size={18}/> Ekspor Excel</button>
                 </div>
             </div>
@@ -2226,10 +2734,18 @@ const LeggerKelas = () => {
                     <table className="w-full text-left border-collapse whitespace-nowrap">
                         <thead className="sticky top-0 z-20">
                             <tr className="bg-gray-800 text-white text-sm">
-                                <th className="p-3 border-b border-gray-700 text-center w-12 sticky left-0 z-30 bg-gray-900">Rank</th>
-                                <th className="p-3 border-b border-gray-700 sticky left-12 z-30 bg-gray-900">Nama Santri</th>
+                                <th rowSpan={3} className="p-3 border-b border-gray-700 text-center w-12 sticky left-0 z-30 bg-gray-900">Rank</th>
+                                <th rowSpan={3} className="p-3 border-b border-gray-700 sticky left-12 z-30 bg-gray-900">Nama Santri</th>
+                                {subjects.length > 0 && <th colSpan={subjects.length} className="p-3 border-b border-gray-700 text-center bg-gray-900">Mata Pelajaran</th>}
+                                <th rowSpan={3} className="p-3 border-b border-gray-700 text-center bg-gray-700">Total</th><th rowSpan={3} className="p-3 border-b border-gray-700 text-center bg-gray-700">Rata-rata</th><th rowSpan={3} className="p-3 border-b border-gray-700 text-center bg-gray-700">Predikat</th>
+                            </tr>
+                            <tr className="bg-gray-700 text-white text-sm">
+                                {Object.entries(groupBy(subjects, 'kategori')).map(([cat, subs]) => (
+                                    <th key={cat || 'umum'} colSpan={subs.length} className="p-3 border-b border-gray-700 text-center bg-gray-800">{cat || 'Umum'}</th>
+                                ))}
+                            </tr>
+                            <tr className="bg-gray-800 text-white text-sm">
                                 {subjects.map(s => <th key={s.id} className="p-3 border-b border-gray-700 text-center" title={s.nameId}><div className="w-20 truncate">{s.nameId}</div></th>)}
-                                <th className="p-3 border-b border-gray-700 text-center bg-gray-700">Total</th><th className="p-3 border-b border-gray-700 text-center bg-gray-700">Rata-rata</th><th className="p-3 border-b border-gray-700 text-center bg-gray-700">Predikat</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -2237,7 +2753,13 @@ const LeggerKelas = () => {
                                 <tr key={row.id} className="border-b hover:bg-gray-50 text-sm">
                                     <td className="p-3 text-center font-bold sticky left-0 bg-white border-r z-10">{idx + 1}</td>
                                     <td className="p-3 font-semibold sticky left-12 bg-white border-r shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] z-10">{row.nama}</td>
-                                    {subjects.map(s => { const val = row.grades[s.id] || 0; const isRed = Number(val) > 0 && Number(val) < Number(s.kkm); return <td key={s.id} className={`p-3 text-center border-r ${isRed ? 'text-red-600 font-bold bg-red-50' : ''}`}>{val || '-'}</td> })}
+                                    {subjects.map(s => {
+                                        const raw = row.grades[s.id];
+                                        const display = formatSubjectGradeDisplay(raw);
+                                        const val = getSubjectGradeValue(raw);
+                                        const isRed = val !== null && Number(val) > 0 && Number(val) < Number(s.kkm);
+                                        return <td key={s.id} className={`p-3 text-center border-r ${isRed ? 'text-red-600 font-bold bg-red-50' : ''}`}>{display}</td>;
+                                    })}
                                     <td className="p-3 text-center font-bold bg-emerald-50 border-r">{row.total}</td><td className="p-3 text-center font-bold bg-emerald-100 border-r">{row.avg}</td><td className="p-3 text-center font-bold bg-emerald-50">{row.predikat}</td>
                                 </tr>
                             ))}
