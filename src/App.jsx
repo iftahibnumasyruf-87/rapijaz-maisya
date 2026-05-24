@@ -346,16 +346,25 @@ const AppProvider = ({ children }) => {
   };
 
   const fetchData = async (skipMigration = false) => {
-    const collections = ['settings', 'users', 'subjectCategories', 'masterSubjects', 'subjects', 'classes', 'students', 'grades', 'layouts', 'fonts', 'studentFields', 'presences', 'extracurriculars', 'characterTraits', 'logs', 'teachers'];
+    // PHASE 1: Load ONLY essential data for fast initial load
+    const essentialCollections = ['settings', 'users', 'classes', 'layouts'];
+    const lazyCollections = ['subjectCategories', 'masterSubjects', 'subjects', 'students', 'grades', 'fonts', 'studentFields', 'presences', 'extracurriculars', 'characterTraits', 'logs', 'teachers'];
+    
     let newData = { ...data };
 
-    for (const colName of collections) {
+    // Load essential data synchronously
+    for (const colName of essentialCollections) {
       const { data: items, error } = await supabase.from(colName).select('*');
       if (!error && items) {
         newData[colName] = items.map(item => ({ id: item.id, ...item.payload }));
       } else {
         newData[colName] = [];
       }
+    }
+
+    // Initialize lazy collections as empty
+    for (const colName of lazyCollections) {
+      newData[colName] = newData[colName] || [];
     }
 
     if (newData.users.length === 0) {
@@ -390,7 +399,27 @@ const AppProvider = ({ children }) => {
 
     setData(newData);
     setLoading(false);
+
+    // PHASE 2: Load lazy collections in background after UI renders
+    setTimeout(() => fetchLazyCollections(newData), 500);
   };
+
+  const fetchLazyCollections = async (currentData) => {
+    const lazyCollections = ['subjectCategories', 'masterSubjects', 'subjects', 'students', 'grades', 'fonts', 'studentFields', 'presences', 'extracurriculars', 'characterTraits', 'logs', 'teachers'];
+    let newData = { ...currentData };
+
+    for (const colName of lazyCollections) {
+      if (newData[colName].length === 0) {
+        const { data: items, error } = await supabase.from(colName).select('*');
+        if (!error && items) {
+          newData[colName] = items.map(item => ({ id: item.id, ...item.payload }));
+        }
+      }
+    }
+
+    setData(newData);
+  };
+
 
   useEffect(() => {
     fetchData();
@@ -416,7 +445,14 @@ const AppProvider = ({ children }) => {
         addLog(customLogMsg || `Menyimpan data di menu ${colName}`);
       }
       
-      fetchData(); 
+      // Only refetch the specific collection that was modified
+      const { data: items } = await supabase.from(colName).select('*');
+      if (items) {
+        setData(prev => ({
+          ...prev,
+          [colName]: items.map(item => ({ id: item.id, ...item.payload }))
+        }));
+      }
     } catch (err) {
       if(!silent) showNotification('Gagal menyimpan data.', 'error');
     }
@@ -432,11 +468,19 @@ const AppProvider = ({ children }) => {
         addLog(customLogMsg || `Menghapus data di menu ${colName}`);
       }
       
-      fetchData();
+      // Only refetch the specific collection that was modified
+      const { data: items } = await supabase.from(colName).select('*');
+      if (items) {
+        setData(prev => ({
+          ...prev,
+          [colName]: items.map(item => ({ id: item.id, ...item.payload }))
+        }));
+      }
     } catch (err) {
       if(!silent) showNotification('Gagal menghapus data.', 'error');
     }
   };
+
 
   return (
     <AppContext.Provider value={{ data, currentUser, setCurrentUser, saveToDb, deleteFromDb, showNotification, addLog }}>
@@ -2885,6 +2929,41 @@ const Dashboard = () => {
       document.removeEventListener('paste', handleInput);
     };
   }, []);
+
+  // ==========================================
+  // PRELOAD COLLECTIONS BASED ON MENU
+  // ==========================================
+  useEffect(() => {
+    const preloadNeeded = () => {
+      const collections = [];
+      if (activeMenu === 'dashboard') collections.push('logs', 'subjects');
+      if (activeMenu === 'master_data' || masterDataSubItems.some(s => s.id === activeMenu)) {
+        collections.push('subjectCategories', 'masterSubjects', 'subjects', 'students', 'teachers', 'studentFields', 'presences', 'extracurriculars', 'characterTraits', 'fonts');
+      }
+      if (activeMenu === 'input_nilai' || inputNilaiSubItems.some(s => s.id === activeMenu)) {
+        collections.push('subjects', 'students', 'grades', 'presences', 'characterTraits', 'extracurriculars');
+      }
+      if (activeMenu === 'legger') collections.push('subjects', 'students', 'grades');
+      if (activeMenu === 'cetak_raport' || activeMenu === 'cetak_ijazah' || activeMenu === 'layout_builder') {
+        collections.push('subjects', 'students', 'grades', 'layouts', 'fonts');
+      }
+      return [...new Set(collections)];
+    };
+
+    const needed = preloadNeeded();
+    needed.forEach(col => {
+      if (!data[col] || data[col].length === 0) {
+        supabase.from(col).select('*').then(({ data: items }) => {
+          if (items) {
+            setData(prev => ({
+              ...prev,
+              [col]: items.map(item => ({ id: item.id, ...item.payload }))
+            }));
+          }
+        });
+      }
+    });
+  }, [activeMenu]);
 
   const masterDataSubItems = [
     { id: 'settings', label: 'Tahun Ajaran' }, 
