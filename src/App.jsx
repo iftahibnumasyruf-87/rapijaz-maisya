@@ -1279,6 +1279,7 @@ const MasterData = ({ activeTab }) => {
   const [formData, setFormData] = useState({});
   const [isAutoSaving, setIsAutoSaving] = useState(false);
     const [autoSaveEnabled, setAutoSaveEnabled] = useState(false);
+    const [hideInactive, setHideInactive] = useState(false);
 
   // Default pengurutan tabel berdasarkan menu (alfabetis secara bawaan)
   const getDefaultSortKey = (tab) => {
@@ -1536,27 +1537,38 @@ const MasterData = ({ activeTab }) => {
     switch (activeTab) {
       case 'backup_restore':
         return <BackupRestorePanel />;
-      case 'settings':
+      case 'settings': {
+        const filteredSettings = hideInactive ? sortedData.filter(s => s.isActive) : sortedData;
         return (
-          <table className="w-full text-left border-collapse">
-            <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm">
-                <SortableHeader label="Tahun" sortKey="tahun" />
-                <SortableHeader label="Tahun Arab" sortKey="tahun_arab" />
-                <SortableHeader label="Semester" sortKey="semester" />
-                <SortableHeader label="Semester Arab" sortKey="semester_arab" />
-                <SortableHeader label="Status" sortKey="isActive" className="text-center" />
-                <th className="p-3 border-b text-center">Aksi</th>
-            </tr></thead>
-            <tbody>{sortedData.map(s => (
-                <tr key={s.id} className="border-b hover:bg-gray-50"><td className="p-3 font-semibold">{s.tahun}</td><td className="p-3 font-arabic" dir="rtl">{s.tahun_arab}</td><td className="p-3">{s.semester}</td><td className="p-3 font-arabic" dir="rtl">{s.semester_arab}</td><td className="p-3 text-center">
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input type="checkbox" className="sr-only peer" checked={s.isActive} onChange={(e) => saveToDb('settings', s.id, { ...s, isActive: e.target.checked }, true, `Mengubah status semester ${s.tahun} ${s.semester}`)} />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
-                    </label>
-                </td><td className="p-3 text-center"><button onClick={() => handleOpenModal(s)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('settings', s.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td></tr>
-              ))}</tbody>
-          </table>
+          <div>
+            <div className="flex items-center gap-2 mb-3 pb-3 border-b">
+              <label className="flex items-center gap-2 text-sm cursor-pointer select-none bg-gray-50 hover:bg-gray-100 px-3 py-1.5 rounded-lg border">
+                <input type="checkbox" checked={hideInactive} onChange={e => setHideInactive(e.target.checked)} className="w-4 h-4 text-emerald-600 rounded" />
+                Sembunyikan semester nonaktif
+              </label>
+              <span className="text-xs text-gray-400">({filteredSettings.length} dari {sortedData.length} ditampilkan)</span>
+            </div>
+            <table className="w-full text-left border-collapse">
+              <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm">
+                  <SortableHeader label="Tahun" sortKey="tahun" />
+                  <SortableHeader label="Tahun Arab" sortKey="tahun_arab" />
+                  <SortableHeader label="Semester" sortKey="semester" />
+                  <SortableHeader label="Semester Arab" sortKey="semester_arab" />
+                  <SortableHeader label="Status" sortKey="isActive" className="text-center" />
+                  <th className="p-3 border-b text-center">Aksi</th>
+              </tr></thead>
+              <tbody>{filteredSettings.map(s => (
+                  <tr key={s.id} className={`border-b hover:bg-gray-50 ${s.isActive ? 'bg-emerald-50' : ''}`}><td className="p-3 font-semibold">{s.tahun}</td><td className="p-3 font-arabic" dir="rtl">{s.tahun_arab}</td><td className="p-3">{s.semester}</td><td className="p-3 font-arabic" dir="rtl">{s.semester_arab}</td><td className="p-3 text-center">
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" className="sr-only peer" checked={s.isActive} onChange={(e) => saveToDb('settings', s.id, { ...s, isActive: e.target.checked }, true, `Mengubah status semester ${s.tahun} ${s.semester}`)} />
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                      </label>
+                  </td><td className="p-3 text-center"><button onClick={() => handleOpenModal(s)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('settings', s.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td></tr>
+                ))}</tbody>
+            </table>
+          </div>
         );
+      }
       case 'teachers':
         return (
           <table className="w-full text-left border-collapse">
