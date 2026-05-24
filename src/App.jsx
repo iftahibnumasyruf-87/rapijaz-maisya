@@ -335,11 +335,31 @@ const AppProvider = ({ children }) => {
   });
   const currentUserRef = useRef(null);
   
-  const [data, setData] = useState({
+  // Kolom yang terisolasi per semester (bukan data master global)
+  const SEMESTER_SPECIFIC_COLS = ['students', 'subjects', 'teachers', 'extracurriculars', 'presences', 'characterTraits'];
+
+  const [allData, setAllData] = useState({
     settings: [], users: [], subjectCategories: [], masterSubjects: [], subjects: [], classes: [], students: [], teachers: [], 
     grades: [], layouts: [], fonts: [], studentFields: [], presences: [],
     extracurriculars: [], characterTraits: [], logs: [], studentSnapshots: []
   });
+
+  // Semester yang sedang aktif
+  const activeSetting = useMemo(() => allData.settings.find(s => s.isActive) || null, [allData.settings]);
+
+  // Data yang sudah difilter sesuai semester aktif untuk komponen
+  const data = useMemo(() => {
+    if (!activeSetting) return allData;
+    const filtered = { ...allData };
+    for (const col of SEMESTER_SPECIFIC_COLS) {
+      filtered[col] = allData[col].filter(item => {
+        if (!item.tahun) return true; // Legacy data: tampilkan di semua semester
+        return item.tahun === activeSetting.tahun && item.semester === activeSetting.semester;
+      });
+    }
+    return filtered;
+  }, [allData, activeSetting]);
+
   const [loading, setLoading] = useState(true);
   const [notification, setNotification] = useState(null);
 
@@ -371,7 +391,7 @@ const AppProvider = ({ children }) => {
     const essentialCollections = ['settings', 'users', 'classes', 'layouts'];
     const lazyCollections = ['subjectCategories', 'masterSubjects', 'subjects', 'students', 'grades', 'fonts', 'studentFields', 'presences', 'extracurriculars', 'characterTraits', 'logs', 'teachers', 'studentSnapshots'];
     
-    let newData = { ...data };
+    let newData = { ...allData };
 
     // Load essential data synchronously
     for (const colName of essentialCollections) {
@@ -418,7 +438,7 @@ const AppProvider = ({ children }) => {
       }
     }
 
-    setData(newData);
+    setAllData(newData);
     setLoading(false);
 
     // PHASE 2: Load lazy collections in background after UI renders
@@ -438,7 +458,7 @@ const AppProvider = ({ children }) => {
       }
     }
 
-    setData(newData);
+    setAllData(newData);
   };
 
 
@@ -459,8 +479,15 @@ const AppProvider = ({ children }) => {
   const saveToDb = async (colName, docId, payload, silent = false, customLogMsg = null) => {
     try {
       const { id: _payloadId, ...cleanPayload } = payload;
+
+      // Jika koleksi terisolasi per semester, inject tahun & semester secara otomatis
+      if (SEMESTER_SPECIFIC_COLS.includes(colName) && activeSetting && !cleanPayload.tahun) {
+        cleanPayload.tahun = activeSetting.tahun;
+        cleanPayload.semester = activeSetting.semester;
+      }
+
       if (colName === 'settings' && cleanPayload.isActive) {
-        const activeSettings = data.settings.filter(s => s.id !== docId && s.isActive);
+        const activeSettings = allData.settings.filter(s => s.id !== docId && s.isActive);
         if (activeSettings.length > 0) {
           const promises = activeSettings.map(s => {
             const { id, ...restPayload } = s;
@@ -481,7 +508,7 @@ const AppProvider = ({ children }) => {
       // Only refetch the specific collection that was modified
       const { data: items } = await supabase.from(colName).select('*');
       if (items) {
-        setData(prev => ({
+        setAllData(prev => ({
           ...prev,
           [colName]: sortDataItems(items.map(item => ({ ...item.payload, id: item.id })))
         }));
@@ -504,7 +531,7 @@ const AppProvider = ({ children }) => {
       // Only refetch the specific collection that was modified
       const { data: items } = await supabase.from(colName).select('*');
       if (items) {
-        setData(prev => ({
+        setAllData(prev => ({
           ...prev,
           [colName]: sortDataItems(items.map(item => ({ ...item.payload, id: item.id })))
         }));
@@ -516,7 +543,7 @@ const AppProvider = ({ children }) => {
 
 
   return (
-    <AppContext.Provider value={{ data, currentUser, setCurrentUser, saveToDb, deleteFromDb, showNotification, addLog }}>
+    <AppContext.Provider value={{ data, allData, activeSetting, SEMESTER_SPECIFIC_COLS, currentUser, setCurrentUser, saveToDb, deleteFromDb, showNotification, addLog }}>
       {loading ? <div className="flex h-screen items-center justify-center bg-gray-50"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div></div> : children}
       {notification && (
         <div className={`fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-lg text-white font-medium flex items-center gap-2 z-50 transition-all ${notification.type === 'error' ? 'bg-red-500' : 'bg-emerald-600'}`}>
@@ -890,10 +917,12 @@ const HomeDashboard = () => {
 };
 
 const BackupRestorePanel = () => {
-    const { data, saveToDb, showNotification } = useContext(AppContext);
+    const { data, allData, activeSetting, SEMESTER_SPECIFIC_COLS, saveToDb, showNotification } = useContext(AppContext);
     const [isProcessing, setIsProcessing] = useState(false);
+    const [isCopyModalOpen, setIsCopyModalOpen] = useState(false);
+    const [sourceSemesterId, setSourceSemesterId] = useState('');
+    const [selectedCopyTargets, setSelectedCopyTargets] = useState([]);
     
-    const activeSetting = data.settings.find(s => s.isActive);
     const snapshotId = activeSetting ? `${(activeSetting.tahun || '').replace(/\//g, '-')}_${activeSetting.semester || '1'}` : null;
     const currentSnapshot = data.studentSnapshots.find(s => s.id === snapshotId);
     
@@ -921,37 +950,106 @@ const BackupRestorePanel = () => {
         setIsProcessing(false);
     };
 
-    const handleBackupJSON = () => {
-        const backupData = JSON.stringify(data, null, 2);
-        const blob = new Blob([backupData], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        const dateStr = new Date().toISOString().split('T')[0];
-        a.download = `backup_rapijaz_${dateStr}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
-    };
-
-    const handleRestoreJSON = (e) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        
-        if (!confirm('PERINGATAN: Memulihkan backup akan menimpa seluruh data yang ada saat ini. Anda yakin ingin melanjutkan?')) {
-            e.target.value = '';
+    const handleBackupExcel = () => {
+        if (!activeSetting || !activeSetting.tahun) {
+            showNotification('Aktifkan Tahun Ajaran terlebih dahulu untuk mem-backup data!', 'error');
             return;
         }
 
+        try {
+            const wb = XLSX.utils.book_new();
+            const collections = ['settings', 'users', 'subjectCategories', 'masterSubjects', 'subjects', 'classes', 'students', 'teachers', 'grades', 'layouts', 'fonts', 'studentFields', 'presences', 'extracurriculars', 'characterTraits', 'studentSnapshots'];
+            
+            collections.forEach(col => {
+                if (data[col] && data[col].length > 0) {
+                    let filteredData = data[col];
+                    // Hanya backup data yang sesuai dengan Tahun Ajaran yang aktif untuk koleksi transaksi/tahunan
+                    if (['settings', 'grades', 'studentSnapshots'].includes(col)) {
+                        filteredData = data[col].filter(item => item.tahun === activeSetting.tahun);
+                    }
+                    
+                    if (filteredData.length === 0) return;
+
+                    const flatData = filteredData.map(item => {
+                        let newItem = {};
+                        for (const key in item) {
+                            if (typeof item[key] === 'object' && item[key] !== null) {
+                                newItem[key] = JSON.stringify(item[key]);
+                            } else {
+                                newItem[key] = item[key];
+                            }
+                        }
+                        return newItem;
+                    });
+                    const ws = XLSX.utils.json_to_sheet(flatData);
+                    XLSX.utils.book_append_sheet(wb, ws, col);
+                }
+            });
+
+            const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+            const blob = new Blob([wbout], { type: 'application/octet-stream' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const tahunStr = (activeSetting.tahun || 'unknown').replace(/\//g, '-');
+            const semesterStr = activeSetting.semester || 'Semester';
+            a.download = `backup_rapijaz_${tahunStr}_${semesterStr}.xlsx`;
+            a.click();
+            URL.revokeObjectURL(url);
+        } catch (e) {
+            console.error(e);
+            showNotification('Gagal membuat file Excel', 'error');
+        }
+    };
+
+    const handleRestoreExcel = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        
         const reader = new FileReader();
         reader.onload = async (event) => {
             try {
-                setIsProcessing(true);
-                const importedData = JSON.parse(event.target.result);
+                const fileData = new Uint8Array(event.target.result);
+                const workbook = XLSX.read(fileData, {type: 'array'});
                 
-                if (typeof importedData !== 'object' || !importedData.settings) {
-                    throw new Error("Format file backup tidak valid");
+                let importedData = {};
+                workbook.SheetNames.forEach(sheetName => {
+                    const worksheet = workbook.Sheets[sheetName];
+                    const rawData = XLSX.utils.sheet_to_json(worksheet);
+                    importedData[sheetName] = rawData.map(item => {
+                        let parsedItem = {};
+                        for (const key in item) {
+                            if (typeof item[key] === 'string' && (item[key].startsWith('{') || item[key].startsWith('['))) {
+                                try { parsedItem[key] = JSON.parse(item[key]); }
+                                catch (e) { parsedItem[key] = item[key]; }
+                            } else {
+                                parsedItem[key] = item[key];
+                            }
+                        }
+                        return parsedItem;
+                    });
+                });
+                
+                if (!importedData.settings || importedData.settings.length === 0) {
+                    throw new Error("Format file backup tidak valid atau tidak memiliki data pengaturan (settings).");
                 }
                 
+                // Validasi Tahun Ajaran
+                const currentTahunSet = new Set(data.settings.map(s => String(s.tahun).trim()));
+                const importedTahunSet = new Set(importedData.settings.map(s => String(s.tahun).trim()));
+                
+                for (let tahun of importedTahunSet) {
+                    if (currentTahunSet.has(tahun)) {
+                        throw new Error(`Tahun Ajaran "${tahun}" dari file backup sudah ada di sistem. Restore dibatalkan untuk mencegah tertimpanya data.`);
+                    }
+                }
+
+                if (!confirm('Tahun ajaran dari backup belum ada di sistem. Anda yakin ingin merestore data ini? (Aman: Data hanya akan ditambahkan)')) {
+                    e.target.value = '';
+                    return;
+                }
+                
+                setIsProcessing(true);
                 showNotification('Memulai proses restore data, mohon tunggu...', 'info');
                 
                 const collections = ['settings', 'users', 'subjectCategories', 'masterSubjects', 'subjects', 'classes', 'students', 'teachers', 'grades', 'layouts', 'fonts', 'studentFields', 'presences', 'extracurriculars', 'characterTraits', 'studentSnapshots'];
@@ -963,7 +1061,7 @@ const BackupRestorePanel = () => {
                              const { id, ...payload } = item;
                              if (id) {
                                  // eslint-disable-next-line no-await-in-loop
-                                 await saveToDb(col, id, payload, true);
+                                 await saveToDb(col, String(id), payload, true);
                                  count++;
                              }
                          }
@@ -976,12 +1074,138 @@ const BackupRestorePanel = () => {
                 showNotification('Gagal memulihkan backup: ' + err.message, 'error');
                 setIsProcessing(false);
             }
+            e.target.value = '';
         };
-        reader.readAsText(file);
+        reader.readAsArrayBuffer(file);
+    };
+
+    // Ambil daftar semester yang tersedia (untuk fitur Salin)
+    const otherSemesters = allData.settings.filter(s => !s.isActive && s.tahun);
+
+    const COPY_TARGET_LABELS = {
+        students: 'Santri',
+        subjects: 'Mata Pelajaran',
+        teachers: 'Guru',
+        extracurriculars: 'Ekstrakurikuler',
+        presences: 'Aspek Presensi',
+        characterTraits: 'Aspek Karakter',
+    };
+
+    const toggleCopyTarget = (col) => {
+        setSelectedCopyTargets(prev =>
+            prev.includes(col) ? prev.filter(c => c !== col) : [...prev, col]
+        );
+    };
+
+    const handleOpenCopyModal = () => {
+        if (!activeSetting) {
+            showNotification('Aktifkan semester tujuan terlebih dahulu!', 'error');
+            return;
+        }
+        setSourceSemesterId(otherSemesters[0]?.id || '');
+        setSelectedCopyTargets([...SEMESTER_SPECIFIC_COLS]);
+        setIsCopyModalOpen(true);
+    };
+
+    const handleCopyFromSemester = async () => {
+        if (!sourceSemesterId || selectedCopyTargets.length === 0) {
+            showNotification('Pilih semester sumber dan data yang ingin disalin!', 'error');
+            return;
+        }
+        const sourceSetting = allData.settings.find(s => s.id === sourceSemesterId);
+        if (!sourceSetting) return;
+
+        if (!confirm(`Salin data dari "${sourceSetting.tahun} ${sourceSetting.semester}" ke semester aktif saat ini (${activeSetting.tahun} ${activeSetting.semester})? Data yang sudah ada di semester aktif TIDAK akan ditimpa.`)) return;
+
+        setIsProcessing(true);
+        setIsCopyModalOpen(false);
+        let count = 0;
+        try {
+            for (const col of selectedCopyTargets) {
+                const sourceItems = allData[col].filter(item =>
+                    item.tahun === sourceSetting.tahun && item.semester === sourceSetting.semester
+                );
+                // Cek item yang sudah ada di semester tujuan agar tidak ditimpa
+                const existingNames = new Set(
+                    allData[col]
+                        .filter(item => item.tahun === activeSetting.tahun && item.semester === activeSetting.semester)
+                        .map(item => (item.nama || item.name || item.username || '').toLowerCase())
+                );
+                for (const item of sourceItems) {
+                    const itemName = (item.nama || item.name || item.username || '').toLowerCase();
+                    if (existingNames.has(itemName)) continue; // Lewati jika sudah ada
+                    const { id: _oldId, tahun: _t, semester: _s, ...rest } = item;
+                    const newId = `${col}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+                    // eslint-disable-next-line no-await-in-loop
+                    await saveToDb(col, newId, { ...rest, tahun: activeSetting.tahun, semester: activeSetting.semester }, true);
+                    count++;
+                }
+            }
+            showNotification(`Berhasil menyalin ${count} data ke semester aktif!`);
+        } catch (err) {
+            showNotification('Gagal menyalin data: ' + err.message, 'error');
+        }
+        setIsProcessing(false);
     };
 
     return (
         <div className="space-y-6 max-w-4xl p-2">
+            {/* Modal Salin dari Semester Lain */}
+            {isCopyModalOpen && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-xl shadow-xl w-full max-w-lg">
+                        <div className="flex justify-between items-center p-4 border-b">
+                            <h2 className="text-xl font-bold text-gray-800">Salin Data dari Semester Lain</h2>
+                            <button onClick={() => setIsCopyModalOpen(false)} className="p-1 hover:bg-gray-100 rounded-full"><X size={20}/></button>
+                        </div>
+                        <div className="p-5 space-y-4">
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-1">Semester Sumber (Asal Data)</label>
+                                <select
+                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                                    value={sourceSemesterId}
+                                    onChange={e => setSourceSemesterId(e.target.value)}
+                                >
+                                    {otherSemesters.map(s => (
+                                        <option key={s.id} value={s.id}>{s.tahun} - {s.semester}</option>
+                                    ))}
+                                </select>
+                                {otherSemesters.length === 0 && <p className="text-xs text-red-500 mt-1">Tidak ada semester lain yang tersedia.</p>}
+                            </div>
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">Data yang Ingin Disalin</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {SEMESTER_SPECIFIC_COLS.map(col => (
+                                        <label key={col} className="flex items-center gap-2 text-sm cursor-pointer bg-gray-50 hover:bg-gray-100 px-3 py-2 rounded-lg">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedCopyTargets.includes(col)}
+                                                onChange={() => toggleCopyTarget(col)}
+                                                className="w-4 h-4 text-emerald-600"
+                                            />
+                                            {COPY_TARGET_LABELS[col]}
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                            <p className="text-xs text-gray-500 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                                ⚠️ Data yang namanya sudah ada di semester aktif TIDAK akan ditimpa. Hanya data baru yang akan disalin.
+                            </p>
+                        </div>
+                        <div className="flex gap-3 p-4 border-t">
+                            <button
+                                onClick={handleCopyFromSemester}
+                                disabled={isProcessing || otherSemesters.length === 0 || selectedCopyTargets.length === 0}
+                                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-lg font-bold transition disabled:opacity-50"
+                            >
+                                {isProcessing ? 'Menyalin...' : 'Mulai Salin Data'}
+                            </button>
+                            <button onClick={() => setIsCopyModalOpen(false)} className="px-4 py-2.5 rounded-lg border font-medium hover:bg-gray-50">Batal</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div className="bg-blue-50 border border-blue-200 p-6 rounded-xl">
                 <h4 className="font-bold text-blue-900 text-lg mb-2 flex items-center gap-2"><Lock size={20}/> Kunci Data Santri (Snapshot)</h4>
                 <p className="text-sm text-blue-800 mb-4">
@@ -1005,26 +1229,41 @@ const BackupRestorePanel = () => {
                 </div>
             </div>
 
+            {/* Salin Data dari Semester Lain */}
+            <div className="bg-violet-50 border border-violet-200 p-6 rounded-xl">
+                <h4 className="font-bold text-violet-900 text-lg mb-2 flex items-center gap-2"><Share2 size={20}/> Salin Data dari Semester Lain</h4>
+                <p className="text-sm text-violet-800 mb-4">
+                    Gunakan fitur ini untuk menyalin data (Santri, Mata Pelajaran, Guru, dll) dari semester lain ke semester yang sedang aktif. Data yang sudah ada di semester aktif tidak akan ditimpa.
+                </p>
+                <button
+                    onClick={handleOpenCopyModal}
+                    disabled={isProcessing || otherSemesters.length === 0}
+                    className="bg-violet-600 hover:bg-violet-700 text-white px-4 py-3 rounded-lg font-bold flex items-center gap-2 transition disabled:opacity-50"
+                >
+                    <Share2 size={20}/> {otherSemesters.length === 0 ? 'Belum ada semester lain' : 'Pilih & Salin Data...'}
+                </button>
+            </div>
+
             <div className="bg-emerald-50 border border-emerald-200 p-6 rounded-xl">
                 <h4 className="font-bold text-emerald-900 text-lg mb-2 flex items-center gap-2"><Database size={20}/> Backup & Restore Seluruh Data</h4>
                 <p className="text-sm text-emerald-800 mb-4">
-                    Gunakan fitur ini untuk mencadangkan (backup) seluruh data sistem dalam format JSON, atau memulihkannya (restore) ke keadaan sebelumnya.
+                    Gunakan fitur ini untuk mencadangkan (backup) seluruh data sistem dalam format Excel (.xlsx), mengeditnya secara manual, lalu memulihkannya (restore).
                 </p>
                 <div className="flex gap-4">
-                    <button onClick={handleBackupJSON} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition shadow-sm">
-                        <Download size={20}/> Download Backup (.json)
+                    <button onClick={handleBackupExcel} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition shadow-sm">
+                        <Download size={20}/> Download Backup (.xlsx)
                     </button>
                     
                     <div className="flex-1 relative cursor-pointer">
                          <input 
                             type="file" 
-                            accept=".json" 
-                            onChange={handleRestoreJSON} 
+                            accept=".xlsx, .xls" 
+                            onChange={handleRestoreExcel} 
                             disabled={isProcessing}
                             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                         />
                         <div className={`bg-gray-800 hover:bg-gray-900 text-white px-4 py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition shadow-sm ${isProcessing ? 'opacity-50' : ''}`}>
-                            <Upload size={20}/> {isProcessing ? 'Memproses...' : 'Restore Data (.json)'}
+                            <Upload size={20}/> {isProcessing ? 'Memproses...' : 'Restore Data (.xlsx)'}
                         </div>
                     </div>
                 </div>
