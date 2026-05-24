@@ -368,6 +368,19 @@ const AppProvider = ({ children }) => {
       }
     }
 
+    if (newData.layouts.length === 0) {
+      const defaultLayouts = [
+        { id: 'raport', name: 'Raport', elements: [], pageSize: 'A4', guides: { v: [], h: [] } },
+        { id: 'ijazah', name: 'Ijazah', elements: [], pageSize: 'A4', guides: { v: [], h: [] } }
+      ];
+      for (const layout of defaultLayouts) {
+        const { error } = await supabase.from('layouts').upsert([{ id: layout.id, payload: layout }]);
+        if (!error) {
+          newData.layouts.push(layout);
+        }
+      }
+    }
+
     if (!skipMigration) {
       const migrated = await migrateLegacyData(newData);
       if (migrated) {
@@ -1605,9 +1618,11 @@ const defaultTableColumns = [
 ];
 
 const LayoutBuilder = () => {
-    const { data, saveToDb, showNotification } = useContext(AppContext);
+    const { data, saveToDb, deleteFromDb, showNotification } = useContext(AppContext);
     const [activeLayout, setActiveLayout] = useState('raport');
     const [elements, setElements] = useState([]);
+    const [newLayoutName, setNewLayoutName] = useState('');
+    const [showNewLayoutForm, setShowNewLayoutForm] = useState(false);
     const [pageSize, setPageSize] = useState('A4');
     const [guides, setGuides] = useState({ h: [], v: [] });
     const [selectedElementId, setSelectedElementId] = useState(null);
@@ -1656,7 +1671,32 @@ const LayoutBuilder = () => {
 
     const updateElement = (id, changes) => setElements(elements.map(el => el.id === id ? { ...el, ...changes } : el));
     const removeElement = (id) => { setElements(elements.filter(el => el.id !== id)); setSelectedElementId(null); };
-    const saveLayout = () => saveToDb('layouts', activeLayout, { elements, pageSize, guides }, false, `Menyimpan desain layout ${activeLayout}`);
+    const saveLayout = () => saveToDb('layouts', activeLayout, { name: activeLayout, elements, pageSize, guides }, false, `Menyimpan desain layout ${activeLayout}`);
+
+    const createNewLayout = () => {
+        if (!newLayoutName.trim()) {
+            showNotification('Nama layout tidak boleh kosong', 'error');
+            return;
+        }
+        const layoutId = newLayoutName.toLowerCase().replace(/\s+/g, '_');
+        if (data.layouts.some(l => l.id === layoutId)) {
+            showNotification('Layout dengan nama ini sudah ada', 'error');
+            return;
+        }
+        saveToDb('layouts', layoutId, { name: newLayoutName, elements: [], pageSize: 'A4', guides: { v: [], h: [] } }, false, `Membuat layout baru: ${newLayoutName}`);
+        setNewLayoutName('');
+        setShowNewLayoutForm(false);
+        setActiveLayout(layoutId);
+    };
+
+    const deleteLayout = (layoutId) => {
+        if (confirm(`Hapus layout "${data.layouts.find(l => l.id === layoutId)?.name || layoutId}"?`)) {
+            deleteFromDb('layouts', layoutId, false, `Menghapus layout ${layoutId}`);
+            if (activeLayout === layoutId) {
+                setActiveLayout(data.layouts.find(l => l.id !== layoutId)?.id || 'raport');
+            }
+        }
+    };
 
     // Drag Logic
     const [draggingType, setDraggingType] = useState(null);
@@ -1735,13 +1775,25 @@ const LayoutBuilder = () => {
                 
                 <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
                     <div className="flex gap-2">
-                        <select className="w-1/2 p-2 border rounded-lg bg-white text-sm font-bold text-emerald-800" value={activeLayout} onChange={e => setActiveLayout(e.target.value)}>
-                            <option value="raport">Doc: Raport</option><option value="ijazah">Doc: Ijazah</option>
+                        <select className="flex-1 p-2 border rounded-lg bg-white text-sm font-bold text-emerald-800" value={activeLayout} onChange={e => setActiveLayout(e.target.value)}>
+                            {data.layouts && data.layouts.map(l => <option key={l.id} value={l.id}>{l.name || l.id}</option>)}
                         </select>
-                        <select className="w-1/2 p-2 border rounded-lg bg-white text-sm font-bold text-blue-800" value={pageSize} onChange={e => setPageSize(e.target.value)}>
-                            <option value="A4">Size: A4</option><option value="F4">Size: F4</option>
-                        </select>
+                        <button onClick={() => setShowNewLayoutForm(!showNewLayoutForm)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 rounded-lg text-sm font-bold transition" title="Tambah layout baru"><Plus size={16}/></button>
+                        {data.layouts && data.layouts.length > 1 && <button onClick={() => deleteLayout(activeLayout)} className="bg-red-500 hover:bg-red-600 text-white px-3 rounded-lg text-sm font-bold transition" title="Hapus layout"><Trash2 size={16}/></button>}
                     </div>
+                    <select className="w-full p-2 border rounded-lg bg-white text-sm font-bold text-blue-800" value={pageSize} onChange={e => setPageSize(e.target.value)}>
+                        <option value="A4">Size: A4</option><option value="F4">Size: F4</option>
+                    </select>
+                    {showNewLayoutForm && (
+                        <div className="border-t pt-3 space-y-2">
+                            <p className="text-xs font-semibold text-gray-600">Nama Layout Baru</p>
+                            <input type="text" placeholder="Misal: Sertifikat, Izin, dll" className="w-full p-2 border rounded-lg text-sm" value={newLayoutName} onChange={e => setNewLayoutName(e.target.value)} onKeyPress={e => e.key === 'Enter' && createNewLayout()} />
+                            <div className="flex gap-2">
+                                <button onClick={createNewLayout} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-lg text-sm font-bold transition">Buat</button>
+                                <button onClick={() => {setShowNewLayoutForm(false); setNewLayoutName('');}} className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-2 rounded-lg text-sm font-bold transition">Batal</button>
+                            </div>
+                        </div>
+                    )}
                     
                     <div className="space-y-2 border-b pb-4">
                         <p className="text-xs font-semibold text-gray-500 uppercase sticky top-0 bg-white z-10 pb-1">Tambah Elemen</p>
