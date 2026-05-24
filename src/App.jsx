@@ -1,3 +1,5 @@
+/* eslint-disable security/detect-object-injection */
+/* eslint-disable i18next/no-literal-string */
 import React, { useState, useEffect, useRef, useMemo, createContext, useContext } from 'react';
 import { 
   Menu, X, Home, Users, BookOpen, Settings, LayoutTemplate, 
@@ -5,7 +7,7 @@ import {
   Download, Upload, Share2, AlertCircle, CheckCircle, GripHorizontal,
   Type, User, CreditCard, Image as ImageIcon, Ruler, Type as TypeIcon, FileText,
   Columns, FileSignature, TrendingUp, UserX, Clock, Activity, ChevronDown,
-  ZoomIn, ZoomOut, Maximize, Minimize, ChevronUp
+  ZoomIn, ZoomOut, Maximize, Minimize, ChevronUp, Lock, Database
 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 import * as XLSX from 'xlsx';
@@ -23,16 +25,17 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const convertArabicToLatin = (value) => {
   if (typeof value !== 'string') return value;
   
-  // Pemetaan angka Arab (٠-٩) ke angka Latin (0-9)
-  const arabicNumbers = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-  const latinNumbers = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
-  
-  let result = value;
-  arabicNumbers.forEach((arabic, index) => {
-    result = result.replace(new RegExp(arabic, 'g'), latinNumbers[index]);
-  });
-  
-  return result;
+  return value
+    .replace(/٠/g, '0')
+    .replace(/١/g, '1')
+    .replace(/٢/g, '2')
+    .replace(/٣/g, '3')
+    .replace(/٤/g, '4')
+    .replace(/٥/g, '5')
+    .replace(/٦/g, '6')
+    .replace(/٧/g, '7')
+    .replace(/٨/g, '8')
+    .replace(/٩/g, '9');
 };
 
 // ==========================================
@@ -207,11 +210,11 @@ const migrateLegacyData = async (newData) => {
 };
 
 const getStudentsInClass = (students, classes, selectedClass) => {
-  const normalizedSelected = normalizeValue(selectedClass);
+  const normalizedSelected = normalizeLookupValue(selectedClass);
   if (!normalizedSelected) return [];
 
   const className = getClassNameFromValue(classes, selectedClass);
-  const normalizedClassName = normalizeValue(className);
+  const normalizedClassName = normalizeLookupValue(className);
 
   return students.filter((s) => {
     const studentClass = normalizeLookupValue(s.kelas);
@@ -222,11 +225,20 @@ const getStudentsInClass = (students, classes, selectedClass) => {
       studentClass === normalizedSelected ||
       studentClass === normalizedClassName ||
       normalizedStudentClassName === normalizedSelected ||
-      normalizedStudentClassName === normalizedClassName ||
-      studentClass.includes(normalizedSelected) ||
-      studentClass.includes(normalizedClassName)
+      normalizedStudentClassName === normalizedClassName
     );
   });
+};
+
+// Mendapatkan data santri berdasarkan tahun ajaran aktif (snapshot jika ada, fallback ke data global)
+const getStudentsForYear = (studentSnapshots = [], activeSetting, allStudents = []) => {
+  if (!activeSetting || !activeSetting.tahun) return allStudents;
+  const snapshotId = `${(activeSetting.tahun || '').replace(/\//g, '-')}_${activeSetting.semester || '1'}`;
+  const snapshot = studentSnapshots.find(s => s.id === snapshotId);
+  if (snapshot && Array.isArray(snapshot.students) && snapshot.students.length > 0) {
+    return snapshot.students;
+  }
+  return allStudents;
 };
 
 const normalizeSubjectClasses = (kelas) => {
@@ -326,7 +338,7 @@ const AppProvider = ({ children }) => {
   const [data, setData] = useState({
     settings: [], users: [], subjectCategories: [], masterSubjects: [], subjects: [], classes: [], students: [], teachers: [], 
     grades: [], layouts: [], fonts: [], studentFields: [], presences: [],
-    extracurriculars: [], characterTraits: [], logs: []
+    extracurriculars: [], characterTraits: [], logs: [], studentSnapshots: []
   });
   const [loading, setLoading] = useState(true);
   const [notification, setNotification] = useState(null);
@@ -345,10 +357,19 @@ const AppProvider = ({ children }) => {
     setTimeout(() => setNotification(null), 3000);
   };
 
+  const sortDataItems = (items) => {
+    return [...items].sort((a, b) => {
+      const valA = String(a.name || a.nama || a.username || '').trim();
+      const valB = String(b.name || b.nama || b.username || '').trim();
+      if (!valA && !valB) return 0;
+      return valA.localeCompare(valB, undefined, { numeric: true, sensitivity: 'base' });
+    });
+  };
+
   const fetchData = async (skipMigration = false) => {
     // PHASE 1: Load ONLY essential data for fast initial load
     const essentialCollections = ['settings', 'users', 'classes', 'layouts'];
-    const lazyCollections = ['subjectCategories', 'masterSubjects', 'subjects', 'students', 'grades', 'fonts', 'studentFields', 'presences', 'extracurriculars', 'characterTraits', 'logs', 'teachers'];
+    const lazyCollections = ['subjectCategories', 'masterSubjects', 'subjects', 'students', 'grades', 'fonts', 'studentFields', 'presences', 'extracurriculars', 'characterTraits', 'logs', 'teachers', 'studentSnapshots'];
     
     let newData = { ...data };
 
@@ -356,7 +377,7 @@ const AppProvider = ({ children }) => {
     for (const colName of essentialCollections) {
       const { data: items, error } = await supabase.from(colName).select('*');
       if (!error && items) {
-        newData[colName] = items.map(item => ({ id: item.id, ...item.payload }));
+        newData[colName] = sortDataItems(items.map(item => ({ ...item.payload, id: item.id })));
       } else {
         newData[colName] = [];
       }
@@ -412,7 +433,7 @@ const AppProvider = ({ children }) => {
       if (newData[colName].length === 0) {
         const { data: items, error } = await supabase.from(colName).select('*');
         if (!error && items) {
-          newData[colName] = items.map(item => ({ id: item.id, ...item.payload }));
+          newData[colName] = sortDataItems(items.map(item => ({ ...item.payload, id: item.id })));
         }
       }
     }
@@ -437,7 +458,19 @@ const AppProvider = ({ children }) => {
 
   const saveToDb = async (colName, docId, payload, silent = false, customLogMsg = null) => {
     try {
-      const { error } = await supabase.from(colName).upsert([{ id: docId, payload: payload }]);
+      const { id: _payloadId, ...cleanPayload } = payload;
+      if (colName === 'settings' && cleanPayload.isActive) {
+        const activeSettings = data.settings.filter(s => s.id !== docId && s.isActive);
+        if (activeSettings.length > 0) {
+          const promises = activeSettings.map(s => {
+            const { id, ...restPayload } = s;
+            return supabase.from('settings').upsert([{ id: id, payload: { ...restPayload, isActive: false } }]);
+          });
+          await Promise.all(promises);
+        }
+      }
+
+      const { error } = await supabase.from(colName).upsert([{ id: docId, payload: cleanPayload }]);
       if (error) throw error;
       
       if(!silent) showNotification('Data berhasil disimpan!');
@@ -450,7 +483,7 @@ const AppProvider = ({ children }) => {
       if (items) {
         setData(prev => ({
           ...prev,
-          [colName]: items.map(item => ({ id: item.id, ...item.payload }))
+          [colName]: sortDataItems(items.map(item => ({ ...item.payload, id: item.id })))
         }));
       }
     } catch (err) {
@@ -473,7 +506,7 @@ const AppProvider = ({ children }) => {
       if (items) {
         setData(prev => ({
           ...prev,
-          [colName]: items.map(item => ({ id: item.id, ...item.payload }))
+          [colName]: sortDataItems(items.map(item => ({ ...item.payload, id: item.id })))
         }));
       }
     } catch (err) {
@@ -856,13 +889,157 @@ const HomeDashboard = () => {
     );
 };
 
+const BackupRestorePanel = () => {
+    const { data, saveToDb, showNotification } = useContext(AppContext);
+    const [isProcessing, setIsProcessing] = useState(false);
+    
+    const activeSetting = data.settings.find(s => s.isActive);
+    const snapshotId = activeSetting ? `${(activeSetting.tahun || '').replace(/\//g, '-')}_${activeSetting.semester || '1'}` : null;
+    const currentSnapshot = data.studentSnapshots.find(s => s.id === snapshotId);
+    
+    const handleSaveSnapshot = async () => {
+        if (!activeSetting || !activeSetting.tahun) {
+            showNotification('Aktifkan tahun ajaran terlebih dahulu!', 'error');
+            return;
+        }
+        if (!confirm(`Simpan/Update Snapshot Santri untuk Tahun ${activeSetting.tahun} Semester ${activeSetting.semester}?`)) return;
+        
+        setIsProcessing(true);
+        try {
+            const payload = {
+                tahun: activeSetting.tahun,
+                semester: activeSetting.semester,
+                students: data.students,
+                createdAt: new Date().toISOString()
+            };
+            await saveToDb('studentSnapshots', snapshotId, payload, false, `Menyimpan Snapshot Santri ${activeSetting.tahun}`);
+            showNotification('Snapshot berhasil disimpan!');
+        } catch (e) {
+            console.error(e);
+            showNotification('Gagal menyimpan snapshot', 'error');
+        }
+        setIsProcessing(false);
+    };
+
+    const handleBackupJSON = () => {
+        const backupData = JSON.stringify(data, null, 2);
+        const blob = new Blob([backupData], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const dateStr = new Date().toISOString().split('T')[0];
+        a.download = `backup_rapijaz_${dateStr}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+
+    const handleRestoreJSON = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        
+        if (!confirm('PERINGATAN: Memulihkan backup akan menimpa seluruh data yang ada saat ini. Anda yakin ingin melanjutkan?')) {
+            e.target.value = '';
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            try {
+                setIsProcessing(true);
+                const importedData = JSON.parse(event.target.result);
+                
+                if (typeof importedData !== 'object' || !importedData.settings) {
+                    throw new Error("Format file backup tidak valid");
+                }
+                
+                showNotification('Memulai proses restore data, mohon tunggu...', 'info');
+                
+                const collections = ['settings', 'users', 'subjectCategories', 'masterSubjects', 'subjects', 'classes', 'students', 'teachers', 'grades', 'layouts', 'fonts', 'studentFields', 'presences', 'extracurriculars', 'characterTraits', 'studentSnapshots'];
+                
+                let count = 0;
+                for (const col of collections) {
+                    if (Array.isArray(importedData[col])) {
+                         for (const item of importedData[col]) {
+                             const { id, ...payload } = item;
+                             if (id) {
+                                 // eslint-disable-next-line no-await-in-loop
+                                 await saveToDb(col, id, payload, true);
+                                 count++;
+                             }
+                         }
+                    }
+                }
+                showNotification(`Restore selesai (${count} data dipulihkan)! Halaman akan dimuat ulang.`);
+                setTimeout(() => window.location.reload(), 2000);
+            } catch (err) {
+                console.error(err);
+                showNotification('Gagal memulihkan backup: ' + err.message, 'error');
+                setIsProcessing(false);
+            }
+        };
+        reader.readAsText(file);
+    };
+
+    return (
+        <div className="space-y-6 max-w-4xl p-2">
+            <div className="bg-blue-50 border border-blue-200 p-6 rounded-xl">
+                <h4 className="font-bold text-blue-900 text-lg mb-2 flex items-center gap-2"><Lock size={20}/> Kunci Data Santri (Snapshot)</h4>
+                <p className="text-sm text-blue-800 mb-4">
+                    Fitur ini digunakan untuk <b>mengunci data santri</b> pada tahun ajaran yang sedang aktif. 
+                    Saat tahun ajaran berganti, santri yang sudah naik kelas atau lulus tidak akan merubah tampilan raport lama.
+                </p>
+                <div className="flex items-center justify-between bg-white p-4 rounded-lg shadow-sm border border-blue-100">
+                    <div>
+                        <p className="font-semibold text-gray-800">Status Snapshot: {activeSetting ? `${activeSetting.tahun} Sem ${activeSetting.semester}` : 'Tidak ada tahun aktif'}</p>
+                        <p className="text-sm text-gray-500">
+                            {currentSnapshot ? `✅ Terkunci dengan ${currentSnapshot.students?.length || 0} santri (Diperbarui: ${new Date(currentSnapshot.createdAt).toLocaleString()})` : '⚠️ Belum ada snapshot untuk tahun ini.'}
+                        </p>
+                    </div>
+                    <button 
+                        onClick={handleSaveSnapshot} 
+                        disabled={isProcessing}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-bold transition shadow-sm"
+                    >
+                        {isProcessing ? 'Menyimpan...' : 'Simpan Snapshot'}
+                    </button>
+                </div>
+            </div>
+
+            <div className="bg-emerald-50 border border-emerald-200 p-6 rounded-xl">
+                <h4 className="font-bold text-emerald-900 text-lg mb-2 flex items-center gap-2"><Database size={20}/> Backup & Restore Seluruh Data</h4>
+                <p className="text-sm text-emerald-800 mb-4">
+                    Gunakan fitur ini untuk mencadangkan (backup) seluruh data sistem dalam format JSON, atau memulihkannya (restore) ke keadaan sebelumnya.
+                </p>
+                <div className="flex gap-4">
+                    <button onClick={handleBackupJSON} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition shadow-sm">
+                        <Download size={20}/> Download Backup (.json)
+                    </button>
+                    
+                    <div className="flex-1 relative cursor-pointer">
+                         <input 
+                            type="file" 
+                            accept=".json" 
+                            onChange={handleRestoreJSON} 
+                            disabled={isProcessing}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                        />
+                        <div className={`bg-gray-800 hover:bg-gray-900 text-white px-4 py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition shadow-sm ${isProcessing ? 'opacity-50' : ''}`}>
+                            <Upload size={20}/> {isProcessing ? 'Memproses...' : 'Restore Data (.json)'}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const MasterData = ({ activeTab }) => {
   const { data, saveToDb, deleteFromDb, showNotification } = useContext(AppContext);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [formData, setFormData] = useState({});
   const [isAutoSaving, setIsAutoSaving] = useState(false);
-    const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
+    const [autoSaveEnabled, setAutoSaveEnabled] = useState(false);
 
   // Default pengurutan tabel berdasarkan menu (alfabetis secara bawaan)
   const getDefaultSortKey = (tab) => {
@@ -871,7 +1048,7 @@ const MasterData = ({ activeTab }) => {
           case 'teachers': return 'nama';
           case 'subjectCategories': return 'name';
           case 'masterSubjects': return 'nameId';
-          case 'subjects': return 'nameId';
+          case 'subjects': return 'kelas';
           case 'presences': return 'name';
           case 'characterTraits': return 'name';
           case 'extracurriculars': return 'name';
@@ -914,9 +1091,19 @@ const MasterData = ({ activeTab }) => {
                   bValue = getSubjectClassLabel(b, data.classes);
               }
 
-              if (typeof aValue === 'string') aValue = aValue.toLowerCase();
-              if (typeof bValue === 'string') bValue = bValue.toLowerCase();
+              if (typeof aValue === 'string' && typeof bValue === 'string') {
+                  let comparison = aValue.localeCompare(bValue, undefined, { numeric: true, sensitivity: 'base' });
+                  
+                  // Secondary sort untuk halaman Plotting Pelajaran (berdasarkan Kategori) jika kelasnya sama
+                  if (comparison === 0 && activeTab === 'subjects' && sortConfig.key === 'kelas') {
+                      const catA = a.kategori || '';
+                      const catB = b.kategori || '';
+                      comparison = catA.localeCompare(catB, undefined, { numeric: true, sensitivity: 'base' });
+                  }
 
+                  return sortConfig.direction === 'ascending' ? comparison : -comparison;
+              }
+              
               if (aValue < bValue) return sortConfig.direction === 'ascending' ? -1 : 1;
               if (aValue > bValue) return sortConfig.direction === 'ascending' ? 1 : -1;
               return 0;
@@ -973,6 +1160,32 @@ const MasterData = ({ activeTab }) => {
 
   const handleSave = () => {
     let payload = { ...formData };
+    
+    if (activeTab === 'settings' && !editingItem.tahun) {
+      // Saat membuat tahun ajaran baru, otomatis buat 2 semester (Ganjil & Genap)
+      const id1 = formData.id || Date.now().toString();
+      const id2 = (parseInt(id1) + 1).toString();
+      
+      const ganjilPayload = {
+        ...payload,
+        semester: 'Ganjil',
+        semester_arab: 'الفصل الدراسي الأول',
+        isActive: payload.isActive || false
+      };
+      
+      const genapPayload = {
+        ...payload,
+        semester: 'Genap',
+        semester_arab: 'الفصل الدراسي الثاني',
+        isActive: false
+      };
+
+      saveToDb(activeTab, id1, ganjilPayload, true);
+      saveToDb(activeTab, id2, genapPayload, false, `Menambah Tahun Ajaran Baru (${payload.tahun})`);
+      setIsModalOpen(false);
+      return;
+    }
+
     if (activeTab === 'users' && !payload.role) payload.role = 'user';
     saveToDb(activeTab, formData.id, payload, false, `Menyimpan data di Master Data (${activeTab})`);
     setIsModalOpen(false);
@@ -1082,6 +1295,8 @@ const MasterData = ({ activeTab }) => {
 
   const renderFullTable = () => {
     switch (activeTab) {
+      case 'backup_restore':
+        return <BackupRestorePanel />;
       case 'settings':
         return (
           <table className="w-full text-left border-collapse">
@@ -1094,7 +1309,12 @@ const MasterData = ({ activeTab }) => {
                 <th className="p-3 border-b text-center">Aksi</th>
             </tr></thead>
             <tbody>{sortedData.map(s => (
-                <tr key={s.id} className="border-b hover:bg-gray-50"><td className="p-3 font-semibold">{s.tahun}</td><td className="p-3 font-arabic" dir="rtl">{s.tahun_arab}</td><td className="p-3">{s.semester}</td><td className="p-3 font-arabic" dir="rtl">{s.semester_arab}</td><td className="p-3 text-center"><span className={`px-2 py-1 rounded text-xs font-medium ${s.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>{s.isActive ? 'Aktif' : 'Nonaktif'}</span></td><td className="p-3 text-center"><button onClick={() => handleOpenModal(s)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('settings', s.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td></tr>
+                <tr key={s.id} className="border-b hover:bg-gray-50"><td className="p-3 font-semibold">{s.tahun}</td><td className="p-3 font-arabic" dir="rtl">{s.tahun_arab}</td><td className="p-3">{s.semester}</td><td className="p-3 font-arabic" dir="rtl">{s.semester_arab}</td><td className="p-3 text-center">
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" className="sr-only peer" checked={s.isActive} onChange={(e) => saveToDb('settings', s.id, { ...s, isActive: e.target.checked }, true, `Mengubah status semester ${s.tahun} ${s.semester}`)} />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                    </label>
+                </td><td className="p-3 text-center"><button onClick={() => handleOpenModal(s)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('settings', s.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td></tr>
               ))}</tbody>
           </table>
         );
@@ -1316,23 +1536,29 @@ const MasterData = ({ activeTab }) => {
                     />
                 </div>
                 <input className="w-full p-2 border rounded text-right font-arabic" placeholder="Tahun Arab (السنة) - Terisi Otomatis" dir="rtl" value={formData.tahun_arab || ''} onChange={e => setFormData({...formData, tahun_arab: e.target.value})} />
-                <div>
-                    <select 
-                        className="w-full p-2 border rounded" 
-                        value={formData.semester || 'Ganjil'} 
-                        onChange={async (e) => {
-                            const semester = e.target.value;
-                            setFormData(prev => ({...prev, semester}));
-                            if (!semester) return;
-                            const translated = await translateToArabic(semester);
-                            setFormData(prev => ({...prev, semester_arab: translated || semester}));
-                        }}
-                    >
-                        <option value="Ganjil">Ganjil</option>
-                        <option value="Genap">Genap</option>
-                    </select>
-                </div>
-                <input className="w-full p-2 border rounded text-right font-arabic" placeholder="Semester Arab (الفصل) - Terisi Otomatis" dir="rtl" value={formData.semester_arab || ''} onChange={e => setFormData({...formData, semester_arab: e.target.value})} />
+                
+                {/* Sembunyikan field semester jika sedang membuat Tahun Ajaran Baru */}
+                {(editingItem && editingItem.tahun) && (
+                    <>
+                        <div>
+                            <select 
+                                className="w-full p-2 border rounded" 
+                                value={formData.semester || 'Ganjil'} 
+                                onChange={async (e) => {
+                                    const semester = e.target.value;
+                                    setFormData(prev => ({...prev, semester}));
+                                    if (!semester) return;
+                                    const translated = await translateToArabic(semester);
+                                    setFormData(prev => ({...prev, semester_arab: translated || semester}));
+                                }}
+                            >
+                                <option value="Ganjil">Ganjil</option>
+                                <option value="Genap">Genap</option>
+                            </select>
+                        </div>
+                        <input className="w-full p-2 border rounded text-right font-arabic" placeholder="Semester Arab (الفصل) - Terisi Otomatis" dir="rtl" value={formData.semester_arab || ''} onChange={e => setFormData({...formData, semester_arab: e.target.value})} />
+                    </>
+                )}
                 <label className="flex items-center gap-2"><input type="checkbox" checked={formData.isActive || false} onChange={e => setFormData({...formData, isActive: e.target.checked})} /> Jadikan Aktif</label>
                 <p className="text-[10px] text-gray-500 italic">*Kolom Arab akan otomatis terisi menggunakan Google Translate saat Anda selesai mengetik atau memilih.</p>
             </div>
@@ -1507,6 +1733,7 @@ const MasterData = ({ activeTab }) => {
         case 'students': return 'Data Santri';
         case 'fonts': return 'Pengaturan Font Kustom';
         case 'users': return 'Pengguna Sistem';
+        case 'backup_restore': return 'Backup & Restore';
         default: return activeTab;
     }
   }
@@ -1515,7 +1742,9 @@ const MasterData = ({ activeTab }) => {
     <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 flex flex-col h-[85vh]">
       <div className="mb-4 flex justify-between items-center shrink-0 border-b pb-4">
         <h3 className="text-xl font-bold text-gray-800 capitalize">Data {getTitle()}</h3>
-        <button onClick={() => handleOpenModal()} className="bg-emerald-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-emerald-700 shadow-sm transition"><Plus size={18} /> Tambah Data</button>
+        {activeTab !== 'backup_restore' && (
+          <button onClick={() => handleOpenModal()} className="bg-emerald-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-emerald-700 shadow-sm transition"><Plus size={18} /> Tambah Data</button>
+        )}
       </div>
       <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">{renderFullTable()}</div>
       
@@ -2033,7 +2262,7 @@ const LayoutBuilder = () => {
                 </div>
             </div>
             
-            <style dangerouslySetInnerHTML={{__html: `@import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&display=swap');`}} />
+            <style>{`@import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&display=swap');`}</style>
             <style>{`.custom-scrollbar::-webkit-scrollbar { width: 6px; } .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }`}</style>
         </div>
     );
@@ -2180,7 +2409,8 @@ const InputNilai = ({ activeInputTab }) => {
     const lastSavedGradesRef = useRef(null);
 
     const activeSetting = data.settings.find(s => s.isActive);
-    const studentsInClass = getStudentsInClass(data.students, data.classes, selectedClass);
+    const activeStudents = getStudentsForYear(data.studentSnapshots, activeSetting, data.students);
+    const studentsInClass = getStudentsInClass(activeStudents, data.classes, selectedClass);
     const subjectsInClass = useMemo(() => sortSubjectsByCategory(filterSubjectsByClass(data.subjects, selectedClass, data.classes), data.subjectCategories), [data.subjects, data.subjectCategories, selectedClass, data.classes]);
     const gradeDocId = getGradeDocId(selectedClass, data.classes, activeSetting, data.grades);
 
@@ -2637,8 +2867,9 @@ const CetakDokumen = ({ mode = 'raport' }) => {
     const [useKatrol, setUseKatrol] = useState(false);
     
     const activeSetting = data.settings.find(s => s.isActive) || {};
-    const studentsInClass = getStudentsInClass(data.students, data.classes, selectedClass);
-    const studentData = data.students.find(s => s.id === selectedStudent);
+    const activeStudents = getStudentsForYear(data.studentSnapshots, activeSetting, data.students);
+    const studentsInClass = getStudentsInClass(activeStudents, data.classes, selectedClass);
+    const studentData = activeStudents.find(s => s.id === selectedStudent);
     
     const layoutSettings = data.layouts.find(l => l.id === mode) || {};
     const activeLayout = layoutSettings.elements || [];
@@ -2737,7 +2968,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                     </div>
                 ) : <div className="flex items-center justify-center h-full text-gray-400 print:hidden">Pilih santri untuk melihat preview {mode}.</div>}
             </div>
-            <style dangerouslySetInnerHTML={{__html: `@import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&display=swap'); @media print { body * { visibility: hidden; } .print-container, .print-container * { visibility: visible; } .print-container { position: absolute; left: 0; top: 0; margin: 0; padding: 0; box-shadow: none; } @page { size: ${cssPageSize}; margin: 0; } }`}} />
+            <style>{`@import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&display=swap'); @media print { body * { visibility: hidden; } .print-container, .print-container * { visibility: visible; } .print-container { position: absolute; left: 0; top: 0; margin: 0; padding: 0; box-shadow: none; } @page { size: ${cssPageSize}; margin: 0; } }`}</style>
         </div>
     );
 };
@@ -2750,7 +2981,8 @@ const LeggerKelas = () => {
     const [selectedClass, setSelectedClass] = useState('');
     
     const activeSetting = data.settings.find(s => s.isActive) || {};
-    const students = useMemo(() => getStudentsInClass(data.students, data.classes, selectedClass), [data.students, data.classes, selectedClass]);
+    const activeStudents = useMemo(() => getStudentsForYear(data.studentSnapshots, activeSetting, data.students), [data.studentSnapshots, activeSetting, data.students]);
+    const students = useMemo(() => getStudentsInClass(activeStudents, data.classes, selectedClass), [activeStudents, data.classes, selectedClass]);
     const subjects = useMemo(() => sortSubjectsByCategory(filterSubjectsByClass(data.subjects, selectedClass, data.classes), data.subjectCategories), [data.subjects, data.subjectCategories, selectedClass, data.classes]);
     
     const gradeDocId = getGradeDocId(selectedClass, data.classes, activeSetting, data.grades);
@@ -2806,31 +3038,74 @@ const LeggerKelas = () => {
         r.sort((a, b) => b.avg - a.avg); return r;
     }, [students, subjects, grades, selectedClass]);
 
-    const exportCSV = () => {
+    const exportExcel = () => {
         const className = getClassNameFromValue(data.classes, selectedClass);
         addLog(`Mengekspor Legger Kelas ${className}`);
-        let csv = 'Peringkat,NIS,Nama Santri,';
-        subjects.forEach(s => csv += `${s.nameId},`);
-        csv += 'Total,Rata-rata,Predikat\n';
+        
+        const categoryHeaders = ['No.', 'NIS', 'Nama Santri'];
+        const headers = ['', '', ''];
+        
+        let currentColIndex = 3;
+        const merges = [
+            { s: { r: 0, c: 0 }, e: { r: 0, c: subjects.length + 5 } },
+            { s: { r: 1, c: 0 }, e: { r: 1, c: subjects.length + 5 } },
+            { s: { r: 3, c: 0 }, e: { r: 4, c: 0 } }, // Peringkat vertikal
+            { s: { r: 3, c: 1 }, e: { r: 4, c: 1 } }, // NIS vertikal
+            { s: { r: 3, c: 2 }, e: { r: 4, c: 2 } }  // Nama Santri vertikal
+        ];
 
+        Object.entries(groupBy(subjects, 'kategori')).forEach(([cat, subs]) => {
+            categoryHeaders.push(cat || 'Umum');
+            for (let i = 1; i < subs.length; i++) categoryHeaders.push('');
+            if (subs.length > 1) {
+                merges.push({ s: { r: 3, c: currentColIndex }, e: { r: 3, c: currentColIndex + subs.length - 1 } });
+            }
+            subs.forEach(s => headers.push(s.nameId));
+            currentColIndex += subs.length;
+        });
+
+        categoryHeaders.push('Total', 'Rata-rata', 'Predikat');
+        headers.push('', '', '');
+        
+        merges.push(
+            { s: { r: 3, c: currentColIndex }, e: { r: 4, c: currentColIndex } },
+            { s: { r: 3, c: currentColIndex + 1 }, e: { r: 4, c: currentColIndex + 1 } },
+            { s: { r: 3, c: currentColIndex + 2 }, e: { r: 4, c: currentColIndex + 2 } }
+        );
+        
+        const aoa = [
+            [`DATA NILAI LEGGER KELAS ${className.toUpperCase()}`],
+            [`Tahun Ajaran: ${activeSetting?.tahun || '-'} | Semester: ${activeSetting?.semester || '-'}`],
+            [],
+            categoryHeaders,
+            headers
+        ];
+        
         leggerData.forEach((row, idx) => {
-            let line = `${idx + 1},${row.nis},${row.nama},`;
+            const rowData = [idx + 1, row.nis || '', row.nama || ''];
             subjects.forEach(s => {
                 const raw = row.grades[s.id];
                 const value = formatSubjectGradeDisplay(raw);
-                const escapedValue = typeof value === 'string' ? `"${String(value).replace(/"/g, '""')}"` : String(value);
-                line += `${escapedValue},`;
+                rowData.push(value);
             });
-            line += `${row.total},${row.avg},${row.predikat}\n`;
-            csv += line;
+            rowData.push(row.total, row.avg, row.predikat);
+            aoa.push(rowData);
         });
 
-        const blob = new Blob([csv], { type: 'text/csv' });
+        const ws = XLSX.utils.aoa_to_sheet(aoa);
+        ws['!merges'] = merges;
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, `Legger ${className}`);
+        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([wbout], { type: 'application/octet-stream' });
+        
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `Legger_Kelas_${getClassNameFromValue(data.classes, selectedClass).replace(/\s+/g, '_')}.csv`;
+        a.download = `Legger_Kelas_${className.replace(/\s+/g, '_')}.xlsx`;
         a.click();
+        URL.revokeObjectURL(url);
     };
 
     return (
@@ -2839,7 +3114,7 @@ const LeggerKelas = () => {
                 <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2"><BookOpen /> Legger Kelas</h2>
                 <div className="flex gap-4">
                     <select className="p-2 border rounded-lg min-w-[150px]" value={selectedClass} onChange={e => setSelectedClass(e.target.value)}><option value="">-- Pilih Kelas --</option>{data.classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
-                    <button onClick={exportCSV} disabled={!selectedClass} className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 disabled:opacity-50"><Download size={18}/> Ekspor Excel</button>
+                    <button onClick={exportExcel} disabled={!selectedClass} className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 disabled:opacity-50"><Download size={18}/> Ekspor Excel</button>
                 </div>
             </div>
             {selectedClass ? (
@@ -2930,40 +3205,7 @@ const Dashboard = () => {
     };
   }, []);
 
-  // ==========================================
-  // PRELOAD COLLECTIONS BASED ON MENU
-  // ==========================================
-  useEffect(() => {
-    const preloadNeeded = () => {
-      const collections = [];
-      if (activeMenu === 'dashboard') collections.push('logs', 'subjects');
-      if (activeMenu === 'master_data' || masterDataSubItems.some(s => s.id === activeMenu)) {
-        collections.push('subjectCategories', 'masterSubjects', 'subjects', 'students', 'teachers', 'studentFields', 'presences', 'extracurriculars', 'characterTraits', 'fonts');
-      }
-      if (activeMenu === 'input_nilai' || inputNilaiSubItems.some(s => s.id === activeMenu)) {
-        collections.push('subjects', 'students', 'grades', 'presences', 'characterTraits', 'extracurriculars');
-      }
-      if (activeMenu === 'legger') collections.push('subjects', 'students', 'grades');
-      if (activeMenu === 'cetak_raport' || activeMenu === 'cetak_ijazah' || activeMenu === 'layout_builder') {
-        collections.push('subjects', 'students', 'grades', 'layouts', 'fonts');
-      }
-      return [...new Set(collections)];
-    };
 
-    const needed = preloadNeeded();
-    needed.forEach(col => {
-      if (!data[col] || data[col].length === 0) {
-        supabase.from(col).select('*').then(({ data: items }) => {
-          if (items) {
-            setData(prev => ({
-              ...prev,
-              [col]: items.map(item => ({ id: item.id, ...item.payload }))
-            }));
-          }
-        });
-      }
-    });
-  }, [activeMenu]);
 
   const masterDataSubItems = [
     { id: 'settings', label: 'Tahun Ajaran' }, 
@@ -2978,7 +3220,8 @@ const Dashboard = () => {
     { id: 'studentFields', label: 'Field Santri' }, 
     { id: 'students', label: 'Data Santri' },
     { id: 'fonts', label: 'Font Kustom' }, 
-    { id: 'users', label: 'Pengguna Sistem' }
+    { id: 'users', label: 'Pengguna Sistem' },
+    { id: 'backup_restore', label: 'Backup & Restore' }
   ];
 
   const inputNilaiSubItems = [
