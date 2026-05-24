@@ -282,18 +282,30 @@ const isSubjectVisibleInClass = (subject, selectedClass, classes = []) => {
   });
 };
 
-const sortSubjectsByCategory = (subjects, subjectCategories = []) => {
-  const categoryOrder = new Map(subjectCategories.map((cat, idx) => [normalizeValue(cat.name), idx]));
+const isReligiousCategory = (cat) => {
+    if (!cat) return false;
+    const n = normalizeValue(cat);
+    const keywords = ['syari', 'syaria', 'syariyy', 'syariyyah', 'syar\u0131', 'syariah', 'agama', 'keagamaan', 'relig', 'islam'];
+    return keywords.some(k => n.includes(k));
+};
 
-  return [...subjects].sort((a, b) => {
-    const aCategory = normalizeValue(a.kategori || '');
-    const bCategory = normalizeValue(b.kategori || '');
-    const aCatOrder = categoryOrder.has(aCategory) ? categoryOrder.get(aCategory) : Number.MAX_SAFE_INTEGER;
-    const bCatOrder = categoryOrder.has(bCategory) ? categoryOrder.get(bCategory) : Number.MAX_SAFE_INTEGER;
-    if (aCatOrder !== bCatOrder) return aCatOrder - bCatOrder;
-    if (aCategory !== bCategory) return aCategory.localeCompare(bCategory);
-    return normalizeValue(a.nameId || a.id).localeCompare(normalizeValue(b.nameId || b.id));
-  });
+const sortSubjectsByCategory = (subjects, subjectCategories = []) => {
+    const categoryOrder = new Map(subjectCategories.map((cat, idx) => [normalizeValue(cat.name), idx]));
+
+    return [...subjects].sort((a, b) => {
+        const aCategory = normalizeValue(a.kategori || '');
+        const bCategory = normalizeValue(b.kategori || '');
+
+        const aIsRel = isReligiousCategory(aCategory);
+        const bIsRel = isReligiousCategory(bCategory);
+        if (aIsRel !== bIsRel) return aIsRel ? -1 : 1;
+
+        const aCatOrder = categoryOrder.has(aCategory) ? categoryOrder.get(aCategory) : Number.MAX_SAFE_INTEGER;
+        const bCatOrder = categoryOrder.has(bCategory) ? categoryOrder.get(bCategory) : Number.MAX_SAFE_INTEGER;
+        if (aCatOrder !== bCatOrder) return aCatOrder - bCatOrder;
+        if (aCategory !== bCategory) return aCategory.localeCompare(bCategory);
+        return normalizeValue(a.nameId || a.id).localeCompare(normalizeValue(b.nameId || b.id));
+    });
 };
 
 const filterSubjectsByClass = (subjects, selectedClass, classes = []) => {
@@ -2250,7 +2262,12 @@ const InputNilai = ({ activeInputTab }) => {
         }
         if (activeInputTab === 'pelajaran') {
             const groupedSubjects = groupBy(subjectsInClass, 'kategori');
-            const orderedGroups = Object.entries(groupedSubjects);
+            const orderedGroups = Object.entries(groupedSubjects).sort(([aKey], [bKey]) => {
+                const aIs = isReligiousCategory(aKey);
+                const bIs = isReligiousCategory(bKey);
+                if (aIs !== bIs) return aIs ? -1 : 1;
+                return (aKey || '').localeCompare(bKey || '');
+            });
             return (
                 <table className="w-full text-left border-collapse whitespace-nowrap">
                     <thead className="sticky top-0 z-20">
