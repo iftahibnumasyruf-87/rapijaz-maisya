@@ -2356,6 +2356,7 @@ const LayoutBuilder = () => {
     const [past, setPast] = useState([]);
     const [future, setFuture] = useState([]);
     const [showToolbar, setShowToolbar] = useState(true);
+    const [showRuler, setShowRuler] = useState(true);
     const canvasRef = useRef(null);
 
     const baseWidth = pageDimensions[pageSize].width;
@@ -2789,6 +2790,9 @@ const LayoutBuilder = () => {
                     <button onClick={() => setShowToolbar(!showToolbar)} className="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 py-2 rounded-lg font-bold flex items-center justify-center gap-2 transition text-sm mt-2">
                         {showToolbar ? <EyeOff size={16}/> : <Eye size={16}/>} {showToolbar ? 'Sembunyikan Menu' : 'Tampilkan Menu'}
                     </button>
+                    <button onClick={() => setShowRuler(!showRuler)} className="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 py-2 rounded-lg font-bold flex items-center justify-center gap-2 transition text-sm">
+                        {showRuler ? <EyeOff size={16}/> : <Eye size={16}/>} {showRuler ? 'Sembunyikan Ruler' : 'Tampilkan Ruler'}
+                    </button>
                 </div>
             </div>
 
@@ -2825,37 +2829,59 @@ const LayoutBuilder = () => {
                     </div>
                 )}
 
-                <div className="relative" style={{ width: `${canvasWidth * zoom + 60}px`, height: `${canvasHeight * zoom + 60}px`, minWidth: `${canvasWidth * zoom + 60}px`, flexShrink: 0 }}>
+                <div className="relative" style={{ flexShrink: 0, width: `${canvasWidth * zoom + (showRuler ? 40 : 0)}px`, minWidth: `${canvasWidth * zoom + (showRuler ? 40 : 0)}px`, height: `${canvasHeight * zoom + (showRuler ? 28 : 0)}px` }}>
                     {/* Horizontal ruler in cm */}
-                    <div style={{ position: 'absolute', left: 40, top: 0, width: canvasWidth * zoom, height: 28, background: '#1e293b', borderRadius: '4px 4px 0 0', overflow: 'hidden' }}>
-                        <svg width={canvasWidth * zoom} height={28}>
+                    {showRuler && (
+                    <div style={{ position: 'absolute', left: 40, top: 0, width: canvasWidth * zoom, height: 28, background: '#334155', display: 'flex', alignItems: 'stretch' }}>
+                        <svg width={canvasWidth * zoom} height={28} style={{ display: 'block' }}>
+                            <rect x={0} y={0} width={canvasWidth * zoom} height={28} fill="#334155"/>
                             {Array.from({ length: Math.ceil(canvasWidth / PX_PER_CM) + 1 }, (_, i) => {
-                                const x = i * PX_PER_CM * zoom;
-                                return x <= canvasWidth * zoom ? (
+                                const x = Math.round(i * PX_PER_CM * zoom);
+                                if (x > canvasWidth * zoom) return null;
+                                return (
                                     <g key={i}>
-                                        <line x1={x} y1={16} x2={x} y2={28} stroke="#94a3b8" strokeWidth="1"/>
-                                        <text x={x + 2} y={13} fill="#cbd5e1" fontSize="9" fontFamily="monospace">{i}cm</text>
+                                        <line x1={x} y1={18} x2={x} y2={28} stroke="#94a3b8" strokeWidth="1"/>
+                                        {i > 0 && <text x={x + 3} y={14} fill="#e2e8f0" fontSize="10" fontFamily="Arial, sans-serif" fontWeight="500">{i}</text>}
+                                        {i === 0 && <text x={x + 3} y={14} fill="#94a3b8" fontSize="9" fontFamily="Arial, sans-serif">cm</text>}
                                     </g>
-                                ) : null;
+                                );
                             })}
                         </svg>
                     </div>
+                    )}
                     {/* Vertical ruler in cm */}
-                    <div style={{ position: 'absolute', left: 0, top: 28, width: 40, height: canvasHeight * zoom, background: '#1e293b', borderRadius: '4px 0 0 4px', overflow: 'hidden' }}>
-                        <svg width={40} height={canvasHeight * zoom}>
+                    {showRuler && (
+                    <div style={{ position: 'absolute', left: 0, top: 28, width: 40, height: canvasHeight * zoom, background: '#334155' }}>
+                        <svg width={40} height={canvasHeight * zoom} style={{ display: 'block' }}>
+                            <rect x={0} y={0} width={40} height={canvasHeight * zoom} fill="#334155"/>
                             {Array.from({ length: Math.ceil(canvasHeight / PX_PER_CM) + 1 }, (_, i) => {
-                                const y = i * PX_PER_CM * zoom;
-                                return y <= canvasHeight * zoom ? (
+                                const y = Math.round(i * PX_PER_CM * zoom);
+                                if (y > canvasHeight * zoom) return null;
+                                return (
                                     <g key={i}>
-                                        <line x1={28} y1={y} x2={40} y2={y} stroke="#94a3b8" strokeWidth="1"/>
-                                        <text x={2} y={y + 9} fill="#cbd5e1" fontSize="9" fontFamily="monospace" transform={`rotate(-90, 14, ${y})`} textAnchor="middle">{i}cm</text>
+                                        <line x1={30} y1={y} x2={40} y2={y} stroke="#94a3b8" strokeWidth="1"/>
+                                        {i > 0 && (
+                                            <text
+                                                x={20}
+                                                y={y - 3}
+                                                fill="#e2e8f0"
+                                                fontSize="10"
+                                                fontFamily="Arial, sans-serif"
+                                                fontWeight="500"
+                                                textAnchor="middle"
+                                                transform={`rotate(-90, 20, ${y - 3})`}
+                                            >{i}</text>
+                                        )}
                                     </g>
-                                ) : null;
+                                );
                             })}
                         </svg>
                     </div>
+                    )}
+                    {/* Corner box */}
+                    {showRuler && <div style={{ position: 'absolute', left: 0, top: 0, width: 40, height: 28, background: '#1e293b' }}/>}
                     {/* Canvas wrapper */}
-                    <div style={{ position: 'absolute', left: 40, top: 28, width: canvasWidth * zoom, height: canvasHeight * zoom }} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
+                    <div style={{ position: 'absolute', left: showRuler ? 40 : 0, top: showRuler ? 28 : 0, width: canvasWidth * zoom, height: canvasHeight * zoom }} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
                         {/* drag bars */}
                         <div onMouseDown={createHGuide} className="absolute top-[-20px] left-0 right-0 h-[20px] bg-slate-600 text-slate-300 text-xs flex justify-center items-center cursor-row-resize shadow-md hover:bg-slate-500 transition"><Ruler size={12} className="mr-2"/> Tarik Garis Horizontal</div>
                         <div onMouseDown={createVGuide} className="absolute left-[-20px] top-0 bottom-0 w-[20px] bg-slate-600 text-slate-300 text-xs flex flex-col justify-center items-center cursor-col-resize shadow-md hover:bg-slate-500 transition" style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}>Tarik Vertikal <Ruler size={12} className="mt-2"/></div>
