@@ -2562,11 +2562,14 @@ const LayoutBuilder = () => {
     const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
     const handleElementMouseDown = (e, el) => {
-        e.stopPropagation(); setSelectedElementId(el.id); setDraggingType('element'); setDragIndex(el.id);
-        const rect = e.target.getBoundingClientRect();
-        setDragOffset({ x: e.clientX - rect.left, y: e.clientY - rect.top });
-        setPast(p => [...p, elements]);
-        setFuture([]);
+        e.stopPropagation(); setSelectedElementId(el.id); 
+        if (!el.locked) {
+            setDraggingType('element'); setDragIndex(el.id);
+            const rect = e.target.getBoundingClientRect();
+            setDragOffset({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+            setPast(p => [...p, elements]);
+            setFuture([]);
+        }
     };
 
     const startDragGuide = (e, type, index) => { e.stopPropagation(); setDraggingType(`guide_${type}`); setDragIndex(index); };
@@ -2703,6 +2706,23 @@ const LayoutBuilder = () => {
                             ))}
                         </div>
                         )}
+
+                        <div className="mt-6 pt-4 border-t">
+                            <p className="text-[10px] font-bold text-gray-400 uppercase mb-2 tracking-wide">Daftar Lapisan (Layers)</p>
+                            <div className="space-y-1 max-h-[150px] overflow-y-auto custom-scrollbar">
+                                {elements.filter(el => (el.pageIndex || 0) === currentPage).map((el, i) => (
+                                    <button 
+                                        key={el.id} 
+                                        onClick={() => setSelectedElementId(el.id)} 
+                                        className={`w-full text-left px-2 py-1.5 rounded text-xs flex items-center justify-between transition ${selectedElementId === el.id ? 'bg-blue-100 text-blue-800 font-bold border border-blue-200' : 'hover:bg-gray-100 text-gray-700 border border-transparent'}`}
+                                    >
+                                        <span className="truncate w-[80%]">{el.type === 'image' ? (el.zIndex === 0 ? 'Gambar Watermark' : 'Gambar') : el.type === 'table_grades' ? 'Tabel Nilai' : (el.content || '').slice(0, 20) + ((el.content || '').length > 20 ? '...' : '')}</span>
+                                        {el.locked && <Lock size={12} className="text-yellow-600"/>}
+                                    </button>
+                                ))}
+                                {elements.filter(el => (el.pageIndex || 0) === currentPage).length === 0 && <p className="text-xs text-gray-400 italic">Belum ada elemen</p>}
+                            </div>
+                        </div>
                     </div>
 
                     {selectedElementId && activeEl && (
@@ -2711,7 +2731,16 @@ const LayoutBuilder = () => {
                                 Sedang Edit: {activeEl.type === 'table_grades' ? 'Tabel' : activeEl.type === 'image' ? 'Gambar' : 'Teks'}
                                 <button onClick={() => setSelectedElementId(null)} className="text-gray-400 hover:text-gray-700"><X size={14}/></button>
                             </p>
-                            
+
+                            {activeEl.locked ? (
+                                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-center space-y-3 mt-4">
+                                    <Lock size={24} className="mx-auto text-yellow-600"/>
+                                    <p className="text-sm font-bold text-yellow-800">Elemen Terkunci</p>
+                                    <p className="text-xs text-yellow-700">Buka kunci untuk menggeser atau mengubah isi elemen ini.</p>
+                                    <button onClick={() => updateElement(selectedElementId, { locked: false })} className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded font-bold text-xs transition w-full flex justify-center items-center gap-2"><Lock size={14}/> Buka Kunci</button>
+                                </div>
+                            ) : (
+                                <>
                             {activeEl.type === 'text' && (
                                 <textarea className="w-full p-2 border rounded text-sm focus:ring-2 outline-none min-h-[60px]" value={activeEl.content} onChange={e => updateElement(selectedElementId, { content: e.target.value })} />
                             )}
@@ -2877,9 +2906,12 @@ const LayoutBuilder = () => {
                             )}
 
                             <div className="flex gap-2 mt-4">
-                                <button onClick={() => duplicateElement(selectedElementId)} className="w-1/2 bg-blue-50 hover:bg-blue-100 text-blue-600 py-2 rounded text-sm font-bold flex justify-center items-center gap-2 transition"><Copy size={16}/> Duplikat</button>
-                                <button onClick={() => removeElement(selectedElementId)} className="w-1/2 bg-red-50 hover:bg-red-100 text-red-600 py-2 rounded text-sm font-bold flex justify-center items-center gap-2 transition"><Trash2 size={16}/> Hapus</button>
+                                <button onClick={() => {updateElement(selectedElementId, { locked: true }); setSelectedElementId(null);}} className="w-1/3 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 py-2 rounded text-[11px] font-bold flex justify-center items-center gap-1 transition" title="Kunci posisi agar tidak tergeser"><Lock size={14}/> Kunci</button>
+                                <button onClick={() => duplicateElement(selectedElementId)} className="w-1/3 bg-blue-50 hover:bg-blue-100 text-blue-600 py-2 rounded text-[11px] font-bold flex justify-center items-center gap-1 transition"><Copy size={14}/> Duplikat</button>
+                                <button onClick={() => removeElement(selectedElementId)} className="w-1/3 bg-red-50 hover:bg-red-100 text-red-600 py-2 rounded text-[11px] font-bold flex justify-center items-center gap-1 transition"><Trash2 size={14}/> Hapus</button>
                             </div>
+                                </>
+                            )}
                         </div>
                     )}
                 </div>
@@ -3030,7 +3062,8 @@ const LayoutBuilder = () => {
                                         position: 'absolute', left: `${el.x}px`, top: `${el.y}px`, fontSize: `${el.fontSize}px`, fontFamily: el.fontFamily || 'Arial, sans-serif', fontWeight: el.fontWeight,
                                         width: (el.type === 'table_grades' || el.type === 'image') ? `${el.width}px` : 'auto', height: el.type === 'image' ? `${el.height}px` : 'auto',
                                         cursor: isDraggingThis ? 'grabbing' : 'grab', outline: isSelected ? '2px dashed #059669' : 'none', padding: (el.type === 'image' || el.type === 'table_grades') ? '0' : '2px',
-                                        zIndex: isSelected ? 20 : (el.zIndex ?? 1), opacity: el.opacity ?? 1
+                                        zIndex: isSelected ? 20 : (el.zIndex ?? 1), opacity: el.opacity ?? 1,
+                                        pointerEvents: el.locked ? 'none' : 'auto'
                                     }}
                                     className={`hover:outline hover:outline-1 hover:outline-gray-400 ${el.type === 'table_grades' ? 'bg-white' : ''}`}
                                 >
