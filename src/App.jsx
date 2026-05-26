@@ -2358,6 +2358,7 @@ const LayoutBuilder = () => {
     const [showToolbar, setShowToolbar] = useState(true);
     const [showRuler, setShowRuler] = useState(true);
     const [showGuideBars, setShowGuideBars] = useState(true);
+    const [isBottomMenuExpanded, setIsBottomMenuExpanded] = useState(true);
     const canvasRef = useRef(null);
 
     const baseWidth = pageDimensions[pageSize].width;
@@ -2457,6 +2458,28 @@ const LayoutBuilder = () => {
         setFuture([]);
         setElements(elements.filter(el => el.id !== id));
         setSelectedElementId(null);
+    };
+
+    const duplicateElement = (id) => {
+        const elToDuplicate = elements.find(el => el.id === id);
+        if (!elToDuplicate) return;
+        
+        const newEl = {
+            ...elToDuplicate,
+            id: Date.now().toString(),
+            x: elToDuplicate.x + 20,
+            y: elToDuplicate.y + 20,
+        };
+        
+        if (newEl.type === 'table_grades' && newEl.columns) {
+            newEl.columns = JSON.parse(JSON.stringify(newEl.columns));
+            newEl.columns.forEach((col, idx) => col.id = Date.now().toString() + '_' + idx);
+        }
+        
+        setPast(p => [...p, elements]);
+        setFuture([]);
+        setElements([...elements, newEl]);
+        setSelectedElementId(newEl.id);
     };
 
     const undo = () => {
@@ -2818,23 +2841,41 @@ const LayoutBuilder = () => {
                                 </div>
                             )}
 
-                            <button onClick={() => removeElement(selectedElementId)} className="w-full bg-red-50 hover:bg-red-100 text-red-600 py-2 rounded text-sm font-bold flex justify-center items-center gap-2 mt-4 transition"><Trash2 size={16}/> Hapus Elemen</button>
+                            <div className="flex gap-2 mt-4">
+                                <button onClick={() => duplicateElement(selectedElementId)} className="w-1/2 bg-blue-50 hover:bg-blue-100 text-blue-600 py-2 rounded text-sm font-bold flex justify-center items-center gap-2 transition"><Copy size={16}/> Duplikat</button>
+                                <button onClick={() => removeElement(selectedElementId)} className="w-1/2 bg-red-50 hover:bg-red-100 text-red-600 py-2 rounded text-sm font-bold flex justify-center items-center gap-2 transition"><Trash2 size={16}/> Hapus</button>
+                            </div>
                         </div>
                     )}
                 </div>
                 
-                <div className="p-4 border-t bg-gray-50 space-y-2 shrink-0 z-10">
-                    <p className="text-[10px] text-gray-500 text-center leading-tight">Tarik garis gelap (Atas/Kiri kanvas) untuk Garis Bantu.</p>
-                    <button onClick={saveLayout} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition"><Save size={18}/> Simpan Layout</button>
-                    <button onClick={() => setShowToolbar(!showToolbar)} className="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 py-2 rounded-lg font-bold flex items-center justify-center gap-2 transition text-sm mt-2">
-                        {showToolbar ? <EyeOff size={16}/> : <Eye size={16}/>} {showToolbar ? 'Sembunyikan Menu' : 'Tampilkan Menu'}
+                <div className="border-t bg-gray-50 shrink-0 z-10 flex flex-col">
+                    <button 
+                        onClick={() => setIsBottomMenuExpanded(!isBottomMenuExpanded)} 
+                        className="w-full py-1.5 bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-gray-600 text-[10px] font-bold uppercase tracking-wide transition border-b"
+                        title={isBottomMenuExpanded ? 'Sembunyikan Opsi Tambahan' : 'Tampilkan Opsi Tambahan'}
+                    >
+                        {isBottomMenuExpanded ? <ChevronDown size={14} className="mr-1"/> : <ChevronDown size={14} className="mr-1 rotate-180"/>} 
+                        {isBottomMenuExpanded ? 'Sembunyikan Opsi' : 'Tampilkan Opsi Menu'}
                     </button>
-                    <button onClick={() => setShowRuler(!showRuler)} className="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 py-2 rounded-lg font-bold flex items-center justify-center gap-2 transition text-sm">
-                        {showRuler ? <EyeOff size={16}/> : <Eye size={16}/>} {showRuler ? 'Sembunyikan Ruler' : 'Tampilkan Ruler'}
-                    </button>
-                    <button onClick={() => setShowGuideBars(!showGuideBars)} className="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 py-2 rounded-lg font-bold flex items-center justify-center gap-2 transition text-sm">
-                        {showGuideBars ? <EyeOff size={16}/> : <Eye size={16}/>} {showGuideBars ? 'Sembunyikan Garis Bantu' : 'Tampilkan Garis Bantu'}
-                    </button>
+                    {isBottomMenuExpanded && (
+                        <div className="p-4 space-y-2">
+                            <p className="text-[10px] text-gray-500 text-center leading-tight">Tarik garis gelap (Atas/Kiri kanvas) untuk Garis Bantu. D-click garis untuk hapus.</p>
+                            <button onClick={saveLayout} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition"><Save size={18}/> Simpan Layout</button>
+                            <button onClick={() => setShowToolbar(!showToolbar)} className="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 py-2 rounded-lg font-bold flex items-center justify-center gap-2 transition text-sm mt-2">
+                                {showToolbar ? <EyeOff size={16}/> : <Eye size={16}/>} {showToolbar ? 'Sembunyikan Menu' : 'Tampilkan Menu'}
+                            </button>
+                            <button onClick={() => setShowRuler(!showRuler)} className="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 py-2 rounded-lg font-bold flex items-center justify-center gap-2 transition text-sm">
+                                {showRuler ? <EyeOff size={16}/> : <Eye size={16}/>} {showRuler ? 'Sembunyikan Ruler' : 'Tampilkan Ruler'}
+                            </button>
+                            <button onClick={() => setShowGuideBars(!showGuideBars)} className="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 py-2 rounded-lg font-bold flex items-center justify-center gap-2 transition text-sm">
+                                {showGuideBars ? <EyeOff size={16}/> : <Eye size={16}/>} {showGuideBars ? 'Sembunyikan Garis Bantu' : 'Tampilkan Garis Bantu'}
+                            </button>
+                            <button onClick={() => setGuides({ h: [], v: [] })} className="w-full bg-red-100 hover:bg-red-200 text-red-600 py-2 rounded-lg font-bold flex items-center justify-center gap-2 transition text-sm mt-2">
+                                <Trash2 size={16}/> Hapus Semua Garis
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -2941,8 +2982,8 @@ const LayoutBuilder = () => {
                         <div ref={canvasRef} style={{ width: canvasWidth, height: canvasHeight, transform: `scale(${zoom})`, transformOrigin: 'top left', position: 'absolute', top: 0, left: 0 }} className="bg-white shadow-xl">
                         <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'linear-gradient(#f0f0f0 1px, transparent 1px), linear-gradient(90deg, #f0f0f0 1px, transparent 1px)', backgroundSize: '20px 20px', opacity: 0.5 }}></div>
                         
-                        {guides.v.map((gx, i) => (<div key={`v-${i}`} onMouseDown={(e) => startDragGuide(e, 'v', i)} style={{ position: 'absolute', left: `${gx}px`, top: 0, bottom: 0, borderLeft: '1px dashed #0ea5e9', cursor: 'col-resize', zIndex: 10 }} className="hover:border-l-2 hover:border-blue-500 group"><div className="absolute -top-5 -left-4 bg-blue-500 text-white text-[10px] px-1 rounded opacity-0 group-hover:opacity-100">{Math.round(gx)}</div></div>))}
-                        {guides.h.map((gy, i) => (<div key={`h-${i}`} onMouseDown={(e) => startDragGuide(e, 'h', i)} style={{ position: 'absolute', top: `${gy}px`, left: 0, right: 0, borderTop: '1px dashed #0ea5e9', cursor: 'row-resize', zIndex: 10 }} className="hover:border-t-2 hover:border-blue-500 group"><div className="absolute -left-6 -top-2 bg-blue-500 text-white text-[10px] px-1 rounded opacity-0 group-hover:opacity-100">{Math.round(gy)}</div></div>))}
+                        {guides.v.map((gx, i) => (<div key={`v-${i}`} onMouseDown={(e) => startDragGuide(e, 'v', i)} onDoubleClick={() => setGuides(prev => ({...prev, v: prev.v.filter((_, idx) => idx !== i)}))} style={{ position: 'absolute', left: `${gx}px`, top: 0, bottom: 0, borderLeft: '1px dashed #0ea5e9', cursor: 'col-resize', zIndex: 10 }} className="hover:border-l-2 hover:border-blue-500 group"><div className="absolute -top-5 -left-4 bg-blue-500 text-white text-[10px] px-1 rounded opacity-0 group-hover:opacity-100">{Math.round(gx)}</div></div>))}
+                        {guides.h.map((gy, i) => (<div key={`h-${i}`} onMouseDown={(e) => startDragGuide(e, 'h', i)} onDoubleClick={() => setGuides(prev => ({...prev, h: prev.h.filter((_, idx) => idx !== i)}))} style={{ position: 'absolute', top: `${gy}px`, left: 0, right: 0, borderTop: '1px dashed #0ea5e9', cursor: 'row-resize', zIndex: 10 }} className="hover:border-t-2 hover:border-blue-500 group"><div className="absolute -left-6 -top-2 bg-blue-500 text-white text-[10px] px-1 rounded opacity-0 group-hover:opacity-100">{Math.round(gy)}</div></div>))}
 
                         {elements.filter(el => (el.pageIndex || 0) === currentPage).map(el => {
                             const isSelected = selectedElementId === el.id;
