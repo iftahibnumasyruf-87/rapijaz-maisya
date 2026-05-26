@@ -2357,6 +2357,7 @@ const LayoutBuilder = () => {
     const [future, setFuture] = useState([]);
     const [showToolbar, setShowToolbar] = useState(true);
     const [showRuler, setShowRuler] = useState(true);
+    const [showGuideBars, setShowGuideBars] = useState(true);
     const canvasRef = useRef(null);
 
     const baseWidth = pageDimensions[pageSize].width;
@@ -2793,6 +2794,9 @@ const LayoutBuilder = () => {
                     <button onClick={() => setShowRuler(!showRuler)} className="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 py-2 rounded-lg font-bold flex items-center justify-center gap-2 transition text-sm">
                         {showRuler ? <EyeOff size={16}/> : <Eye size={16}/>} {showRuler ? 'Sembunyikan Ruler' : 'Tampilkan Ruler'}
                     </button>
+                    <button onClick={() => setShowGuideBars(!showGuideBars)} className="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 py-2 rounded-lg font-bold flex items-center justify-center gap-2 transition text-sm">
+                        {showGuideBars ? <EyeOff size={16}/> : <Eye size={16}/>} {showGuideBars ? 'Sembunyikan Garis Bantu' : 'Tampilkan Garis Bantu'}
+                    </button>
                 </div>
             </div>
 
@@ -2882,9 +2886,20 @@ const LayoutBuilder = () => {
                     {showRuler && <div style={{ position: 'absolute', left: 0, top: 0, width: 40, height: 28, background: '#1e293b' }}/>}
                     {/* Canvas wrapper */}
                     <div style={{ position: 'absolute', left: showRuler ? 40 : 0, top: showRuler ? 28 : 0, width: canvasWidth * zoom, height: canvasHeight * zoom }} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
-                        {/* drag bars */}
-                        <div onMouseDown={createHGuide} className="absolute top-[-20px] left-0 right-0 h-[20px] bg-slate-600 text-slate-300 text-xs flex justify-center items-center cursor-row-resize shadow-md hover:bg-slate-500 transition"><Ruler size={12} className="mr-2"/> Tarik Garis Horizontal</div>
-                        <div onMouseDown={createVGuide} className="absolute left-[-20px] top-0 bottom-0 w-[20px] bg-slate-600 text-slate-300 text-xs flex flex-col justify-center items-center cursor-col-resize shadow-md hover:bg-slate-500 transition" style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}>Tarik Vertikal <Ruler size={12} className="mt-2"/></div>
+                        {/* drag bars — only show when ruler is hidden to avoid overlap */}
+                        {showGuideBars && !showRuler && (
+                            <div onMouseDown={createHGuide} title="Tarik ke bawah untuk buat garis bantu horizontal" className="absolute top-[-22px] left-0 right-0 h-[22px] bg-slate-700 text-slate-300 text-xs flex justify-center items-center cursor-row-resize hover:bg-slate-600 transition select-none rounded-t"><Ruler size={12} className="mr-1"/> Tarik Garis Horizontal</div>
+                        )}
+                        {showGuideBars && !showRuler && (
+                            <div onMouseDown={createVGuide} title="Tarik ke kanan untuk buat garis bantu vertikal" className="absolute left-[-22px] top-0 bottom-0 w-[22px] bg-slate-700 text-slate-300 text-xs flex flex-col justify-center items-center cursor-col-resize hover:bg-slate-600 transition select-none rounded-l" style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}>Tarik Vertikal <Ruler size={12} className="mt-1"/></div>
+                        )}
+                        {/* When ruler IS shown, embed drag triggers inside ruler areas */}
+                        {showGuideBars && showRuler && (
+                            <div onMouseDown={createHGuide} title="Klik ruler atas untuk buat garis bantu horizontal" className="absolute" style={{ left: 0, top: -28, right: 0, height: 28, cursor: 'row-resize', zIndex: 5 }}/>
+                        )}
+                        {showGuideBars && showRuler && (
+                            <div onMouseDown={createVGuide} title="Klik ruler kiri untuk buat garis bantu vertikal" className="absolute" style={{ left: -40, top: 0, bottom: 0, width: 40, cursor: 'col-resize', zIndex: 5 }}/>
+                        )}
                         <div ref={canvasRef} style={{ width: canvasWidth, height: canvasHeight, transform: `scale(${zoom})`, transformOrigin: 'top left', position: 'absolute', top: 0, left: 0 }} className="bg-white shadow-xl">
                         <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'linear-gradient(#f0f0f0 1px, transparent 1px), linear-gradient(90deg, #f0f0f0 1px, transparent 1px)', backgroundSize: '20px 20px', opacity: 0.5 }}></div>
                         
