@@ -7,7 +7,7 @@ import {
   Download, Upload, Share2, AlertCircle, CheckCircle, GripHorizontal,
   Type, User, CreditCard, Image as ImageIcon, Ruler, Type as TypeIcon, FileText,
   Columns, FileSignature, TrendingUp, UserX, Clock, Activity, ChevronDown,
-  ZoomIn, ZoomOut, Maximize, Minimize, ChevronUp, Lock, Database, Copy, Undo, Redo
+  ZoomIn, ZoomOut, Maximize, Minimize, ChevronUp, Lock, Database, Copy, Undo, Redo, Eye, EyeOff
 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 import * as XLSX from 'xlsx';
@@ -2764,12 +2764,15 @@ const LayoutBuilder = () => {
                 <div className="p-4 border-t bg-gray-50 space-y-2 shrink-0 z-10">
                     <p className="text-[10px] text-gray-500 text-center leading-tight">Tarik garis gelap (Atas/Kiri kanvas) untuk Garis Bantu.</p>
                     <button onClick={saveLayout} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition"><Save size={18}/> Simpan Layout</button>
+                    <button onClick={() => setShowToolbar(!showToolbar)} className="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 py-2 rounded-lg font-bold flex items-center justify-center gap-2 transition text-sm mt-2">
+                        {showToolbar ? <EyeOff size={16}/> : <Eye size={16}/>} {showToolbar ? 'Sembunyikan Menu' : 'Tampilkan Menu'}
+                    </button>
                 </div>
             </div>
 
             <div className="flex-1 bg-gray-200 rounded-xl overflow-auto p-4 flex flex-col items-center border border-gray-300 relative select-none custom-scrollbar">
                 
-                {showToolbar ? (
+                {showToolbar && (
                     <div className="bg-white px-4 py-2 rounded-full shadow-sm flex items-center gap-4 mb-4 shrink-0 border border-gray-200 sticky top-0 z-50">
                         <button onClick={() => setCurrentPage(Math.max(0, currentPage - 1))} disabled={currentPage === 0} className="text-gray-500 hover:text-emerald-600 disabled:opacity-30"><ChevronDown className="rotate-90" size={18}/></button>
                         <span className="text-sm font-bold text-gray-700">Halaman {currentPage + 1}</span>
@@ -2786,14 +2789,6 @@ const LayoutBuilder = () => {
                         <button onClick={() => setZoom(z => Math.max(0.3, z - 0.1))} className="text-gray-500 hover:text-emerald-600" title="Zoom Out"><ZoomOut size={18}/></button>
                         <span className="text-sm font-bold text-gray-700 w-10 text-center">{Math.round(zoom * 100)}%</span>
                         <button onClick={() => setZoom(z => Math.min(2, z + 0.1))} className="text-gray-500 hover:text-emerald-600" title="Zoom In"><ZoomIn size={18}/></button>
-                        <div className="w-px h-4 bg-gray-300"></div>
-                        <button onClick={() => setShowToolbar(false)} className="text-gray-400 hover:text-red-500 transition" title="Sembunyikan Menu"><ChevronUp size={18}/></button>
-                    </div>
-                ) : (
-                    <div className="sticky top-0 z-50 mb-4 flex justify-center shrink-0">
-                        <button onClick={() => setShowToolbar(true)} className="bg-white px-4 py-1.5 rounded-full shadow-md border border-gray-200 text-gray-500 hover:text-emerald-600 transition flex items-center gap-2 text-xs font-bold" title="Tampilkan Menu">
-                            <ChevronDown size={16}/> Tampilkan Menu
-                        </button>
                     </div>
                 )}
 
