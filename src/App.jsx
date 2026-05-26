@@ -2427,17 +2427,22 @@ const LayoutBuilder = () => {
     }, [activeLayout, data.layouts]);
 
     const addElement = (type, customKey = null) => {
-        let defaultContent = type === 'text' ? 'Teks Baru' : type === 'image' ? 'https://via.placeholder.com/150' : `{{${type}}}`;
+        const isWatermark = type === 'watermark';
+        const elementType = isWatermark ? 'image' : type;
+
+        let defaultContent = elementType === 'text' ? 'Teks Baru' : elementType === 'image' ? 'https://via.placeholder.com/150' : `{{${elementType}}}`;
         if (customKey) defaultContent = `{{${customKey}}}`;
 
         const newEl = {
             id: Date.now().toString(),
             pageIndex: currentPage,
-            type, content: defaultContent,
+            type: elementType, content: defaultContent,
             x: 50, y: 50, fontSize: 14, fontFamily: 'Arial, sans-serif', fontWeight: 'normal',
-            width: type === 'table_grades' ? 650 : type === 'image' ? 100 : 200,
-            height: type === 'table_grades' ? 300 : type === 'image' ? 100 : 30,
-            ...(type === 'table_grades' ? { columns: [...defaultTableColumns], groupByCategory: false, filterClass: '' } : {})
+            width: elementType === 'table_grades' ? 650 : elementType === 'image' ? (isWatermark ? 400 : 100) : 200,
+            height: elementType === 'table_grades' ? 300 : elementType === 'image' ? (isWatermark ? 400 : 100) : 30,
+            zIndex: isWatermark ? 0 : 1,
+            opacity: isWatermark ? 0.2 : 1,
+            ...(elementType === 'table_grades' ? { columns: [...defaultTableColumns], groupByCategory: false, filterClass: '' } : {})
         };
         setPast(p => [...p, elements]);
         setFuture([]);
@@ -2608,7 +2613,6 @@ const LayoutBuilder = () => {
     const handleImageUpload = (e) => {
         const file = e.target.files[0];
         if (file) {
-            if (file.size > 500000) return showNotification("Maksimal gambar 500kb.", "error");
             const reader = new FileReader();
             reader.onload = (ev) => updateElement(selectedElementId, { content: ev.target.result });
             reader.readAsDataURL(file);
@@ -2679,6 +2683,7 @@ const LayoutBuilder = () => {
                         <p className="text-xs font-semibold text-gray-500 uppercase sticky top-0 bg-white z-10 pb-1">Tambah Elemen</p>
                         <button onClick={() => addElement('text')} className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded text-sm flex items-center justify-center gap-2"><TypeIcon size={16}/> Teks Bebas</button>
                         <button onClick={() => addElement('image')} className="w-full bg-purple-50 hover:bg-purple-100 text-purple-700 py-2 rounded text-sm flex items-center justify-center gap-2"><ImageIcon size={16}/> Gambar (Logo/Stempel)</button>
+                        <button onClick={() => addElement('watermark')} className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 py-2 rounded text-sm flex items-center justify-center gap-2"><ImageIcon size={16}/> Gambar Watermark</button>
                         <button onClick={() => addElement('table_grades')} className="w-full bg-orange-50 hover:bg-orange-100 text-orange-700 py-2 rounded text-sm flex items-center justify-center gap-2"><Columns size={16}/> Tabel Nilai Dinamis</button>
                         
                         <p className="text-xs font-semibold text-gray-500 uppercase mt-4 mb-1">Variabel Santri & Wali</p>
@@ -2713,7 +2718,7 @@ const LayoutBuilder = () => {
 
                             {activeEl.type === 'image' && (
                                 <div className="bg-white p-2 rounded border space-y-2">
-                                    <label className="block text-xs font-semibold text-gray-700">Upload Ulang Gambar (Maks 500kb):</label>
+                                    <label className="block text-xs font-semibold text-gray-700">Upload Ulang Gambar:</label>
                                     <input type="file" accept="image/*" className="text-xs w-full" onChange={handleImageUpload} />
                                 </div>
                             )}
@@ -2725,6 +2730,10 @@ const LayoutBuilder = () => {
                             <div className="flex gap-2 mt-1">
                                 <button onClick={() => updateElement(selectedElementId, { x: (canvasWidth - (activeEl.width || 200)) / 2 })} className="w-1/2 bg-slate-100 hover:bg-slate-200 text-slate-600 py-1 rounded text-[10px] font-bold transition">Tengah Horiz</button>
                                 <button onClick={() => updateElement(selectedElementId, { y: (canvasHeight - (activeEl.height || 30)) / 2 })} className="w-1/2 bg-slate-100 hover:bg-slate-200 text-slate-600 py-1 rounded text-[10px] font-bold transition">Tengah Vertikal</button>
+                            </div>
+                            <div className="flex gap-2 mt-1">
+                                <div className="w-1/2"><label className="text-[10px] text-gray-500 font-bold uppercase" title="Semakin besar angkanya, semakin di atas. Z-Index 0 untuk Watermark.">Lapisan (Z-Index)</label><input type="number" className="w-full p-1.5 border rounded text-sm" value={activeEl.zIndex ?? 1} onChange={e => updateElement(selectedElementId, { zIndex: Number(e.target.value) })}/></div>
+                                <div className="w-1/2"><label className="text-[10px] text-gray-500 font-bold uppercase" title="0 = transparan penuh, 1 = tidak transparan">Transparansi (0-1)</label><input type="number" step="0.1" min="0" max="1" className="w-full p-1.5 border rounded text-sm" value={activeEl.opacity ?? 1} onChange={e => updateElement(selectedElementId, { opacity: Number(e.target.value) })}/></div>
                             </div>
 
                             {activeEl.type !== 'table_grades' && activeEl.type !== 'image' && (
@@ -2743,10 +2752,36 @@ const LayoutBuilder = () => {
                             )}
 
                             {(activeEl.type === 'image' || activeEl.type === 'table_grades') && (
-                                <div className="flex gap-2">
-                                    <div className="w-1/2"><label className="text-[10px] text-gray-500 font-bold uppercase">Lebar (Width)</label><input type="number" className="w-full p-1.5 border rounded text-sm" value={activeEl.width} onChange={e => updateElement(selectedElementId, { width: Number(e.target.value) })}/></div>
+                                <div className="flex flex-col gap-2">
+                                    <div className="flex gap-2">
+                                        <div className="w-1/2"><label className="text-[10px] text-gray-500 font-bold uppercase">Lebar (Width)</label><input type="number" className="w-full p-1.5 border rounded text-sm" value={activeEl.width} onChange={e => updateElement(selectedElementId, { width: Number(e.target.value) })}/></div>
+                                        {activeEl.type === 'image' && (
+                                            <div className="w-1/2"><label className="text-[10px] text-gray-500 font-bold uppercase">Tinggi (Height)</label><input type="number" className="w-full p-1.5 border rounded text-sm" value={activeEl.height} onChange={e => updateElement(selectedElementId, { height: Number(e.target.value) })}/></div>
+                                        )}
+                                    </div>
                                     {activeEl.type === 'image' && (
-                                        <div className="w-1/2"><label className="text-[10px] text-gray-500 font-bold uppercase">Tinggi (Height)</label><input type="number" className="w-full p-1.5 border rounded text-sm" value={activeEl.height} onChange={e => updateElement(selectedElementId, { height: Number(e.target.value) })}/></div>
+                                        <button onClick={() => updateElement(selectedElementId, { x: 0, y: 0, width: canvasWidth, height: canvasHeight })} className="w-full bg-indigo-50 hover:bg-indigo-100 text-indigo-700 py-1.5 rounded text-[10px] font-bold transition">Paskan ke Ukuran Halaman</button>
+                                    )}
+                                    {activeEl.type === 'image' && (
+                                        <div className="p-2 bg-gray-50 rounded border space-y-2">
+                                            <div>
+                                                <label className="text-[10px] text-gray-500 font-bold uppercase">Cara Tampil / Crop</label>
+                                                <select className="w-full p-1.5 border rounded text-sm outline-none bg-white mt-1" value={activeEl.objectFit || 'contain'} onChange={e => updateElement(selectedElementId, { objectFit: e.target.value })}>
+                                                    <option value="contain">Sesuai Asli (Utuh)</option>
+                                                    <option value="cover">Potong Kelebihan (Crop)</option>
+                                                    <option value="fill">Tarik Penuh (Stretch)</option>
+                                                </select>
+                                            </div>
+                                            {activeEl.objectFit === 'cover' && (
+                                                <div>
+                                                    <label className="text-[10px] text-gray-500 font-bold uppercase mb-1 block">Geser Posisi Potong</label>
+                                                    <div className="flex gap-2">
+                                                        <div className="w-1/2 flex flex-col"><span className="text-[9px] text-gray-400">Horizontal</span><input type="range" min="0" max="100" className="w-full" value={activeEl.objectPositionX !== undefined ? activeEl.objectPositionX : 50} onChange={e => updateElement(selectedElementId, { objectPositionX: Number(e.target.value) })} /></div>
+                                                        <div className="w-1/2 flex flex-col"><span className="text-[9px] text-gray-400">Vertikal</span><input type="range" min="0" max="100" className="w-full" value={activeEl.objectPositionY !== undefined ? activeEl.objectPositionY : 50} onChange={e => updateElement(selectedElementId, { objectPositionY: Number(e.target.value) })} /></div>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
                                     )}
                                 </div>
                             )}
@@ -2994,12 +3029,13 @@ const LayoutBuilder = () => {
                                     style={{
                                         position: 'absolute', left: `${el.x}px`, top: `${el.y}px`, fontSize: `${el.fontSize}px`, fontFamily: el.fontFamily || 'Arial, sans-serif', fontWeight: el.fontWeight,
                                         width: (el.type === 'table_grades' || el.type === 'image') ? `${el.width}px` : 'auto', height: el.type === 'image' ? `${el.height}px` : 'auto',
-                                        cursor: isDraggingThis ? 'grabbing' : 'grab', outline: isSelected ? '2px dashed #059669' : 'none', padding: (el.type === 'image' || el.type === 'table_grades') ? '0' : '2px', zIndex: isSelected ? 20 : 1
+                                        cursor: isDraggingThis ? 'grabbing' : 'grab', outline: isSelected ? '2px dashed #059669' : 'none', padding: (el.type === 'image' || el.type === 'table_grades') ? '0' : '2px',
+                                        zIndex: isSelected ? 20 : (el.zIndex ?? 1), opacity: el.opacity ?? 1
                                     }}
                                     className={`hover:outline hover:outline-1 hover:outline-gray-400 ${el.type === 'table_grades' ? 'bg-white' : ''}`}
                                 >
                                     {el.type === 'table_grades' ? renderDynamicTable(el, data, mockStudentGrades, mockClassAverages, false, 'raport', classesData) 
-                                    : el.type === 'image' ? <img src={el.content} style={{ width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none' }} alt="elemen" />
+                                    : el.type === 'image' ? <img src={el.content} style={{ width: '100%', height: '100%', objectFit: el.objectFit || 'contain', objectPosition: `${el.objectPositionX ?? 50}% ${el.objectPositionY ?? 50}%`, pointerEvents: 'none' }} alt="elemen" />
                                     : <div style={{ whiteSpace: 'pre-wrap' }}>{el.content}</div>}
                                     
                                     {isSelected && <div className="absolute -top-3 -left-3 bg-emerald-600 text-white rounded-full p-1 shadow z-30"><GripHorizontal size={12} /></div>}
