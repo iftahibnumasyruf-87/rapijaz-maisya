@@ -2641,6 +2641,10 @@ const LayoutBuilder = () => {
                                 <div className="w-1/2"><label className="text-[10px] text-gray-500 font-bold uppercase">Posisi X</label><input type="number" className="w-full p-1.5 border rounded text-sm" value={Math.round(activeEl.x || 0)} onChange={e => updateElement(selectedElementId, { x: Number(e.target.value) })}/></div>
                                 <div className="w-1/2"><label className="text-[10px] text-gray-500 font-bold uppercase">Posisi Y</label><input type="number" className="w-full p-1.5 border rounded text-sm" value={Math.round(activeEl.y || 0)} onChange={e => updateElement(selectedElementId, { y: Number(e.target.value) })}/></div>
                             </div>
+                            <div className="flex gap-2 mt-1">
+                                <button onClick={() => updateElement(selectedElementId, { x: (canvasWidth - (activeEl.width || 200)) / 2 })} className="w-1/2 bg-slate-100 hover:bg-slate-200 text-slate-600 py-1 rounded text-[10px] font-bold transition">Tengah Horiz</button>
+                                <button onClick={() => updateElement(selectedElementId, { y: (canvasHeight - (activeEl.height || 30)) / 2 })} className="w-1/2 bg-slate-100 hover:bg-slate-200 text-slate-600 py-1 rounded text-[10px] font-bold transition">Tengah Vertikal</button>
+                            </div>
 
                             {activeEl.type !== 'table_grades' && activeEl.type !== 'image' && (
                                 <>
