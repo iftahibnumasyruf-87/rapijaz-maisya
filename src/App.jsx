@@ -7,7 +7,8 @@ import {
   Download, Upload, Share2, AlertCircle, CheckCircle, GripHorizontal,
   Type, User, CreditCard, Image as ImageIcon, Ruler, Type as TypeIcon, FileText,
   Columns, FileSignature, TrendingUp, UserX, Clock, Activity, ChevronDown,
-  ZoomIn, ZoomOut, Maximize, Minimize, ChevronUp, Lock, Database, Copy, Undo, Redo, Eye, EyeOff
+  ZoomIn, ZoomOut, Maximize, Minimize, ChevronUp, Lock, Database, Copy, Undo, Redo, Eye, EyeOff,
+  AlignLeft, AlignCenter, AlignRight, AlignStartVertical, AlignCenterVertical, AlignEndVertical
 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 import * as XLSX from 'xlsx';
@@ -2554,6 +2555,21 @@ const LayoutBuilder = () => {
     };
 
     const activeEl = elements.find(e => e.id === selectedElementId);
+
+    const alignElement = (direction) => {
+        if (!activeEl) return;
+        const elW = activeEl.width || 200;
+        const elH = activeEl.height || 30;
+        const changes = {
+            'left':   { x: 0 },
+            'center': { x: (canvasWidth - elW) / 2 },
+            'right':  { x: canvasWidth - elW },
+            'top':    { y: 0 },
+            'middle': { y: (canvasHeight - elH) / 2 },
+            'bottom': { y: canvasHeight - elH },
+        }[direction];
+        if (changes) updateElement(selectedElementId, changes);
+    };
     
     // Memberikan objek dummy default agar renderDynamicTable tidak crash saat proses desain layout
     const mockStudentGrades = {};
@@ -2793,6 +2809,17 @@ const LayoutBuilder = () => {
                         <button onClick={() => setZoom(z => Math.max(0.3, z - 0.1))} className="text-gray-500 hover:text-emerald-600" title="Zoom Out"><ZoomOut size={18}/></button>
                         <span className="text-sm font-bold text-gray-700 w-10 text-center">{Math.round(zoom * 100)}%</span>
                         <button onClick={() => setZoom(z => Math.min(2, z + 0.1))} className="text-gray-500 hover:text-emerald-600" title="Zoom In"><ZoomIn size={18}/></button>
+                        {selectedElementId && activeEl && (<>
+                        <div className="w-px h-4 bg-gray-300"></div>
+                        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">Align</span>
+                        <button onClick={() => alignElement('left')}   title="Rata Kiri"            className="text-gray-500 hover:text-indigo-600 transition"><AlignLeft size={18}/></button>
+                        <button onClick={() => alignElement('center')} title="Tengah Horizontal"   className="text-gray-500 hover:text-indigo-600 transition"><AlignCenter size={18}/></button>
+                        <button onClick={() => alignElement('right')}  title="Rata Kanan"           className="text-gray-500 hover:text-indigo-600 transition"><AlignRight size={18}/></button>
+                        <div className="w-px h-4 bg-gray-300"></div>
+                        <button onClick={() => alignElement('top')}    title="Rata Atas"            className="text-gray-500 hover:text-indigo-600 transition"><AlignStartVertical size={18}/></button>
+                        <button onClick={() => alignElement('middle')} title="Tengah Vertikal"     className="text-gray-500 hover:text-indigo-600 transition"><AlignCenterVertical size={18}/></button>
+                        <button onClick={() => alignElement('bottom')} title="Rata Bawah"           className="text-gray-500 hover:text-indigo-600 transition"><AlignEndVertical size={18}/></button>
+                        </>)}
                     </div>
                 )}
 
