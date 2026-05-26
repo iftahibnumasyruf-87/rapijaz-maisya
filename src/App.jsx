@@ -2358,6 +2358,7 @@ const LayoutBuilder = () => {
     const [showToolbar, setShowToolbar] = useState(true);
     const [showRuler, setShowRuler] = useState(true);
     const [showGuideBars, setShowGuideBars] = useState(true);
+    const [showGrid, setShowGrid] = useState(true);
     const [isBottomMenuExpanded, setIsBottomMenuExpanded] = useState(true);
     const canvasRef = useRef(null);
 
@@ -2938,6 +2939,9 @@ const LayoutBuilder = () => {
                             <button onClick={() => setShowGuideBars(!showGuideBars)} className="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 py-2 rounded-lg font-bold flex items-center justify-center gap-2 transition text-sm">
                                 {showGuideBars ? <EyeOff size={16}/> : <Eye size={16}/>} {showGuideBars ? 'Sembunyikan Garis Bantu' : 'Tampilkan Garis Bantu'}
                             </button>
+                            <button onClick={() => setShowGrid(!showGrid)} className="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 py-2 rounded-lg font-bold flex items-center justify-center gap-2 transition text-sm">
+                                {showGrid ? <EyeOff size={16}/> : <Eye size={16}/>} {showGrid ? 'Sembunyikan Grid Latar' : 'Tampilkan Grid Latar'}
+                            </button>
                             <button onClick={() => setGuides({ h: [], v: [] })} className="w-full bg-red-100 hover:bg-red-200 text-red-600 py-2 rounded-lg font-bold flex items-center justify-center gap-2 transition text-sm mt-2">
                                 <Trash2 size={16}/> Hapus Semua Garis
                             </button>
@@ -3047,7 +3051,7 @@ const LayoutBuilder = () => {
                             <div onMouseDown={createVGuide} title="Klik ruler kiri untuk buat garis bantu vertikal" className="absolute" style={{ left: -40, top: 0, bottom: 0, width: 40, cursor: 'col-resize', zIndex: 5 }}/>
                         )}
                         <div ref={canvasRef} style={{ width: canvasWidth, height: canvasHeight, transform: `scale(${zoom})`, transformOrigin: 'top left', position: 'absolute', top: 0, left: 0 }} className="bg-white shadow-xl">
-                        <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'linear-gradient(#f0f0f0 1px, transparent 1px), linear-gradient(90deg, #f0f0f0 1px, transparent 1px)', backgroundSize: '20px 20px', opacity: 0.5 }}></div>
+                        {showGrid && <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'linear-gradient(#f0f0f0 1px, transparent 1px), linear-gradient(90deg, #f0f0f0 1px, transparent 1px)', backgroundSize: '20px 20px', opacity: 0.5 }}></div>}
                         
                         {guides.v.map((gx, i) => (<div key={`v-${i}`} onMouseDown={(e) => startDragGuide(e, 'v', i)} onDoubleClick={() => setGuides(prev => ({...prev, v: prev.v.filter((_, idx) => idx !== i)}))} style={{ position: 'absolute', left: `${gx}px`, top: 0, bottom: 0, borderLeft: '1px dashed #0ea5e9', cursor: 'col-resize', zIndex: 10 }} className="hover:border-l-2 hover:border-blue-500 group"><div className="absolute -top-5 -left-4 bg-blue-500 text-white text-[10px] px-1 rounded opacity-0 group-hover:opacity-100">{Math.round(gx)}</div></div>))}
                         {guides.h.map((gy, i) => (<div key={`h-${i}`} onMouseDown={(e) => startDragGuide(e, 'h', i)} onDoubleClick={() => setGuides(prev => ({...prev, h: prev.h.filter((_, idx) => idx !== i)}))} style={{ position: 'absolute', top: `${gy}px`, left: 0, right: 0, borderTop: '1px dashed #0ea5e9', cursor: 'row-resize', zIndex: 10 }} className="hover:border-t-2 hover:border-blue-500 group"><div className="absolute -left-6 -top-2 bg-blue-500 text-white text-[10px] px-1 rounded opacity-0 group-hover:opacity-100">{Math.round(gy)}</div></div>))}
