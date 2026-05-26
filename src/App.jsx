@@ -2352,6 +2352,7 @@ const LayoutBuilder = () => {
     const [zoom, setZoom] = useState(0.5);
     const [past, setPast] = useState([]);
     const [future, setFuture] = useState([]);
+    const [showToolbar, setShowToolbar] = useState(true);
     const canvasRef = useRef(null);
 
     const baseWidth = pageDimensions[pageSize].width;
@@ -2768,23 +2769,33 @@ const LayoutBuilder = () => {
 
             <div className="flex-1 bg-gray-200 rounded-xl overflow-auto p-4 flex flex-col items-center border border-gray-300 relative select-none custom-scrollbar">
                 
-                <div className="bg-white px-4 py-2 rounded-full shadow-sm flex items-center gap-4 mb-4 shrink-0 border border-gray-200 sticky top-0 z-50">
-                    <button onClick={() => setCurrentPage(Math.max(0, currentPage - 1))} disabled={currentPage === 0} className="text-gray-500 hover:text-emerald-600 disabled:opacity-30"><ChevronDown className="rotate-90" size={18}/></button>
-                    <span className="text-sm font-bold text-gray-700">Halaman {currentPage + 1}</span>
-                    <button onClick={() => setCurrentPage(currentPage + 1)} disabled={currentPage >= (elements.length > 0 ? Math.max(...elements.map(e => e.pageIndex || 0)) : 0) + 1} className="text-gray-500 hover:text-emerald-600 disabled:opacity-30"><ChevronDown className="-rotate-90" size={18}/></button>
-                    <div className="w-px h-4 bg-gray-300"></div>
-                    <button onClick={() => {
-                        const maxPage = elements.length > 0 ? Math.max(...elements.map(e => e.pageIndex || 0)) : 0;
-                        setCurrentPage(maxPage + 1);
-                    }} className="text-xs font-bold bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full hover:bg-emerald-100 transition mr-2">+ Halaman Baru</button>
-                    <div className="w-px h-4 bg-gray-300"></div>
-                    <button onClick={undo} disabled={past.length === 0} className="text-gray-500 hover:text-blue-600 disabled:opacity-30" title="Undo"><Undo size={18}/></button>
-                    <button onClick={redo} disabled={future.length === 0} className="text-gray-500 hover:text-blue-600 disabled:opacity-30" title="Redo"><Redo size={18}/></button>
-                    <div className="w-px h-4 bg-gray-300"></div>
-                    <button onClick={() => setZoom(z => Math.max(0.3, z - 0.1))} className="text-gray-500 hover:text-emerald-600" title="Zoom Out"><ZoomOut size={18}/></button>
-                    <span className="text-sm font-bold text-gray-700 w-10 text-center">{Math.round(zoom * 100)}%</span>
-                    <button onClick={() => setZoom(z => Math.min(2, z + 0.1))} className="text-gray-500 hover:text-emerald-600" title="Zoom In"><ZoomIn size={18}/></button>
-                </div>
+                {showToolbar ? (
+                    <div className="bg-white px-4 py-2 rounded-full shadow-sm flex items-center gap-4 mb-4 shrink-0 border border-gray-200 sticky top-0 z-50">
+                        <button onClick={() => setCurrentPage(Math.max(0, currentPage - 1))} disabled={currentPage === 0} className="text-gray-500 hover:text-emerald-600 disabled:opacity-30"><ChevronDown className="rotate-90" size={18}/></button>
+                        <span className="text-sm font-bold text-gray-700">Halaman {currentPage + 1}</span>
+                        <button onClick={() => setCurrentPage(currentPage + 1)} disabled={currentPage >= (elements.length > 0 ? Math.max(...elements.map(e => e.pageIndex || 0)) : 0) + 1} className="text-gray-500 hover:text-emerald-600 disabled:opacity-30"><ChevronDown className="-rotate-90" size={18}/></button>
+                        <div className="w-px h-4 bg-gray-300"></div>
+                        <button onClick={() => {
+                            const maxPage = elements.length > 0 ? Math.max(...elements.map(e => e.pageIndex || 0)) : 0;
+                            setCurrentPage(maxPage + 1);
+                        }} className="text-xs font-bold bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full hover:bg-emerald-100 transition mr-2">+ Halaman Baru</button>
+                        <div className="w-px h-4 bg-gray-300"></div>
+                        <button onClick={undo} disabled={past.length === 0} className="text-gray-500 hover:text-blue-600 disabled:opacity-30" title="Undo"><Undo size={18}/></button>
+                        <button onClick={redo} disabled={future.length === 0} className="text-gray-500 hover:text-blue-600 disabled:opacity-30" title="Redo"><Redo size={18}/></button>
+                        <div className="w-px h-4 bg-gray-300"></div>
+                        <button onClick={() => setZoom(z => Math.max(0.3, z - 0.1))} className="text-gray-500 hover:text-emerald-600" title="Zoom Out"><ZoomOut size={18}/></button>
+                        <span className="text-sm font-bold text-gray-700 w-10 text-center">{Math.round(zoom * 100)}%</span>
+                        <button onClick={() => setZoom(z => Math.min(2, z + 0.1))} className="text-gray-500 hover:text-emerald-600" title="Zoom In"><ZoomIn size={18}/></button>
+                        <div className="w-px h-4 bg-gray-300"></div>
+                        <button onClick={() => setShowToolbar(false)} className="text-gray-400 hover:text-red-500 transition" title="Sembunyikan Menu"><ChevronUp size={18}/></button>
+                    </div>
+                ) : (
+                    <div className="sticky top-0 z-50 mb-4 flex justify-center shrink-0">
+                        <button onClick={() => setShowToolbar(true)} className="bg-white px-4 py-1.5 rounded-full shadow-md border border-gray-200 text-gray-500 hover:text-emerald-600 transition flex items-center gap-2 text-xs font-bold" title="Tampilkan Menu">
+                            <ChevronDown size={16}/> Tampilkan Menu
+                        </button>
+                    </div>
+                )}
 
                 <div className="relative shrink-0" style={{ width: `${canvasWidth}px`, height: `${canvasHeight}px`, transform: `scale(${zoom})`, transformOrigin: 'top center' }} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
                     <div onMouseDown={createHGuide} className="absolute top-[-20px] left-0 right-0 h-[20px] bg-slate-800 text-slate-300 text-xs flex justify-center items-center cursor-row-resize shadow-md rounded-t-md hover:bg-slate-700 transition"><Ruler size={12} className="mr-2"/> Tarik Garis Horizontal</div>
