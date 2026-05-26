@@ -2562,15 +2562,19 @@ const LayoutBuilder = () => {
 
     const alignElement = (direction) => {
         if (!activeEl) return;
-        const elW = activeEl.width || 200;
-        const elH = activeEl.height || 30;
+        
+        // Coba dapatkan ukuran asli dari elemen di layar
+        const domNode = document.querySelector(`[data-element-id="${selectedElementId}"]`);
+        const actualWidth = domNode ? domNode.offsetWidth : (activeEl.width || 200);
+        const actualHeight = domNode ? domNode.offsetHeight : (activeEl.height || 30);
+
         const changes = {
             'left':   { x: 0 },
-            'center': { x: (canvasWidth - elW) / 2 },
-            'right':  { x: canvasWidth - elW },
+            'center': { x: (canvasWidth - actualWidth) / 2 },
+            'right':  { x: canvasWidth - actualWidth },
             'top':    { y: 0 },
-            'middle': { y: (canvasHeight - elH) / 2 },
-            'bottom': { y: canvasHeight - elH },
+            'middle': { y: (canvasHeight - actualHeight) / 2 },
+            'bottom': { y: canvasHeight - actualHeight },
         }[direction];
         if (changes) updateElement(selectedElementId, changes);
     };
@@ -2911,7 +2915,7 @@ const LayoutBuilder = () => {
                             const isDraggingThis = draggingType === 'element' && dragIndex === el.id;
                             
                             return (
-                                <div key={el.id} onMouseDown={(e) => handleElementMouseDown(e, el)}
+                                <div key={el.id} data-element-id={el.id} onMouseDown={(e) => handleElementMouseDown(e, el)}
                                     style={{
                                         position: 'absolute', left: `${el.x}px`, top: `${el.y}px`, fontSize: `${el.fontSize}px`, fontFamily: el.fontFamily || 'Arial, sans-serif', fontWeight: el.fontWeight,
                                         width: (el.type === 'table_grades' || el.type === 'image') ? `${el.width}px` : 'auto', height: el.type === 'image' ? `${el.height}px` : 'auto',
