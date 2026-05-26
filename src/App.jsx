@@ -2330,6 +2330,8 @@ const defaultFontOptions = [
 ];
 
 const pageDimensions = { 'A4': { width: 794, height: 1123 }, 'F4': { width: 816, height: 1248 } };
+// A4 at 96 DPI: 794px = 21cm, so 1cm = 794/21 ≈ 37.8px
+const PX_PER_CM = 794 / 21;
 const defaultTableColumns = [
     { id: 'c1', header: 'No', type: 'NO', width: 5 },
     { id: 'c2', header: 'Mata Pelajaran', type: 'MAPEL_ID', width: 35 },
@@ -2823,11 +2825,41 @@ const LayoutBuilder = () => {
                     </div>
                 )}
 
-                <div className="relative shrink-0" style={{ width: `${canvasWidth}px`, height: `${canvasHeight}px`, transform: `scale(${zoom})`, transformOrigin: 'top center' }} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
-                    <div onMouseDown={createHGuide} className="absolute top-[-20px] left-0 right-0 h-[20px] bg-slate-800 text-slate-300 text-xs flex justify-center items-center cursor-row-resize shadow-md rounded-t-md hover:bg-slate-700 transition"><Ruler size={12} className="mr-2"/> Tarik Garis Horizontal</div>
-                    <div onMouseDown={createVGuide} className="absolute left-[-20px] top-0 bottom-0 w-[20px] bg-slate-800 text-slate-300 text-xs flex flex-col justify-center items-center cursor-col-resize shadow-md rounded-l-md hover:bg-slate-700 transition" style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}>Tarik Vertikal <Ruler size={12} className="mt-2"/></div>
-
-                    <div ref={canvasRef} className="absolute inset-0 bg-white shadow-xl overflow-hidden">
+                <div className="relative" style={{ width: `${canvasWidth * zoom + 60}px`, height: `${canvasHeight * zoom + 60}px`, minWidth: `${canvasWidth * zoom + 60}px`, flexShrink: 0 }}>
+                    {/* Horizontal ruler in cm */}
+                    <div style={{ position: 'absolute', left: 40, top: 0, width: canvasWidth * zoom, height: 28, background: '#1e293b', borderRadius: '4px 4px 0 0', overflow: 'hidden' }}>
+                        <svg width={canvasWidth * zoom} height={28}>
+                            {Array.from({ length: Math.ceil(canvasWidth / PX_PER_CM) + 1 }, (_, i) => {
+                                const x = i * PX_PER_CM * zoom;
+                                return x <= canvasWidth * zoom ? (
+                                    <g key={i}>
+                                        <line x1={x} y1={16} x2={x} y2={28} stroke="#94a3b8" strokeWidth="1"/>
+                                        <text x={x + 2} y={13} fill="#cbd5e1" fontSize="9" fontFamily="monospace">{i}cm</text>
+                                    </g>
+                                ) : null;
+                            })}
+                        </svg>
+                    </div>
+                    {/* Vertical ruler in cm */}
+                    <div style={{ position: 'absolute', left: 0, top: 28, width: 40, height: canvasHeight * zoom, background: '#1e293b', borderRadius: '4px 0 0 4px', overflow: 'hidden' }}>
+                        <svg width={40} height={canvasHeight * zoom}>
+                            {Array.from({ length: Math.ceil(canvasHeight / PX_PER_CM) + 1 }, (_, i) => {
+                                const y = i * PX_PER_CM * zoom;
+                                return y <= canvasHeight * zoom ? (
+                                    <g key={i}>
+                                        <line x1={28} y1={y} x2={40} y2={y} stroke="#94a3b8" strokeWidth="1"/>
+                                        <text x={2} y={y + 9} fill="#cbd5e1" fontSize="9" fontFamily="monospace" transform={`rotate(-90, 14, ${y})`} textAnchor="middle">{i}cm</text>
+                                    </g>
+                                ) : null;
+                            })}
+                        </svg>
+                    </div>
+                    {/* Canvas wrapper */}
+                    <div style={{ position: 'absolute', left: 40, top: 28, width: canvasWidth * zoom, height: canvasHeight * zoom }} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
+                        {/* drag bars */}
+                        <div onMouseDown={createHGuide} className="absolute top-[-20px] left-0 right-0 h-[20px] bg-slate-600 text-slate-300 text-xs flex justify-center items-center cursor-row-resize shadow-md hover:bg-slate-500 transition"><Ruler size={12} className="mr-2"/> Tarik Garis Horizontal</div>
+                        <div onMouseDown={createVGuide} className="absolute left-[-20px] top-0 bottom-0 w-[20px] bg-slate-600 text-slate-300 text-xs flex flex-col justify-center items-center cursor-col-resize shadow-md hover:bg-slate-500 transition" style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}>Tarik Vertikal <Ruler size={12} className="mt-2"/></div>
+                        <div ref={canvasRef} style={{ width: canvasWidth, height: canvasHeight, transform: `scale(${zoom})`, transformOrigin: 'top left', position: 'absolute', top: 0, left: 0 }} className="bg-white shadow-xl">
                         <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'linear-gradient(#f0f0f0 1px, transparent 1px), linear-gradient(90deg, #f0f0f0 1px, transparent 1px)', backgroundSize: '20px 20px', opacity: 0.5 }}></div>
                         
                         {guides.v.map((gx, i) => (<div key={`v-${i}`} onMouseDown={(e) => startDragGuide(e, 'v', i)} style={{ position: 'absolute', left: `${gx}px`, top: 0, bottom: 0, borderLeft: '1px dashed #0ea5e9', cursor: 'col-resize', zIndex: 10 }} className="hover:border-l-2 hover:border-blue-500 group"><div className="absolute -top-5 -left-4 bg-blue-500 text-white text-[10px] px-1 rounded opacity-0 group-hover:opacity-100">{Math.round(gx)}</div></div>))}
@@ -2854,8 +2886,9 @@ const LayoutBuilder = () => {
                                 </div>
                             );
                         })}
-                    </div>
-                </div>
+                    </div>{/* end canvasRef */}
+                    </div>{/* end canvas position wrapper */}
+                </div>{/* end ruler+canvas outer */}
             </div>
             
             <style>{`@import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&display=swap');`}</style>
