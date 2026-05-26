@@ -2376,6 +2376,40 @@ const LayoutBuilder = () => {
     }, [data.fonts]);
 
     useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (!selectedElementId) return;
+            
+            // Jangan jalankan panah jika pengguna sedang mengetik di input/textarea
+            if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
+                return;
+            }
+
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                e.preventDefault();
+                
+                const activeEl = elements.find(el => el.id === selectedElementId);
+                if (!activeEl) return;
+                
+                // Tahan tombol Shift untuk menggeser lebih cepat (10 pixel), jika tidak 1 pixel
+                const step = e.shiftKey ? 10 : 1;
+                let newX = activeEl.x;
+                let newY = activeEl.y;
+                
+                if (e.key === 'ArrowUp') newY -= step;
+                if (e.key === 'ArrowDown') newY += step;
+                if (e.key === 'ArrowLeft') newX -= step;
+                if (e.key === 'ArrowRight') newX += step;
+                
+                // Gunakan false agar history undo tidak penuh dengan setiap pergeseran 1px
+                updateElement(selectedElementId, { x: newX, y: newY }, false);
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [selectedElementId, elements]);
+
+    useEffect(() => {
         const savedLayout = data.layouts.find(l => l.id === activeLayout);
         if (savedLayout) {
             setElements(savedLayout.elements || []);
