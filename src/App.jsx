@@ -7,7 +7,7 @@ import {
   Download, Upload, Share2, AlertCircle, CheckCircle, GripHorizontal,
   Type, User, CreditCard, Image as ImageIcon, Ruler, Type as TypeIcon, FileText,
   Columns, FileSignature, TrendingUp, UserX, Clock, Activity, ChevronDown,
-  ZoomIn, ZoomOut, Maximize, Minimize, ChevronUp, Lock, Database
+  ZoomIn, ZoomOut, Maximize, Minimize, ChevronUp, Lock, Database, Copy, Undo, Redo
 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 import * as XLSX from 'xlsx';
@@ -145,6 +145,19 @@ const migrateLegacyData = async (newData) => {
 
   let didMigrate = false;
 
+  const colsToMigrateTahun = ['classes', 'subjectCategories', 'masterSubjects'];
+  for (const col of colsToMigrateTahun) {
+    if (Array.isArray(newData[col])) {
+      for (const item of newData[col]) {
+        if (!item.tahun || !item.semester) {
+          const payload = { ...item, tahun: activeSetting.tahun, semester: activeSetting.semester };
+          delete payload.id;
+          const success = await upsertPayload(col, item.id, payload);
+          if (success) didMigrate = true;
+        }
+      }
+    }
+  }
   if (Array.isArray(newData.students)) {
     for (const student of newData.students) {
       const normalizedId = getClassIdFromValue(newData.classes, student.kelas);
@@ -336,7 +349,7 @@ const AppProvider = ({ children }) => {
   const currentUserRef = useRef(null);
   
   // Kolom yang terisolasi per semester (bukan data master global)
-  const SEMESTER_SPECIFIC_COLS = ['students', 'subjects', 'teachers', 'extracurriculars', 'presences', 'characterTraits'];
+  const SEMESTER_SPECIFIC_COLS = ['students', 'subjects', 'teachers', 'extracurriculars', 'presences', 'characterTraits', 'classes', 'subjectCategories', 'masterSubjects'];
 
   const [allData, setAllData] = useState({
     settings: [], users: [], subjectCategories: [], masterSubjects: [], subjects: [], classes: [], students: [], teachers: [], 
@@ -353,7 +366,8 @@ const AppProvider = ({ children }) => {
     const filtered = { ...allData };
     for (const col of SEMESTER_SPECIFIC_COLS) {
       filtered[col] = allData[col].filter(item => {
-        if (!item.tahun) return true; // Legacy data: tampilkan di semua semester
+        // Agar penambahan tahun ajaran baru datanya selalu baru/kosong,
+        // kita hapus fallback yang menampilkan legacy data di semua semester.
         return item.tahun === activeSetting.tahun && item.semester === activeSetting.semester;
       });
     }
@@ -922,6 +936,7 @@ const BackupRestorePanel = () => {
     const [isCopyModalOpen, setIsCopyModalOpen] = useState(false);
     const [sourceSemesterId, setSourceSemesterId] = useState('');
     const [selectedCopyTargets, setSelectedCopyTargets] = useState([]);
+    const [progressText, setProgressText] = useState('');
     
     const snapshotId = activeSetting ? `${(activeSetting.tahun || '').replace(/\//g, '-')}_${activeSetting.semester || '1'}` : null;
     const currentSnapshot = data.studentSnapshots.find(s => s.id === snapshotId);
@@ -934,7 +949,16 @@ const BackupRestorePanel = () => {
         if (!confirm(`Simpan/Update Snapshot Santri untuk Tahun ${activeSetting.tahun} Semester ${activeSetting.semester}?`)) return;
         
         setIsProcessing(true);
+        setProgressText('Mengecek database...');
         try {
+            const { error: checkErr } = await supabase.from('studentSnapshots').select('id').limit(1);
+            if (checkErr && checkErr.code === 'PGRST205') {
+                 alert('GAGAL: Tabel "studentSnapshots" belum dibuat di database Supabase Anda.\n\nSilakan buka dashboard Supabase, buat tabel baru bernama "studentSnapshots", lalu tambahkan kolom: "id" (text/varchar, jadikan Primary Key) dan "payload" (jsonb).');
+                 setIsProcessing(false);
+                 return;
+            }
+
+            setProgressText('Menyimpan Snapshot...');
             const payload = {
                 tahun: activeSetting.tahun,
                 semester: activeSetting.semester,
@@ -948,32 +972,46 @@ const BackupRestorePanel = () => {
             showNotification('Gagal menyimpan snapshot', 'error');
         }
         setIsProcessing(false);
+        setProgressText('');
     };
 
-    const handleBackupExcel = () => {
+    const handleBackupExcel = async () => {
         if (!activeSetting || !activeSetting.tahun) {
             showNotification('Aktifkan Tahun Ajaran terlebih dahulu untuk mem-backup data!', 'error');
             return;
         }
 
+        setIsProcessing(true);
+        setProgressText('Mempersiapkan data backup...');
+        
         try {
+            await new Promise(r => setTimeout(r, 100)); // Biarkan UI merender overlay
+
             const wb = XLSX.utils.book_new();
             const collections = ['settings', 'users', 'subjectCategories', 'masterSubjects', 'subjects', 'classes', 'students', 'teachers', 'grades', 'layouts', 'fonts', 'studentFields', 'presences', 'extracurriculars', 'characterTraits', 'studentSnapshots'];
             
-            collections.forEach(col => {
+            for (const col of collections) {
+                setProgressText(`Menyiapkan data: ${col}...`);
+                await new Promise(r => setTimeout(r, 10)); 
+
                 if (data[col] && data[col].length > 0) {
                     let filteredData = data[col];
-                    // Hanya backup data yang sesuai dengan Tahun Ajaran yang aktif untuk koleksi transaksi/tahunan
                     if (['settings', 'grades', 'studentSnapshots'].includes(col)) {
                         filteredData = data[col].filter(item => item.tahun === activeSetting.tahun);
                     }
                     
-                    if (filteredData.length === 0) return;
+                    if (filteredData.length === 0) continue;
 
                     const flatData = filteredData.map(item => {
                         let newItem = {};
                         for (const key in item) {
-                            if (typeof item[key] === 'object' && item[key] !== null) {
+                            if (key === 'kelas' && data.classes && (col === 'students' || col === 'subjects')) {
+                                if (Array.isArray(item[key])) {
+                                    newItem[key] = item[key].map(k => getClassNameFromValue(data.classes, k) || k).join(', ');
+                                } else {
+                                    newItem[key] = getClassNameFromValue(data.classes, item[key]) || item[key];
+                                }
+                            } else if (typeof item[key] === 'object' && item[key] !== null) {
                                 newItem[key] = JSON.stringify(item[key]);
                             } else {
                                 newItem[key] = item[key];
@@ -984,7 +1022,10 @@ const BackupRestorePanel = () => {
                     const ws = XLSX.utils.json_to_sheet(flatData);
                     XLSX.utils.book_append_sheet(wb, ws, col);
                 }
-            });
+            }
+
+            setProgressText('Membuat file Excel...');
+            await new Promise(r => setTimeout(r, 50));
 
             const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
             const blob = new Blob([wbout], { type: 'application/octet-stream' });
@@ -996,15 +1037,25 @@ const BackupRestorePanel = () => {
             a.download = `backup_rapijaz_${tahunStr}_${semesterStr}.xlsx`;
             a.click();
             URL.revokeObjectURL(url);
+
+            showNotification('Proses Backup Selesai!', 'success');
+            alert('Proses Backup Berhasil!\n\nFile Excel telah diunduh ke perangkat Anda.');
         } catch (e) {
             console.error(e);
             showNotification('Gagal membuat file Excel', 'error');
+            alert('Proses Backup Gagal!\n\nPastikan data Anda tidak ada yang korup.');
+        } finally {
+            setIsProcessing(false);
+            setProgressText('');
         }
     };
 
     const handleRestoreExcel = (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
+        
+        setIsProcessing(true);
+        setProgressText('Membaca file Excel...');
         
         const reader = new FileReader();
         reader.onload = async (event) => {
@@ -1016,12 +1067,23 @@ const BackupRestorePanel = () => {
                 workbook.SheetNames.forEach(sheetName => {
                     const worksheet = workbook.Sheets[sheetName];
                     const rawData = XLSX.utils.sheet_to_json(worksheet);
-                    importedData[sheetName] = rawData.map(item => {
+                    importedData[sheetName] = rawData;
+                });
+                
+                workbook.SheetNames.forEach(sheetName => {
+                    importedData[sheetName] = importedData[sheetName].map(item => {
                         let parsedItem = {};
                         for (const key in item) {
-                            if (typeof item[key] === 'string' && (item[key].startsWith('{') || item[key].startsWith('['))) {
+                            if (key === 'kelas' && (sheetName === 'students' || sheetName === 'subjects')) {
+                                const classList = importedData.classes || data.classes || [];
+                                if (typeof item[key] === 'string' && item[key].includes(',')) {
+                                    parsedItem[key] = item[key].split(',').map(k => getClassIdFromValue(classList, k.trim()) || k.trim());
+                                } else {
+                                    parsedItem[key] = getClassIdFromValue(classList, item[key]) || item[key];
+                                }
+                            } else if (typeof item[key] === 'string' && (item[key].startsWith('{') || item[key].startsWith('['))) {
                                 try { parsedItem[key] = JSON.parse(item[key]); }
-                                catch (e) { parsedItem[key] = item[key]; }
+                                catch (err) { parsedItem[key] = item[key]; }
                             } else {
                                 parsedItem[key] = item[key];
                             }
@@ -1038,25 +1100,46 @@ const BackupRestorePanel = () => {
                 const currentTahunSet = new Set(data.settings.map(s => String(s.tahun).trim()));
                 const importedTahunSet = new Set(importedData.settings.map(s => String(s.tahun).trim()));
                 
+                let existingTahunWithData = [];
                 for (let tahun of importedTahunSet) {
                     if (currentTahunSet.has(tahun)) {
-                        throw new Error(`Tahun Ajaran "${tahun}" dari file backup sudah ada di sistem. Restore dibatalkan untuk mencegah tertimpanya data.`);
+                        let hasData = false;
+                        const collectionsToCheck = ['students', 'subjects', 'teachers', 'grades', 'extracurriculars', 'presences', 'characterTraits'];
+                        for (const col of collectionsToCheck) {
+                            if (allData[col] && allData[col].some(item => item.tahun === tahun)) {
+                                hasData = true;
+                                break;
+                            }
+                        }
+                        if (hasData) {
+                            existingTahunWithData.push(tahun);
+                        }
                     }
                 }
 
-                if (!confirm('Tahun ajaran dari backup belum ada di sistem. Anda yakin ingin merestore data ini? (Aman: Data hanya akan ditambahkan)')) {
+                if (existingTahunWithData.length > 0) {
+                    alert(`Tahun Ajaran ${existingTahunWithData.join(', ')} sudah ada di sistem dan sudah memiliki data. Restore dibatalkan untuk mencegah tertimpanya data. Anda hanya bisa me-restore ke Tahun Ajaran yang masih kosong.`);
                     e.target.value = '';
+                    setIsProcessing(false);
+                    setProgressText('');
+                    return;
+                }
+
+                if (!confirm('Anda yakin ingin merestore data ini? (Aman: Data akan ditambahkan ke tahun ajaran yang masih kosong)')) {
+                    e.target.value = '';
+                    setIsProcessing(false);
+                    setProgressText('');
                     return;
                 }
                 
-                setIsProcessing(true);
-                showNotification('Memulai proses restore data, mohon tunggu...', 'info');
+                setProgressText('Memulai proses restore ke database...');
                 
                 const collections = ['settings', 'users', 'subjectCategories', 'masterSubjects', 'subjects', 'classes', 'students', 'teachers', 'grades', 'layouts', 'fonts', 'studentFields', 'presences', 'extracurriculars', 'characterTraits', 'studentSnapshots'];
                 
                 let count = 0;
                 for (const col of collections) {
                     if (Array.isArray(importedData[col])) {
+                         setProgressText(`Me-restore data: ${col}...`);
                          for (const item of importedData[col]) {
                              const { id, ...payload } = item;
                              if (id) {
@@ -1067,15 +1150,25 @@ const BackupRestorePanel = () => {
                          }
                     }
                 }
+                
+                setProgressText('Restore selesai. Memuat ulang...');
                 showNotification(`Restore selesai (${count} data dipulihkan)! Halaman akan dimuat ulang.`);
-                setTimeout(() => window.location.reload(), 2000);
+                alert(`Proses Restore Berhasil!\n\nSebanyak ${count} data telah berhasil dimasukkan. Sistem akan dimuat ulang.`);
+                setTimeout(() => window.location.reload(), 1500);
             } catch (err) {
                 console.error(err);
                 showNotification('Gagal memulihkan backup: ' + err.message, 'error');
+                alert(`Proses Restore Gagal!\n\nError: ${err.message}`);
                 setIsProcessing(false);
+                setProgressText('');
             }
             e.target.value = '';
         };
+        reader.onerror = () => {
+             alert('Gagal membaca file backup!');
+             setIsProcessing(false);
+             setProgressText('');
+        }
         reader.readAsArrayBuffer(file);
     };
 
@@ -1089,6 +1182,9 @@ const BackupRestorePanel = () => {
         extracurriculars: 'Ekstrakurikuler',
         presences: 'Aspek Presensi',
         characterTraits: 'Aspek Karakter',
+        classes: 'Daftar Kelas',
+        subjectCategories: 'Kategori Pelajaran',
+        masterSubjects: 'Daftar Pelajaran Utama',
     };
 
     const toggleCopyTarget = (col) => {
@@ -1268,18 +1364,34 @@ const BackupRestorePanel = () => {
                     </div>
                 </div>
             </div>
+
+            {/* OVERLAY LOADING */}
+            {isProcessing && (
+                <div className="fixed inset-0 bg-gray-900/80 backdrop-blur-sm z-[9999] flex flex-col items-center justify-center pointer-events-auto">
+                    <div className="bg-white p-8 rounded-2xl shadow-2xl flex flex-col items-center max-w-sm w-full mx-4 text-center">
+                        <div className="animate-spin rounded-full h-16 w-16 border-4 border-emerald-100 border-b-emerald-600 mb-6"></div>
+                        <h3 className="text-xl font-bold text-gray-800 mb-2">Sistem Terkunci sementara</h3>
+                        <p className="text-emerald-600 font-medium">{progressText || 'Memproses permintaan Anda...'}</p>
+                        <p className="text-sm text-gray-400 mt-4">Mohon jangan tutup halaman ini selama proses berlangsung.</p>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
 
 const MasterData = ({ activeTab }) => {
-  const { data, saveToDb, deleteFromDb, showNotification } = useContext(AppContext);
+  const { data, allData, saveToDb, deleteFromDb, showNotification } = useContext(AppContext);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [formData, setFormData] = useState({});
   const [isAutoSaving, setIsAutoSaving] = useState(false);
     const [autoSaveEnabled, setAutoSaveEnabled] = useState(false);
     const [hideInactive, setHideInactive] = useState(false);
+    const [isBulkProcessing, setIsBulkProcessing] = useState(false);
+    const [bulkProgressText, setBulkProgressText] = useState('');
+    const [bulkProgressCurrent, setBulkProgressCurrent] = useState(0);
+    const [bulkProgressTotal, setBulkProgressTotal] = useState(0);
 
   // Default pengurutan tabel berdasarkan menu (alfabetis secara bawaan)
   const getDefaultSortKey = (tab) => {
@@ -1327,8 +1439,8 @@ const MasterData = ({ activeTab }) => {
               if (bValue === undefined || bValue === null) bValue = '';
               
               if (activeTab === 'subjects' && sortConfig.key === 'kelas') {
-                  aValue = getSubjectClassLabel(a, data.classes);
-                  bValue = getSubjectClassLabel(b, data.classes);
+                  aValue = getSubjectClassLabel(a, allData?.classes || data.classes);
+                  bValue = getSubjectClassLabel(b, allData?.classes || data.classes);
               }
 
               if (typeof aValue === 'string' && typeof bValue === 'string') {
@@ -1358,7 +1470,7 @@ const MasterData = ({ activeTab }) => {
       let currentKelas = null;
       let classIndex = 0;
       sortedData.forEach(sub => {
-          const kelasLabel = getSubjectClassLabel(sub, data.classes);
+          const kelasLabel = getSubjectClassLabel(sub, allData?.classes || data.classes);
           if (kelasLabel !== currentKelas) {
               currentKelas = kelasLabel;
               classIndex = 0;
@@ -1497,17 +1609,24 @@ const MasterData = ({ activeTab }) => {
     const handleImportExcel = async (e, type) => {
         const file = e.target.files[0];
         if (!file) return;
+        e.target.value = '';
+        setIsBulkProcessing(true);
+        setBulkProgressText('Membaca file Excel...');
+        setBulkProgressCurrent(0);
+        setBulkProgressTotal(0);
         try {
+            await new Promise(r => setTimeout(r, 80));
             const dataBuf = await file.arrayBuffer();
             const workbook = XLSX.read(dataBuf, { type: 'array' });
             const sheetName = workbook.SheetNames[0];
             const sheet = workbook.Sheets[sheetName];
             const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+            const total = rows.length;
+            setBulkProgressTotal(total);
             let count = 0;
             for (let i = 0; i < rows.length; i++) {
                 const row = rows[i];
                 const item = {};
-                // Normalisasi kunci umum ke field yang dipakai aplikasi
                 Object.keys(row).forEach(k => {
                     const key = k.toString().trim().toLowerCase();
                     const val = row[k];
@@ -1518,20 +1637,61 @@ const MasterData = ({ activeTab }) => {
                     else item[key] = val;
                 });
                 item.id = Date.now().toString() + i;
-                // Simpan (silent)
-                // await memastikan urutan pengiriman ke DB sehingga tidak melebihi batas antrian
-                // namun kita jalankan secara serial untuk kesederhanaan
-                // Jika ada banyak data, pengguna disarankan memecah file.
+                setBulkProgressText(`Mengimpor santri: ${item.nama || `Data ke-${i+1}`}`);
+                setBulkProgressCurrent(i + 1);
                 // eslint-disable-next-line no-await-in-loop
                 await saveToDb(type, item.id, item, true);
                 count++;
             }
+            setBulkProgressText('Selesai!');
             showNotification(`${count} data berhasil diimpor dari Excel!`);
         } catch (err) {
             console.error(err);
             showNotification('Gagal memproses file Excel. Pastikan format benar.', 'error');
+        } finally {
+            setIsBulkProcessing(false);
+            setBulkProgressText('');
+            setBulkProgressCurrent(0);
+            setBulkProgressTotal(0);
         }
     };
+
+  const handleDeleteAllStudents = async () => {
+    const total = data.students?.length || 0;
+    if (total === 0) {
+      showNotification('Tidak ada data santri untuk dihapus.', 'error');
+      return;
+    }
+    const firstConfirm = confirm(`⚠️ PERINGATAN!\n\nAnda akan menghapus SEMUA ${total} data santri secara permanen.\n\nApakah Anda yakin ingin melanjutkan?`);
+    if (!firstConfirm) return;
+    const secondConfirm = confirm(`🚨 KONFIRMASI AKHIR\n\nTindakan ini TIDAK BISA dibatalkan. Seluruh ${total} data santri akan hilang selamanya.\n\nKetuk OK untuk menghapus semua data santri sekarang.`);
+    if (!secondConfirm) return;
+    setIsBulkProcessing(true);
+    setBulkProgressTotal(total);
+    setBulkProgressCurrent(0);
+    setBulkProgressText('Memulai penghapusan...');
+    await new Promise(r => setTimeout(r, 80));
+    try {
+      const students = [...data.students];
+      for (let i = 0; i < students.length; i++) {
+        const st = students[i];
+        setBulkProgressText(`Menghapus: ${st.nama || `Santri ke-${i+1}`}`);
+        setBulkProgressCurrent(i + 1);
+        // eslint-disable-next-line no-await-in-loop
+        await deleteFromDb('students', st.id);
+      }
+      setBulkProgressText('Selesai!');
+      showNotification(`Berhasil menghapus semua ${total} data santri.`);
+    } catch (err) {
+      console.error(err);
+      showNotification('Gagal menghapus semua data santri: ' + err.message, 'error');
+    } finally {
+      setIsBulkProcessing(false);
+      setBulkProgressText('');
+      setBulkProgressCurrent(0);
+      setBulkProgressTotal(0);
+    }
+  };
 
   const renderFullTable = () => {
     switch (activeTab) {
@@ -1640,7 +1800,7 @@ const MasterData = ({ activeTab }) => {
                   return (
                       <tr key={sub.id} className="border-b hover:bg-gray-50">
                           <td className="p-3 text-center font-semibold text-gray-700">{row.number}</td>
-                          <td className="p-3 text-center font-semibold text-gray-800">{getSubjectClassLabel(sub, data.classes) || 'Semua'}</td>
+                          <td className="p-3 text-center font-semibold text-gray-800">{getSubjectClassLabel(sub, allData?.classes || data.classes) || 'Semua'}</td>
                           <td className="p-3"><div className="text-xs text-emerald-700 font-bold">{sub.kategori || '-'}</div></td>
                           <td className="p-3 font-semibold">{sub.nameId}</td>
                           <td className="p-3 text-right font-arabic" dir="rtl">{sub.nameAr}</td>
@@ -1710,12 +1870,19 @@ const MasterData = ({ activeTab }) => {
         );
             case 'students':
                 return (
-                        <div>
-                            <div className="mb-4 flex gap-2">
-                                <button onClick={() => generateExcelTemplate('students')} className="bg-emerald-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-emerald-700 shadow-sm"><Download size={16}/> Download Template Excel</button>
-                                <label className="bg-emerald-100 text-emerald-700 px-4 py-2 rounded-lg cursor-pointer flex items-center gap-2 hover:bg-emerald-200">
+                        <div className="relative">
+                            <div className="mb-4 flex flex-wrap gap-2 items-center">
+                                <button disabled={isBulkProcessing} onClick={() => generateExcelTemplate('students')} className="bg-emerald-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-emerald-700 shadow-sm disabled:opacity-50"><Download size={16}/> Download Template Excel</button>
+                                <label className={`bg-emerald-100 text-emerald-700 px-4 py-2 rounded-lg cursor-pointer flex items-center gap-2 hover:bg-emerald-200 ${isBulkProcessing ? 'opacity-50 pointer-events-none' : ''}`}>
                                     <Upload size={18} /> Impor Excel <input type="file" accept=".xlsx,.xls" className="hidden" onChange={(e) => handleImportExcel(e, 'students')} />
                                 </label>
+                                <button
+                                    onClick={handleDeleteAllStudents}
+                                    disabled={isBulkProcessing}
+                                    className="ml-auto bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm transition font-semibold disabled:opacity-50"
+                                >
+                                    <Trash2 size={16}/> Hapus Semua Santri ({data.students?.length || 0})
+                                </button>
                             </div>
                             <table className="w-full text-left border-collapse">
                 <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm">
@@ -1725,8 +1892,34 @@ const MasterData = ({ activeTab }) => {
                     <SortableHeader label="Kelas" sortKey="kelas" />
                     <th className="p-3 border-b text-center">Aksi</th>
                 </tr></thead>
-                <tbody>{sortedData.map(st => (<tr key={st.id} className="border-b hover:bg-gray-50"><td className="p-3">{st.nis}</td><td className="p-3 font-semibold">{st.nama}</td><td className="p-3 font-arabic" dir="rtl">{st.nama_arab}</td><td className="p-3">{getClassNameFromValue(data.classes, st.kelas)}</td><td className="p-3 text-center"><button onClick={() => handleOpenModal(st)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('students', st.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td></tr>))}</tbody>
+                <tbody>{sortedData.map(st => (<tr key={st.id} className="border-b hover:bg-gray-50"><td className="p-3">{st.nis}</td><td className="p-3 font-semibold">{st.nama}</td><td className="p-3 font-arabic" dir="rtl">{st.nama_arab}</td><td className="p-3">{getClassNameFromValue(allData?.classes || data.classes, st.kelas)}</td><td className="p-3 text-center"><button onClick={() => handleOpenModal(st)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('students', st.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td></tr>))}</tbody>
               </table>
+
+              {/* OVERLAY PROGRESS SANTRI */}
+              {isBulkProcessing && (
+                <div className="fixed inset-0 bg-gray-900/80 backdrop-blur-sm z-[9999] flex flex-col items-center justify-center pointer-events-auto">
+                  <div className="bg-white p-8 rounded-2xl shadow-2xl flex flex-col items-center w-full max-w-md mx-4 text-center">
+                    <div className="animate-spin rounded-full h-14 w-14 border-4 border-emerald-100 border-b-emerald-600 mb-5"></div>
+                    <h3 className="text-lg font-bold text-gray-800 mb-1">Sistem Terkunci Sementara</h3>
+                    <p className="text-emerald-600 font-medium text-sm mb-4">{bulkProgressText}</p>
+                    {bulkProgressTotal > 0 && (
+                      <div className="w-full">
+                        <div className="flex justify-between text-xs text-gray-500 mb-1">
+                          <span>{bulkProgressCurrent} dari {bulkProgressTotal}</span>
+                          <span>{Math.round((bulkProgressCurrent / bulkProgressTotal) * 100)}%</span>
+                        </div>
+                        <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
+                          <div
+                            className="bg-emerald-500 h-3 rounded-full transition-all duration-300"
+                            style={{ width: `${Math.round((bulkProgressCurrent / bulkProgressTotal) * 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                    <p className="text-xs text-gray-400 mt-4">Mohon jangan tutup halaman ini selama proses berlangsung.</p>
+                  </div>
+                </div>
+              )}
             </div>
         );
       case 'studentFields':
@@ -2030,7 +2223,7 @@ const groupBy = (array, key) => array.reduce((result, item) => {
     return result;
 }, {});
 
-const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatrol = false, mode = 'raport') => {
+const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatrol = false, mode = 'raport', classesData = []) => {
     const columns = el.columns || [];
     if(columns.length === 0) return <div className="p-4 border bg-red-50 text-red-500 text-xs">Tabel belum dikonfigurasi. Silakan edit kolom di panel kiri.</div>;
 
@@ -2087,7 +2280,10 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
         });
     };
 
-    const subjectsToRender = mode === 'ijazah' ? data.subjects.filter(s => s.isIjazah) : data.subjects;
+    const baseSubjects = mode === 'ijazah' ? data.subjects.filter(s => s.isIjazah) : data.subjects;
+    const subjectsToRender = el.filterClass
+        ? filterSubjectsByClass(baseSubjects, el.filterClass, classesData.length ? classesData : data.classes || [])
+        : baseSubjects;
 
     if (el.groupByCategory) {
         const grouped = groupBy(subjectsToRender, 'kategori');
@@ -2142,7 +2338,8 @@ const defaultTableColumns = [
 ];
 
 const LayoutBuilder = () => {
-    const { data, saveToDb, deleteFromDb, showNotification } = useContext(AppContext);
+    const { data, allData, saveToDb, deleteFromDb, showNotification } = useContext(AppContext);
+    const classesData = allData?.classes || data.classes || [];
     const [activeLayout, setActiveLayout] = useState('raport');
     const [elements, setElements] = useState([]);
     const [newLayoutName, setNewLayoutName] = useState('');
@@ -2150,10 +2347,17 @@ const LayoutBuilder = () => {
     const [pageSize, setPageSize] = useState('A4');
     const [guides, setGuides] = useState({ h: [], v: [] });
     const [selectedElementId, setSelectedElementId] = useState(null);
+    const [currentPage, setCurrentPage] = useState(0);
+    const [orientation, setOrientation] = useState('portrait');
+    const [zoom, setZoom] = useState(0.5);
+    const [past, setPast] = useState([]);
+    const [future, setFuture] = useState([]);
     const canvasRef = useRef(null);
 
-    const canvasWidth = pageDimensions[pageSize].width;
-    const canvasHeight = pageDimensions[pageSize].height;
+    const baseWidth = pageDimensions[pageSize].width;
+    const baseHeight = pageDimensions[pageSize].height;
+    const canvasWidth = orientation === 'landscape' ? baseHeight : baseWidth;
+    const canvasHeight = orientation === 'landscape' ? baseWidth : baseHeight;
     
     const allFonts = useMemo(() => [...defaultFontOptions, ...(data.fonts || [])], [data.fonts]);
 
@@ -2170,11 +2374,15 @@ const LayoutBuilder = () => {
         if (savedLayout) {
             setElements(savedLayout.elements || []);
             setPageSize(savedLayout.pageSize || 'A4');
+            setOrientation(savedLayout.orientation || 'portrait');
             setGuides(savedLayout.guides || { h: [], v: [] });
         } else {
-            setElements([]); setPageSize('A4'); setGuides({ h: [], v: [] });
+            setElements([]); setPageSize('A4'); setOrientation('portrait'); setGuides({ h: [], v: [] });
         }
+        setPast([]);
+        setFuture([]);
         setSelectedElementId(null);
+        setCurrentPage(0);
     }, [activeLayout, data.layouts]);
 
     const addElement = (type, customKey = null) => {
@@ -2183,19 +2391,53 @@ const LayoutBuilder = () => {
 
         const newEl = {
             id: Date.now().toString(),
+            pageIndex: currentPage,
             type, content: defaultContent,
             x: 50, y: 50, fontSize: 14, fontFamily: 'Arial, sans-serif', fontWeight: 'normal',
             width: type === 'table_grades' ? 650 : type === 'image' ? 100 : 200,
             height: type === 'table_grades' ? 300 : type === 'image' ? 100 : 30,
-            ...(type === 'table_grades' ? { columns: [...defaultTableColumns], groupByCategory: false } : {})
+            ...(type === 'table_grades' ? { columns: [...defaultTableColumns], groupByCategory: false, filterClass: '' } : {})
         };
+        setPast(p => [...p, elements]);
+        setFuture([]);
         setElements([...elements, newEl]);
         setSelectedElementId(newEl.id);
     };
 
-    const updateElement = (id, changes) => setElements(elements.map(el => el.id === id ? { ...el, ...changes } : el));
-    const removeElement = (id) => { setElements(elements.filter(el => el.id !== id)); setSelectedElementId(null); };
-    const saveLayout = () => saveToDb('layouts', activeLayout, { name: activeLayout, elements, pageSize, guides }, false, `Menyimpan desain layout ${activeLayout}`);
+    const updateElement = (id, changes, commit = true) => {
+        if (commit) {
+            setPast(p => [...p, elements]);
+            setFuture([]);
+        }
+        setElements(elements.map(el => el.id === id ? { ...el, ...changes } : el));
+    };
+
+    const removeElement = (id) => {
+        setPast(p => [...p, elements]);
+        setFuture([]);
+        setElements(elements.filter(el => el.id !== id));
+        setSelectedElementId(null);
+    };
+
+    const undo = () => {
+        if (past.length === 0) return;
+        const previous = past[past.length - 1];
+        setPast(past.slice(0, past.length - 1));
+        setFuture([elements, ...future]);
+        setElements(previous);
+        setSelectedElementId(null);
+    };
+
+    const redo = () => {
+        if (future.length === 0) return;
+        const next = future[0];
+        setFuture(future.slice(1));
+        setPast([...past, elements]);
+        setElements(next);
+        setSelectedElementId(null);
+    };
+
+    const saveLayout = () => saveToDb('layouts', activeLayout, { name: activeLayout, elements, pageSize, orientation, guides }, false, `Menyimpan desain layout ${activeLayout}`);
 
     const createNewLayout = () => {
         if (!newLayoutName.trim()) {
@@ -2207,7 +2449,7 @@ const LayoutBuilder = () => {
             showNotification('Layout dengan nama ini sudah ada', 'error');
             return;
         }
-        saveToDb('layouts', layoutId, { name: newLayoutName, elements: [], pageSize: 'A4', guides: { v: [], h: [] } }, false, `Membuat layout baru: ${newLayoutName}`);
+        saveToDb('layouts', layoutId, { name: newLayoutName, elements: [], pageSize: 'A4', orientation: 'portrait', guides: { v: [], h: [] } }, false, `Membuat layout baru: ${newLayoutName}`);
         setNewLayoutName('');
         setShowNewLayoutForm(false);
         setActiveLayout(layoutId);
@@ -2222,6 +2464,30 @@ const LayoutBuilder = () => {
         }
     };
 
+    const duplicateLayout = () => {
+        const source = data.layouts.find(l => l.id === activeLayout);
+        if (!source) return;
+        const sourceName = source.name || activeLayout;
+        const newName = `Salinan - ${sourceName}`;
+        const newId = `salinan_${activeLayout}_${Date.now()}`;
+        if (data.layouts.some(l => l.id === newId)) {
+            showNotification('Gagal menduplikat layout, coba lagi.', 'error');
+            return;
+        }
+        const clonedElements = JSON.parse(JSON.stringify(source.elements || []));
+        // Assign new IDs to cloned elements to avoid conflicts
+        clonedElements.forEach(el => { el.id = `${el.id}_copy_${Date.now()}`; });
+        saveToDb('layouts', newId, {
+            name: newName,
+            elements: clonedElements,
+            pageSize: source.pageSize || 'A4',
+            orientation: source.orientation || 'portrait',
+            guides: JSON.parse(JSON.stringify(source.guides || { h: [], v: [] }))
+        }, false, `Menduplikat layout: ${sourceName}`);
+        setActiveLayout(newId);
+        showNotification(`Layout "${newName}" berhasil dibuat!`, 'success');
+    };
+
     // Drag Logic
     const [draggingType, setDraggingType] = useState(null);
     const [dragIndex, setDragIndex] = useState(null);
@@ -2231,6 +2497,8 @@ const LayoutBuilder = () => {
         e.stopPropagation(); setSelectedElementId(el.id); setDraggingType('element'); setDragIndex(el.id);
         const rect = e.target.getBoundingClientRect();
         setDragOffset({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+        setPast(p => [...p, elements]);
+        setFuture([]);
     };
 
     const startDragGuide = (e, type, index) => { e.stopPropagation(); setDraggingType(`guide_${type}`); setDragIndex(index); };
@@ -2256,7 +2524,7 @@ const LayoutBuilder = () => {
             const snapThreshold = 10; 
             guides.v.forEach(gx => { if (Math.abs(newX - gx) < snapThreshold) newX = gx; });
             guides.h.forEach(gy => { if (Math.abs(newY - gy) < snapThreshold) newY = gy; });
-            updateElement(dragIndex, { x: newX, y: newY });
+            updateElement(dragIndex, { x: newX, y: newY }, false);
         } else if (draggingType === 'guide_v') {
             const newGuides = { ...guides }; newGuides.v[dragIndex] = rawX; setGuides(newGuides);
         } else if (draggingType === 'guide_h') {
@@ -2303,11 +2571,17 @@ const LayoutBuilder = () => {
                             {data.layouts && data.layouts.map(l => <option key={l.id} value={l.id}>{l.name || l.id}</option>)}
                         </select>
                         <button onClick={() => setShowNewLayoutForm(!showNewLayoutForm)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 rounded-lg text-sm font-bold transition" title="Tambah layout baru"><Plus size={16}/></button>
+                        <button onClick={duplicateLayout} className="bg-blue-500 hover:bg-blue-600 text-white px-3 rounded-lg text-sm font-bold transition" title="Duplikat layout ini"><Copy size={16}/></button>
                         {data.layouts && data.layouts.length > 1 && <button onClick={() => deleteLayout(activeLayout)} className="bg-red-500 hover:bg-red-600 text-white px-3 rounded-lg text-sm font-bold transition" title="Hapus layout"><Trash2 size={16}/></button>}
                     </div>
-                    <select className="w-full p-2 border rounded-lg bg-white text-sm font-bold text-blue-800" value={pageSize} onChange={e => setPageSize(e.target.value)}>
-                        <option value="A4">Size: A4</option><option value="F4">Size: F4</option>
-                    </select>
+                    <div className="flex gap-2">
+                        <select className="w-1/2 p-2 border rounded-lg bg-white text-sm font-bold text-blue-800" value={pageSize} onChange={e => setPageSize(e.target.value)}>
+                            <option value="A4">Size: A4</option><option value="F4">Size: F4</option>
+                        </select>
+                        <select className="w-1/2 p-2 border rounded-lg bg-white text-sm font-bold text-blue-800" value={orientation} onChange={e => setOrientation(e.target.value)}>
+                            <option value="portrait">Potrait</option><option value="landscape">Landscape</option>
+                        </select>
+                    </div>
                     {showNewLayoutForm && (
                         <div className="border-t pt-3 space-y-2">
                             <p className="text-xs font-semibold text-gray-600">Nama Layout Baru</p>
@@ -2393,6 +2667,21 @@ const LayoutBuilder = () => {
 
                             {activeEl.type === 'table_grades' && (
                                 <div className="mt-4 border-t pt-3 space-y-3">
+                                    <div>
+                                        <label className="text-[10px] text-gray-500 font-bold uppercase">Filter Kelas</label>
+                                        <select
+                                            className="w-full p-1.5 border rounded text-sm bg-white outline-none"
+                                            value={activeEl.filterClass || ''}
+                                            onChange={e => updateElement(selectedElementId, { filterClass: e.target.value })}
+                                        >
+                                            <option value="">— Semua Kelas —</option>
+                                            {Array.from(new Map(classesData.map(c => [normalizeValue(c.name), c])).values()).map(cls => (
+                                                <option key={cls.id} value={cls.id}>{cls.name}</option>
+                                            ))}
+                                        </select>
+                                        <p className="text-[10px] text-gray-400 mt-0.5">Pilih kelas agar hanya mata pelajaran kelas tersebut yang tampil.</p>
+                                    </div>
+
                                     <div className="flex items-center justify-between">
                                         <p className="text-xs font-bold text-orange-800">Konfigurasi Kolom Tabel</p>
                                         <button 
@@ -2477,8 +2766,27 @@ const LayoutBuilder = () => {
                 </div>
             </div>
 
-            <div className="flex-1 bg-gray-200 rounded-xl overflow-auto p-4 flex justify-center items-start border border-gray-300 relative select-none custom-scrollbar">
-                <div className="relative" style={{ width: `${canvasWidth}px`, height: `${canvasHeight}px`, transform: 'scale(0.8)', transformOrigin: 'top center', marginTop: '20px', marginLeft: '20px' }} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
+            <div className="flex-1 bg-gray-200 rounded-xl overflow-auto p-4 flex flex-col items-center border border-gray-300 relative select-none custom-scrollbar">
+                
+                <div className="bg-white px-4 py-2 rounded-full shadow-sm flex items-center gap-4 mb-4 shrink-0 border border-gray-200 sticky top-0 z-50">
+                    <button onClick={() => setCurrentPage(Math.max(0, currentPage - 1))} disabled={currentPage === 0} className="text-gray-500 hover:text-emerald-600 disabled:opacity-30"><ChevronDown className="rotate-90" size={18}/></button>
+                    <span className="text-sm font-bold text-gray-700">Halaman {currentPage + 1}</span>
+                    <button onClick={() => setCurrentPage(currentPage + 1)} disabled={currentPage >= (elements.length > 0 ? Math.max(...elements.map(e => e.pageIndex || 0)) : 0) + 1} className="text-gray-500 hover:text-emerald-600 disabled:opacity-30"><ChevronDown className="-rotate-90" size={18}/></button>
+                    <div className="w-px h-4 bg-gray-300"></div>
+                    <button onClick={() => {
+                        const maxPage = elements.length > 0 ? Math.max(...elements.map(e => e.pageIndex || 0)) : 0;
+                        setCurrentPage(maxPage + 1);
+                    }} className="text-xs font-bold bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full hover:bg-emerald-100 transition mr-2">+ Halaman Baru</button>
+                    <div className="w-px h-4 bg-gray-300"></div>
+                    <button onClick={undo} disabled={past.length === 0} className="text-gray-500 hover:text-blue-600 disabled:opacity-30" title="Undo"><Undo size={18}/></button>
+                    <button onClick={redo} disabled={future.length === 0} className="text-gray-500 hover:text-blue-600 disabled:opacity-30" title="Redo"><Redo size={18}/></button>
+                    <div className="w-px h-4 bg-gray-300"></div>
+                    <button onClick={() => setZoom(z => Math.max(0.3, z - 0.1))} className="text-gray-500 hover:text-emerald-600" title="Zoom Out"><ZoomOut size={18}/></button>
+                    <span className="text-sm font-bold text-gray-700 w-10 text-center">{Math.round(zoom * 100)}%</span>
+                    <button onClick={() => setZoom(z => Math.min(2, z + 0.1))} className="text-gray-500 hover:text-emerald-600" title="Zoom In"><ZoomIn size={18}/></button>
+                </div>
+
+                <div className="relative shrink-0" style={{ width: `${canvasWidth}px`, height: `${canvasHeight}px`, transform: `scale(${zoom})`, transformOrigin: 'top center' }} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
                     <div onMouseDown={createHGuide} className="absolute top-[-20px] left-0 right-0 h-[20px] bg-slate-800 text-slate-300 text-xs flex justify-center items-center cursor-row-resize shadow-md rounded-t-md hover:bg-slate-700 transition"><Ruler size={12} className="mr-2"/> Tarik Garis Horizontal</div>
                     <div onMouseDown={createVGuide} className="absolute left-[-20px] top-0 bottom-0 w-[20px] bg-slate-800 text-slate-300 text-xs flex flex-col justify-center items-center cursor-col-resize shadow-md rounded-l-md hover:bg-slate-700 transition" style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}>Tarik Vertikal <Ruler size={12} className="mt-2"/></div>
 
@@ -2488,7 +2796,7 @@ const LayoutBuilder = () => {
                         {guides.v.map((gx, i) => (<div key={`v-${i}`} onMouseDown={(e) => startDragGuide(e, 'v', i)} style={{ position: 'absolute', left: `${gx}px`, top: 0, bottom: 0, borderLeft: '1px dashed #0ea5e9', cursor: 'col-resize', zIndex: 10 }} className="hover:border-l-2 hover:border-blue-500 group"><div className="absolute -top-5 -left-4 bg-blue-500 text-white text-[10px] px-1 rounded opacity-0 group-hover:opacity-100">{Math.round(gx)}</div></div>))}
                         {guides.h.map((gy, i) => (<div key={`h-${i}`} onMouseDown={(e) => startDragGuide(e, 'h', i)} style={{ position: 'absolute', top: `${gy}px`, left: 0, right: 0, borderTop: '1px dashed #0ea5e9', cursor: 'row-resize', zIndex: 10 }} className="hover:border-t-2 hover:border-blue-500 group"><div className="absolute -left-6 -top-2 bg-blue-500 text-white text-[10px] px-1 rounded opacity-0 group-hover:opacity-100">{Math.round(gy)}</div></div>))}
 
-                        {elements.map(el => {
+                        {elements.filter(el => (el.pageIndex || 0) === currentPage).map(el => {
                             const isSelected = selectedElementId === el.id;
                             const isDraggingThis = draggingType === 'element' && dragIndex === el.id;
                             
@@ -2501,7 +2809,7 @@ const LayoutBuilder = () => {
                                     }}
                                     className={`hover:outline hover:outline-1 hover:outline-gray-400 ${el.type === 'table_grades' ? 'bg-white' : ''}`}
                                 >
-                                    {el.type === 'table_grades' ? renderDynamicTable(el, data, mockStudentGrades, mockClassAverages) 
+                                    {el.type === 'table_grades' ? renderDynamicTable(el, data, mockStudentGrades, mockClassAverages, false, 'raport', classesData) 
                                     : el.type === 'image' ? <img src={el.content} style={{ width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none' }} alt="elemen" />
                                     : <div style={{ whiteSpace: 'pre-wrap' }}>{el.content}</div>}
                                     
@@ -2523,64 +2831,70 @@ const LayoutBuilder = () => {
 // ==========================================
 // UTILITY: EXCEL IMPORT/EXPORT FOR GRADES
 // ==========================================
-const generateGradesExcelTemplate = (studentsInClass, subjectsInClass, className) => {
-    const headers = ['No', 'NIS', 'Nama Santri'];
-    subjectsInClass.forEach(sub => {
-        headers.push(`${sub.nameId} - UTS`);
-        headers.push(`${sub.nameId} - UAS`);
-    });
+const exportGradesToExcel = (grades, studentsInClass, subjectsInClass, className, activeInputTab, data) => {
+    let headers = ['No', 'NIS', 'Nama Santri'];
+    let cols = [];
     
+    if (activeInputTab === 'pelajaran') {
+        subjectsInClass.forEach(sub => {
+            headers.push(`${sub.nameId} - UTS`);
+            headers.push(`${sub.nameId} - UAS`);
+            cols.push(sub.id);
+        });
+    } else if (activeInputTab === 'presensi') {
+        data.presences.forEach(p => { headers.push(p.name); cols.push(p.id); });
+    } else if (activeInputTab === 'sikap') {
+        data.characterTraits.forEach(p => { headers.push(p.name); cols.push(p.id); });
+    } else if (activeInputTab === 'ekskul') {
+        data.extracurriculars.forEach(p => { headers.push(p.name); cols.push(p.id); });
+    } else if (activeInputTab === 'catatan_wali') {
+        headers.push('Catatan Wali Kelas');
+        cols.push('catatan_wali');
+    }
+
     const rows = [headers];
     studentsInClass.forEach((st, idx) => {
         const row = [idx + 1, st.nis || '', st.nama];
-        subjectsInClass.forEach(() => {
-            row.push('');
-            row.push('');
-        });
+        if (activeInputTab === 'pelajaran') {
+            subjectsInClass.forEach(sub => {
+                row.push(grades[st.id]?.[sub.id]?.uts || '');
+                row.push(grades[st.id]?.[sub.id]?.uas || '');
+            });
+        } else if (['presensi', 'sikap', 'ekskul'].includes(activeInputTab)) {
+            cols.forEach(colId => {
+                row.push(grades[st.id]?.[colId] || '');
+            });
+        } else if (activeInputTab === 'catatan_wali') {
+            row.push(grades[st.id]?.['catatan_wali'] || '');
+        }
         rows.push(row);
-    });
-    
-    return rows;
-};
-
-const exportGradesToExcel = (grades, studentsInClass, subjectsInClass, className) => {
-    const rows = generateGradesExcelTemplate(studentsInClass, subjectsInClass, className);
-    
-    // Fill in existing grades
-    studentsInClass.forEach((st, idx) => {
-        subjectsInClass.forEach((sub, subIdx) => {
-            const uts = grades[st.id]?.[sub.id]?.uts || '';
-            const uas = grades[st.id]?.[sub.id]?.uas || '';
-            rows[idx + 1][3 + subIdx * 2] = uts;
-            rows[idx + 1][3 + subIdx * 2 + 1] = uas;
-        });
     });
     
     const ws = XLSX.utils.aoa_to_sheet(rows);
     const colWidths = [8, 15, 25];
-    subjectsInClass.forEach(() => {
-        colWidths.push(12, 12);
+    cols.forEach(() => {
+        if (activeInputTab === 'pelajaran') { colWidths.push(12, 12); }
+        else if (activeInputTab === 'catatan_wali') { colWidths.push(50); }
+        else { colWidths.push(15); }
     });
     ws['!cols'] = colWidths.map(w => ({ wch: w }));
-    
-    // Freeze panes (first row + left 3 columns)
     ws['!freeze'] = { xSplit: 3, ySplit: 1 };
     
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Nilai');
+    XLSX.utils.book_append_sheet(wb, ws, `Data_${activeInputTab}`);
     const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
     const blob = new Blob([wbout], { type: 'application/octet-stream' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `template_nilai_${className.replace(/\//g, '-')}.xlsx`;
+    a.download = `template_${activeInputTab}_${className.replace(/\//g, '-')}.xlsx`;
     document.body.appendChild(a);
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
 };
 
-const importGradesFromExcel = async (file, studentsInClass, subjectsInClass) => {
+const importGradesFromExcel = async (file, studentsInClass, subjectsInClass, activeInputTab, data) => {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -2596,13 +2910,12 @@ const importGradesFromExcel = async (file, studentsInClass, subjectsInClass) => 
                     const nisKey = Object.keys(row).find(k => k.toLowerCase().includes('nis'));
                     const namaKey = Object.keys(row).find(k => k.toLowerCase().includes('nama') && !k.toLowerCase().includes('arab'));
                     
-                    const nis = row[nisKey];
-                    const nama = row[namaKey];
+                    const nis = row[nisKey] || '';
+                    const nama = row[namaKey] || '';
                     
-                    // Find matching student
                     const student = studentsInClass.find(st => 
-                        (st.nis && st.nis.toString() === nis.toString()) ||
-                        (st.nama && st.nama.toLowerCase().includes(nama.toString().toLowerCase()))
+                        (st.nis && String(st.nis) === String(nis)) ||
+                        (st.nama && st.nama.toLowerCase().includes(String(nama).toLowerCase()))
                     );
                     
                     if (!student) {
@@ -2614,21 +2927,40 @@ const importGradesFromExcel = async (file, studentsInClass, subjectsInClass) => 
                         importedGrades[student.id] = {};
                     }
                     
-                    // Parse each subject's UTS/UAS
-                    subjectsInClass.forEach(sub => {
-                        const utsKey = Object.keys(row).find(k => k.includes(sub.nameId) && k.includes('UTS'));
-                        const uasKey = Object.keys(row).find(k => k.includes(sub.nameId) && k.includes('UAS'));
-                        
-                        const uts = utsKey ? String(row[utsKey]).trim() : '';
-                        const uas = uasKey ? String(row[uasKey]).trim() : '';
-                        
-                        if (uts || uas) {
-                            importedGrades[student.id][sub.id] = {
-                                uts: uts ? convertArabicToLatin(uts) : '',
-                                uas: uas ? convertArabicToLatin(uas) : ''
-                            };
-                        }
-                    });
+                    if (activeInputTab === 'pelajaran') {
+                        subjectsInClass.forEach(sub => {
+                            const utsKey = Object.keys(row).find(k => k.includes(sub.nameId) && k.includes('UTS'));
+                            const uasKey = Object.keys(row).find(k => k.includes(sub.nameId) && k.includes('UAS'));
+                            
+                            const uts = utsKey ? String(row[utsKey]).trim() : '';
+                            const uas = uasKey ? String(row[uasKey]).trim() : '';
+                            
+                            if (uts || uas) {
+                                importedGrades[student.id][sub.id] = {
+                                    uts: uts ? convertArabicToLatin(uts) : '',
+                                    uas: uas ? convertArabicToLatin(uas) : ''
+                                };
+                            }
+                        });
+                    } else if (activeInputTab === 'presensi') {
+                        data.presences.forEach(p => {
+                            const valKey = Object.keys(row).find(k => k.toLowerCase().includes(p.name.toLowerCase()));
+                            if (valKey && row[valKey]) importedGrades[student.id][p.id] = convertArabicToLatin(String(row[valKey]).trim());
+                        });
+                    } else if (activeInputTab === 'sikap') {
+                        data.characterTraits.forEach(p => {
+                            const valKey = Object.keys(row).find(k => k.toLowerCase().includes(p.name.toLowerCase()));
+                            if (valKey && row[valKey]) importedGrades[student.id][p.id] = String(row[valKey]).trim();
+                        });
+                    } else if (activeInputTab === 'ekskul') {
+                        data.extracurriculars.forEach(p => {
+                            const valKey = Object.keys(row).find(k => k.toLowerCase().includes(p.name.toLowerCase()));
+                            if (valKey && row[valKey]) importedGrades[student.id][p.id] = String(row[valKey]).trim();
+                        });
+                    } else if (activeInputTab === 'catatan_wali') {
+                        const valKey = Object.keys(row).find(k => k.toLowerCase().includes('catatan wali'));
+                        if (valKey && row[valKey]) importedGrades[student.id]['catatan_wali'] = String(row[valKey]).trim();
+                    }
                 });
                 
                 resolve(importedGrades);
@@ -2644,7 +2976,7 @@ const importGradesFromExcel = async (file, studentsInClass, subjectsInClass) => 
 // INPUT NILAI 
 // ==========================================
 const InputNilai = ({ activeInputTab }) => {
-    const { data, saveToDb, showNotification } = useContext(AppContext);
+    const { data, allData, saveToDb, showNotification } = useContext(AppContext);
     const [selectedClass, setSelectedClass] = useState('');
     const [localGrades, setLocalGrades] = useState({});
     const [isSaving, setIsSaving] = useState(false);
@@ -2661,9 +2993,10 @@ const InputNilai = ({ activeInputTab }) => {
 
     const activeSetting = data.settings.find(s => s.isActive);
     const activeStudents = getStudentsForYear(data.studentSnapshots, activeSetting, data.students);
-    const studentsInClass = getStudentsInClass(activeStudents, data.classes, selectedClass);
-    const subjectsInClass = useMemo(() => sortSubjectsByCategory(filterSubjectsByClass(data.subjects, selectedClass, data.classes), data.subjectCategories), [data.subjects, data.subjectCategories, selectedClass, data.classes]);
-    const gradeDocId = getGradeDocId(selectedClass, data.classes, activeSetting, data.grades);
+    const classesData = allData?.classes || data.classes;
+    const studentsInClass = getStudentsInClass(activeStudents, classesData, selectedClass);
+    const subjectsInClass = useMemo(() => sortSubjectsByCategory(filterSubjectsByClass(data.subjects, selectedClass, classesData), data.subjectCategories), [data.subjects, data.subjectCategories, selectedClass, classesData]);
+    const gradeDocId = getGradeDocId(selectedClass, classesData, activeSetting, data.grades);
 
     useEffect(() => {
         if (!gradeDocId) {
@@ -2738,26 +3071,26 @@ const InputNilai = ({ activeInputTab }) => {
     };
 
     const handleExportGrades = () => {
-        if (!selectedClass || subjectsInClass.length === 0) {
+        if (!selectedClass || (activeInputTab === 'pelajaran' && subjectsInClass.length === 0)) {
             showNotification('Pilih kelas dan pastikan ada mata pelajaran.', 'error');
             return;
         }
-        const className = getClassNameFromValue(data.classes, selectedClass);
-        exportGradesToExcel(localGrades, studentsInClass, subjectsInClass, className);
+        const className = getClassNameFromValue(classesData, selectedClass);
+        exportGradesToExcel(localGrades, studentsInClass, subjectsInClass, className, activeInputTab, data);
     };
 
     const handleImportGrades = async (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
         
-        if (!selectedClass || subjectsInClass.length === 0) {
+        if (!selectedClass || (activeInputTab === 'pelajaran' && subjectsInClass.length === 0)) {
             showNotification('Pilih kelas dan pastikan ada mata pelajaran.', 'error');
             return;
         }
 
         try {
             setIsImporting(true);
-            const importedGrades = await importGradesFromExcel(file, studentsInClass, subjectsInClass);
+            const importedGrades = await importGradesFromExcel(file, studentsInClass, subjectsInClass, activeInputTab, data);
             
             // Merge dengan grades yang sudah ada
             setLocalGrades(prev => {
@@ -3112,21 +3445,25 @@ const InputNilai = ({ activeInputTab }) => {
 // CETAK RAPORT / IJAZAH
 // ==========================================
 const CetakDokumen = ({ mode = 'raport' }) => {
-    const { data, addLog } = useContext(AppContext);
+    const { data, allData, addLog } = useContext(AppContext);
     const [selectedClass, setSelectedClass] = useState('');
     const [selectedStudent, setSelectedStudent] = useState('');
     const [useKatrol, setUseKatrol] = useState(false);
     
     const activeSetting = data.settings.find(s => s.isActive) || {};
     const activeStudents = getStudentsForYear(data.studentSnapshots, activeSetting, data.students);
-    const studentsInClass = getStudentsInClass(activeStudents, data.classes, selectedClass);
+    const classesData = allData?.classes || data.classes;
+    const studentsInClass = getStudentsInClass(activeStudents, classesData, selectedClass);
     const studentData = activeStudents.find(s => s.id === selectedStudent);
     
     const layoutSettings = data.layouts.find(l => l.id === mode) || {};
     const activeLayout = layoutSettings.elements || [];
     const layoutPageSize = layoutSettings.pageSize || 'A4';
-    const canvasWidth = pageDimensions[layoutPageSize].width;
-    const canvasHeight = pageDimensions[layoutPageSize].height;
+    const layoutOrientation = layoutSettings.orientation || 'portrait';
+    const baseWidth = pageDimensions[layoutPageSize].width;
+    const baseHeight = pageDimensions[layoutPageSize].height;
+    const canvasWidth = layoutOrientation === 'landscape' ? baseHeight : baseWidth;
+    const canvasHeight = layoutOrientation === 'landscape' ? baseWidth : baseHeight;
 
     useEffect(() => {
         const styleId = 'custom-fonts-style-print';
@@ -3136,7 +3473,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
         styleTag.innerHTML = imports;
     }, [data.fonts]);
 
-    const gradeDocId = getGradeDocId(selectedClass, data.classes, activeSetting, data.grades);
+    const gradeDocId = getGradeDocId(selectedClass, classesData, activeSetting, data.grades);
     const classGradesDoc = data.grades.find(g => g.id === gradeDocId)?.data || {};
     const studentGrades = classGradesDoc[selectedStudent] || {};
 
@@ -3165,7 +3502,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
         const ts = activeSetting.tahun ? activeSetting.tahun.replace(/\//g, '-') : 'tahun';
         const ss = activeSetting.semester || '1';
         const ns = studentData.nama.replace(/\s+/g, '_');
-        const ks = getClassNameFromValue(data.classes, selectedClass).replace(/\s+/g, '_');
+        const ks = getClassNameFromValue(classesData, selectedClass).replace(/\s+/g, '_');
         document.title = mode === 'raport' ? `raport_${ts}_${ss}_${ns}_${ks}` : `ijazah_${ts}_${ns}_${ks}`;
         addLog(`Menyimpan ${mode} sebagai PDF untuk ${studentData.nama}`);
         window.print();
@@ -3174,7 +3511,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
 
     const handleWA = () => {
         if(!studentData) return;
-        const text = `Assalamu'alaikum. Berikut adalah pemberitahuan nilai ${mode} ananda *${studentData.nama}* kelas *${getClassNameFromValue(data.classes, selectedClass)}*. Harap hubungi sekolah untuk mengambil berkas cetak fisiknya.`;
+        const text = `Assalamu'alaikum. Berikut adalah pemberitahuan nilai ${mode} ananda *${studentData.nama}* kelas *${getClassNameFromValue(classesData, selectedClass)}*. Harap hubungi sekolah untuk mengambil berkas cetak fisiknya.`;
         addLog(`Membagikan Info ${mode} via WA untuk ${studentData.nama}`);
         window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
     };
@@ -3184,17 +3521,19 @@ const CetakDokumen = ({ mode = 'raport' }) => {
     const renderElement = (el) => {
         let content = el.content;
         if (studentData && typeof content === 'string') {
-            content = content.replace('{{nama_santri}}', studentData.nama || '').replace('{{nis}}', studentData.nis || '').replace('{{kelas}}', getClassNameFromValue(data.classes, studentData.kelas) || '')
+            content = content.replace('{{nama_santri}}', studentData.nama || '').replace('{{nis}}', studentData.nis || '').replace('{{kelas}}', getClassNameFromValue(classesData, studentData.kelas) || '')
                              .replace('{{catatan_wali}}', studentGrades['catatan_wali'] || '');
             if (data.studentFields) data.studentFields.forEach(f => content = content.replace(new RegExp(`{{${f.key}}}`, 'g'), studentData[f.key] || ''));
         }
 
-        if (el.type === 'table_grades') return <div style={{...getStyles(el), width: `${el.width}px`}}>{renderDynamicTable(el, data, studentGrades, classAverages, useKatrol, mode)}</div>;
+        if (el.type === 'table_grades') return <div style={{...getStyles(el), width: `${el.width}px`}}>{renderDynamicTable(el, data, studentGrades, classAverages, useKatrol, mode, classesData)}</div>;
         if (el.type === 'image') return <img src={el.content} style={{...getStyles(el), width: `${el.width}px`, height: `${el.height}px`, objectFit: 'contain'}} alt="C" />;
         return <div style={{...getStyles(el), whiteSpace: 'pre-wrap'}}>{content}</div>;
     };
 
-    const cssPageSize = layoutPageSize === 'F4' ? '215.9mm 330.2mm' : 'A4';
+    const cssPageSize = layoutPageSize === 'F4' ? `215.9mm 330.2mm ${layoutOrientation}` : `A4 ${layoutOrientation}`;
+    const maxPage = activeLayout.length > 0 ? Math.max(...activeLayout.map(el => el.pageIndex || 0)) : 0;
+    const pages = Array.from({length: maxPage + 1}, (_, i) => activeLayout.filter(el => (el.pageIndex || 0) === i));
 
     return (
         <div className="flex flex-col md:flex-row gap-6">
@@ -3212,14 +3551,18 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                     </div>
                 </div>
             </div>
-            <div className="flex-1 bg-gray-200 p-8 rounded-xl overflow-auto flex justify-center border border-gray-300 print:bg-white print:p-0 print:border-none print:overflow-visible relative">
+            <div className="flex-1 bg-gray-200 p-8 rounded-xl overflow-auto flex flex-col items-center gap-8 border border-gray-300 print:bg-white print:p-0 print:border-none print:overflow-visible print:gap-0 relative">
                 {selectedStudent ? (
-                    <div className="print-container bg-white shadow-xl relative print:shadow-none print:m-0" style={{ width: `${canvasWidth}px`, height: `${canvasHeight}px` }}>
-                        {activeLayout.length > 0 ? activeLayout.map(el => <React.Fragment key={el.id}>{renderElement(el)}</React.Fragment>) : <div className="absolute inset-0 flex items-center justify-center text-gray-400 print:hidden">Layout belum disetting oleh Admin.</div>}
+                    <div className="print-wrapper w-full flex flex-col items-center gap-8 print:gap-0 print:block">
+                        {pages.map((pageElements, index) => (
+                            <div key={index} className="print-container bg-white shadow-xl relative print:shadow-none print:m-0" style={{ width: `${canvasWidth}px`, height: `${canvasHeight}px`, pageBreakAfter: index < pages.length - 1 ? 'always' : 'auto' }}>
+                                {pageElements.length > 0 ? pageElements.map(el => <React.Fragment key={el.id}>{renderElement(el)}</React.Fragment>) : (activeLayout.length === 0 && index === 0 ? <div className="absolute inset-0 flex items-center justify-center text-gray-400 print:hidden">Layout belum disetting oleh Admin.</div> : <div className="absolute inset-0 flex items-center justify-center text-gray-400 print:hidden">Halaman {index + 1} kosong.</div>)}
+                            </div>
+                        ))}
                     </div>
                 ) : <div className="flex items-center justify-center h-full text-gray-400 print:hidden">Pilih santri untuk melihat preview {mode}.</div>}
             </div>
-            <style>{`@import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&display=swap'); @media print { body * { visibility: hidden; } .print-container, .print-container * { visibility: visible; } .print-container { position: absolute; left: 0; top: 0; margin: 0; padding: 0; box-shadow: none; } @page { size: ${cssPageSize}; margin: 0; } }`}</style>
+            <style>{`@import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&display=swap'); @media print { body * { visibility: hidden; } .print-wrapper, .print-wrapper * { visibility: visible; } .print-wrapper { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; } .print-container { position: relative; margin: 0; padding: 0; box-shadow: none; } @page { size: ${cssPageSize}; margin: 0; } }`}</style>
         </div>
     );
 };
@@ -3228,15 +3571,16 @@ const CetakDokumen = ({ mode = 'raport' }) => {
 // LEGER KELAS
 // ==========================================
 const LeggerKelas = () => {
-    const { data, addLog } = useContext(AppContext);
+    const { data, allData, addLog } = useContext(AppContext);
     const [selectedClass, setSelectedClass] = useState('');
+    const classesData = allData?.classes || data.classes;
     
     const activeSetting = data.settings.find(s => s.isActive) || {};
     const activeStudents = useMemo(() => getStudentsForYear(data.studentSnapshots, activeSetting, data.students), [data.studentSnapshots, activeSetting, data.students]);
-    const students = useMemo(() => getStudentsInClass(activeStudents, data.classes, selectedClass), [activeStudents, data.classes, selectedClass]);
-    const subjects = useMemo(() => sortSubjectsByCategory(filterSubjectsByClass(data.subjects, selectedClass, data.classes), data.subjectCategories), [data.subjects, data.subjectCategories, selectedClass, data.classes]);
+    const students = useMemo(() => getStudentsInClass(activeStudents, classesData, selectedClass), [activeStudents, classesData, selectedClass]);
+    const subjects = useMemo(() => sortSubjectsByCategory(filterSubjectsByClass(data.subjects, selectedClass, classesData), data.subjectCategories), [data.subjects, data.subjectCategories, selectedClass, classesData]);
     
-    const gradeDocId = getGradeDocId(selectedClass, data.classes, activeSetting, data.grades);
+    const gradeDocId = getGradeDocId(selectedClass, classesData, activeSetting, data.grades);
 
     const grades = data.grades.find(g => g.id === gradeDocId)?.data || {};
 
@@ -3290,7 +3634,7 @@ const LeggerKelas = () => {
     }, [students, subjects, grades, selectedClass]);
 
     const exportExcel = () => {
-        const className = getClassNameFromValue(data.classes, selectedClass);
+        const className = getClassNameFromValue(classesData, selectedClass);
         addLog(`Mengekspor Legger Kelas ${className}`);
         
         const categoryHeaders = ['No.', 'NIS', 'Nama Santri'];
@@ -3413,8 +3757,66 @@ const LeggerKelas = () => {
 // ==========================================
 // MAIN DASHBOARD
 // ==========================================
+const TahunAjaranSelection = ({ allData, saveToDb, onBypass, currentUser }) => {
+    const settingsList = allData?.settings || [];
+    const hasSettings = settingsList.length > 0;
+    
+    return (
+        <div className="min-h-screen bg-emerald-900 flex flex-col items-center justify-center p-6 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+                <div className="absolute -top-24 -left-24 w-96 h-96 bg-emerald-800 rounded-full mix-blend-multiply blur-3xl opacity-50"></div>
+                <div className="absolute top-1/2 right-1/4 w-72 h-72 bg-emerald-700 rounded-full mix-blend-multiply blur-3xl opacity-50"></div>
+                <div className="absolute -bottom-32 -left-1/4 w-80 h-80 bg-emerald-600 rounded-full mix-blend-multiply blur-3xl opacity-50"></div>
+            </div>
+
+            <div className="z-10 bg-white/10 backdrop-blur-lg border border-white/20 p-8 rounded-3xl shadow-2xl max-w-3xl w-full text-center">
+                <img src="https://i.ibb.co.com/DfZSFRsP/Chat-GPT-Image-3-Mei-2026-04-08-56.png" alt="Logo" className="w-24 h-24 mx-auto mb-6 drop-shadow-xl" />
+                <h1 className="text-4xl font-bold text-white mb-2">Rapijaz-Maisya</h1>
+                <p className="text-emerald-100 mb-8 text-lg">Silakan Pilih Tahun Ajaran Aktif untuk Melanjutkan</p>
+
+                {hasSettings ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[50vh] overflow-y-auto p-2 custom-scrollbar">
+                        {settingsList.map(s => (
+                            <button
+                                key={s.id}
+                                onClick={() => saveToDb('settings', s.id, { ...s, isActive: true }, true, `Mengaktifkan semester ${s.tahun} ${s.semester}`)}
+                                className="bg-white/90 hover:bg-white text-emerald-900 rounded-2xl p-6 text-left shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1 group border-2 border-transparent hover:border-emerald-400 flex items-center justify-between"
+                            >
+                                <div>
+                                    <h3 className="text-xl font-bold">{s.tahun}</h3>
+                                    <p className="text-sm font-medium text-emerald-600">Semester {s.semester}</p>
+                                </div>
+                                <div className="bg-emerald-100 text-emerald-700 p-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <CheckCircle size={24} />
+                                </div>
+                            </button>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="bg-white/20 p-8 rounded-2xl border border-white/30 text-white">
+                        <AlertCircle size={48} className="mx-auto mb-4 text-emerald-200" />
+                        <h3 className="text-xl font-bold mb-2">Belum Ada Tahun Ajaran</h3>
+                        <p className="text-emerald-100">Silakan hubungi Administrator untuk mengatur Tahun Ajaran pertama kali.</p>
+                    </div>
+                )}
+
+                {currentUser?.role === 'admin' && (
+                    <button
+                        onClick={onBypass}
+                        className="mt-8 text-emerald-200 hover:text-white text-sm font-medium flex items-center gap-2 mx-auto transition-colors"
+                    >
+                        <Settings size={16} /> Masuk ke Master Data (Bypass Admin)
+                    </button>
+                )}
+            </div>
+        </div>
+    );
+};
+
 const Dashboard = () => {
-  const { currentUser, setCurrentUser } = useContext(AppContext);
+  const { currentUser, setCurrentUser, activeSetting, allData, saveToDb } = useContext(AppContext);
+  const isTahunSet = !!activeSetting?.tahun;
+  const [bypassSplash, setBypassSplash] = useState(false);
   const [activeMenu, setActiveMenu] = useState('dashboard');
   const [expandedMenu, setExpandedMenu] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -3552,11 +3954,13 @@ const Dashboard = () => {
                     const Icon = menu.icon;
                     const isExpanded = expandedMenu === menu.id;
                     const isActive = activeMenu === menu.id || (menu.subItems && menu.subItems.some(s => s.id === activeMenu));
+                    const isDisabled = !isTahunSet && menu.id !== 'master_data';
 
                     return (
                         <div key={menu.id} className="mb-1">
                             <button 
                                 onClick={() => { 
+                                    if(isDisabled) return;
                                     if(menu.subItems) {
                                         setExpandedMenu(isExpanded ? '' : menu.id);
                                         if (!isExpanded && menu.subItems.length > 0) {
@@ -3566,8 +3970,9 @@ const Dashboard = () => {
                                         setActiveMenu(menu.id); setIsSidebarOpen(false); setExpandedMenu('');
                                     }
                                 }} 
-                                title={menu.label}
-                                className={`w-full flex items-center ${isSidebarCompact ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'} rounded-xl transition ${isActive && !menu.subItems ? 'bg-emerald-600 text-white shadow-lg' : 'text-emerald-100 hover:bg-emerald-700/50'}`}
+                                title={isDisabled ? 'Atur Tahun Ajaran Dulu' : menu.label}
+                                disabled={isDisabled}
+                                className={`w-full flex items-center ${isSidebarCompact ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'} rounded-xl transition ${isActive && !menu.subItems ? 'bg-emerald-600 text-white shadow-lg' : 'text-emerald-100 hover:bg-emerald-700/50'} ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                             >
                                 <div className={`flex items-center ${isSidebarCompact ? 'justify-center gap-0' : 'gap-3'}`}>
                                     <Icon size={20} />
@@ -3578,15 +3983,19 @@ const Dashboard = () => {
 
                             {menu.subItems && isExpanded && !isSidebarCompact && (
                                 <div className="ml-4 mt-1 space-y-1 border-l border-emerald-700/50 pl-2">
-                                    {menu.subItems.map(sub => (
+                                    {menu.subItems.map(sub => {
+                                        const isSubDisabled = !isTahunSet && sub.id !== 'settings';
+                                        return (
                                         <button
                                             key={sub.id}
-                                            onClick={() => { setActiveMenu(sub.id); setIsSidebarOpen(false); }}
-                                            className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg transition text-sm ${activeMenu === sub.id ? 'bg-emerald-600 text-white shadow' : 'text-emerald-200 hover:bg-emerald-700/50 hover:text-white'}`}
+                                            onClick={() => { if(!isSubDisabled) { setActiveMenu(sub.id); setIsSidebarOpen(false); } }}
+                                            disabled={isSubDisabled}
+                                            title={isSubDisabled ? 'Atur Tahun Ajaran Dulu' : sub.label}
+                                            className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg transition text-sm ${activeMenu === sub.id ? 'bg-emerald-600 text-white shadow' : 'text-emerald-200 hover:bg-emerald-700/50 hover:text-white'} ${isSubDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                                         >
                                             <span className="font-medium">{sub.label}</span>
                                         </button>
-                                    ))}
+                                    )})}
                                 </div>
                             )}
                         </div>
@@ -3619,7 +4028,16 @@ const Dashboard = () => {
             <h1 className="text-xl font-bold text-gray-800 capitalize flex-1">{getMenuLabel()}</h1>
           </div>
           
-          <div className="hidden sm:block">
+          <div className="hidden sm:flex items-center gap-4">
+              {isTahunSet ? (
+                <div className="bg-emerald-100 text-emerald-800 px-3 py-1.5 rounded-lg text-sm font-bold border border-emerald-200 flex items-center gap-2">
+                    <CheckCircle size={16} /> TA: {activeSetting.tahun} ({activeSetting.semester})
+                </div>
+              ) : (
+                <div className="bg-red-100 text-red-800 px-3 py-1.5 rounded-lg text-sm font-bold border border-red-200 flex items-center gap-2 animate-pulse">
+                    <AlertCircle size={16} /> Tahun Ajaran Belum Diatur
+                </div>
+              )}
               <CurrentTime />
           </div>
         </header>
