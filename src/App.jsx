@@ -2537,7 +2537,12 @@ const LayoutBuilder = () => {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [selectedElementId, elements]);
 
+    const prevLayoutRef = useRef(null);
+
     useEffect(() => {
+        if (prevLayoutRef.current === activeLayout) return;
+        prevLayoutRef.current = activeLayout;
+
         const savedLayout = data.layouts.find(l => l.id === activeLayout);
         if (savedLayout) {
             setElements(savedLayout.elements || []);
