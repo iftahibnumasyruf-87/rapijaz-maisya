@@ -2855,8 +2855,8 @@ const LayoutBuilder = () => {
     const mockClassAverages = {};
 
     return (
-        <div className="flex flex-col md:flex-row gap-6 h-[80vh]">
-            <div className="w-full md:w-[320px] bg-white rounded-xl shadow-sm flex flex-col border border-gray-100 shrink-0 overflow-hidden">
+        <div className="flex flex-col md:flex-row gap-6 h-[80vh] print:h-auto print:block">
+            <div className="w-full md:w-[320px] bg-white rounded-xl shadow-sm flex flex-col border border-gray-100 shrink-0 overflow-hidden print:hidden">
                 <div className="p-4 border-b bg-gray-50 flex items-center justify-between z-10 shrink-0">
                     <h3 className="font-bold text-gray-800 text-lg">Layout Builder</h3>
                 </div>
@@ -2887,7 +2887,7 @@ const LayoutBuilder = () => {
                             <div className="flex flex-col"><label className="text-[10px] text-indigo-600 mb-1 font-bold">Kanan</label><input type="number" value={margins.right} onChange={e=>setMargins({...margins, right: Number(e.target.value)})} className="w-full p-1.5 border border-indigo-200 rounded text-xs" /></div>
                         </div>
                     </div>
-                    <button onClick={() => { document.title = "Print_Preview_Layout"; window.print(); }} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-lg font-bold flex justify-center items-center gap-2 transition shadow-sm"><Printer size={16}/> Print Preview</button>
+                    <button onClick={() => { setSelectedElementId(null); setTimeout(() => { document.title = "Print_Preview_Layout"; window.print(); }, 100); }} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-lg font-bold flex justify-center items-center gap-2 transition shadow-sm"><Printer size={16}/> Print Preview</button>
                     {showNewLayoutForm && (
                         <div className="border-t pt-3 space-y-2">
                             <p className="text-xs font-semibold text-gray-600">Nama Layout Baru</p>
@@ -3166,7 +3166,7 @@ const LayoutBuilder = () => {
                 </div>
             </div>
 
-            <div className="flex-1 bg-gray-200 rounded-xl overflow-auto p-4 flex flex-col items-center border border-gray-300 relative select-none custom-scrollbar">
+            <div className="flex-1 bg-gray-200 rounded-xl overflow-auto p-4 flex flex-col items-center border border-gray-300 relative select-none custom-scrollbar print:bg-white print:p-0 print:border-none print:overflow-visible">
                 
                 {showToolbar && (
                     <div className="bg-white px-4 py-2 rounded-full shadow-sm flex items-center gap-4 mb-4 shrink-0 border border-gray-200 sticky top-0 z-50">
@@ -3269,8 +3269,8 @@ const LayoutBuilder = () => {
                         <div ref={canvasRef} style={{ width: canvasWidth, height: canvasHeight, transform: `scale(${zoom})`, transformOrigin: 'top left', position: 'absolute', top: 0, left: 0 }} className="print-container bg-white shadow-xl">
                         {showGrid && <div className="absolute inset-0 pointer-events-none print:hidden" style={{ backgroundImage: 'linear-gradient(#f0f0f0 1px, transparent 1px), linear-gradient(90deg, #f0f0f0 1px, transparent 1px)', backgroundSize: '20px 20px', opacity: 0.5 }}></div>}
                         
-                        {guides.v.map((gx, i) => (<div key={`v-${i}`} onMouseDown={(e) => startDragGuide(e, 'v', i)} onDoubleClick={() => setGuides(prev => ({...prev, v: prev.v.filter((_, idx) => idx !== i)}))} style={{ position: 'absolute', left: `${gx}px`, top: 0, bottom: 0, borderLeft: '1px dashed #0ea5e9', cursor: 'col-resize', zIndex: 10 }} className="hover:border-l-2 hover:border-blue-500 group"><div className="absolute -top-5 -left-4 bg-blue-500 text-white text-[10px] px-1 rounded opacity-0 group-hover:opacity-100">{Math.round(gx)}</div></div>))}
-                        {guides.h.map((gy, i) => (<div key={`h-${i}`} onMouseDown={(e) => startDragGuide(e, 'h', i)} onDoubleClick={() => setGuides(prev => ({...prev, h: prev.h.filter((_, idx) => idx !== i)}))} style={{ position: 'absolute', top: `${gy}px`, left: 0, right: 0, borderTop: '1px dashed #0ea5e9', cursor: 'row-resize', zIndex: 10 }} className="hover:border-t-2 hover:border-blue-500 group"><div className="absolute -left-6 -top-2 bg-blue-500 text-white text-[10px] px-1 rounded opacity-0 group-hover:opacity-100">{Math.round(gy)}</div></div>))}
+                        {guides.v.map((gx, i) => (<div key={`v-${i}`} onMouseDown={(e) => startDragGuide(e, 'v', i)} onDoubleClick={() => setGuides(prev => ({...prev, v: prev.v.filter((_, idx) => idx !== i)}))} style={{ position: 'absolute', left: `${gx}px`, top: 0, bottom: 0, borderLeft: '1px dashed #0ea5e9', cursor: 'col-resize', zIndex: 10 }} className="hover:border-l-2 hover:border-blue-500 group print:hidden"><div className="absolute -top-5 -left-4 bg-blue-500 text-white text-[10px] px-1 rounded opacity-0 group-hover:opacity-100">{Math.round(gx)}</div></div>))}
+                        {guides.h.map((gy, i) => (<div key={`h-${i}`} onMouseDown={(e) => startDragGuide(e, 'h', i)} onDoubleClick={() => setGuides(prev => ({...prev, h: prev.h.filter((_, idx) => idx !== i)}))} style={{ position: 'absolute', top: `${gy}px`, left: 0, right: 0, borderTop: '1px dashed #0ea5e9', cursor: 'row-resize', zIndex: 10 }} className="hover:border-t-2 hover:border-blue-500 group print:hidden"><div className="absolute -left-6 -top-2 bg-blue-500 text-white text-[10px] px-1 rounded opacity-0 group-hover:opacity-100">{Math.round(gy)}</div></div>))}
 
                         {elements.filter(el => (el.pageIndex || 0) === currentPage).map(el => {
                             const isSelected = selectedElementId === el.id;
