@@ -2492,6 +2492,46 @@ const LayoutBuilder = () => {
     const baseHeight = pageDimensions[pageSize].height;
     const canvasWidth = orientation === 'landscape' ? baseHeight : baseWidth;
     const canvasHeight = orientation === 'landscape' ? baseWidth : baseHeight;
+
+    const changePageSize = (newSize) => {
+        const oldW = canvasWidth;
+        const oldH = canvasHeight;
+        const newDim = pageDimensions[newSize];
+        const newW = orientation === 'landscape' ? newDim.height : newDim.width;
+        const newH = orientation === 'landscape' ? newDim.width : newDim.height;
+        const scaleX = newW / oldW;
+        const scaleY = newH / oldH;
+        setPast(p => [...p, elements]);
+        setFuture([]);
+        setElements(prev => prev.map(el => ({
+            ...el,
+            x: Math.round((el.x ?? 0) * scaleX),
+            y: Math.round((el.y ?? 0) * scaleY),
+            width: el.width ? Math.round(el.width * scaleX) : el.width,
+            height: el.height ? Math.round(el.height * scaleY) : el.height,
+        })));
+        setPageSize(newSize);
+    };
+
+    const changeOrientation = (newOrientation) => {
+        const oldW = canvasWidth;
+        const oldH = canvasHeight;
+        // Swap dimensions for new orientation
+        const newW = oldH;
+        const newH = oldW;
+        const scaleX = newW / oldW;
+        const scaleY = newH / oldH;
+        setPast(p => [...p, elements]);
+        setFuture([]);
+        setElements(prev => prev.map(el => ({
+            ...el,
+            x: Math.round((el.x ?? 0) * scaleX),
+            y: Math.round((el.y ?? 0) * scaleY),
+            width: el.width ? Math.round(el.width * scaleX) : el.width,
+            height: el.height ? Math.round(el.height * scaleY) : el.height,
+        })));
+        setOrientation(newOrientation);
+    };
     
     const allFonts = useMemo(() => [...defaultFontOptions, ...(data.fonts || [])], [data.fonts]);
 
@@ -2871,10 +2911,10 @@ const LayoutBuilder = () => {
                         {data.layouts && data.layouts.length > 1 && <button onClick={() => deleteLayout(activeLayout)} className="bg-red-500 hover:bg-red-600 text-white px-3 rounded-lg text-sm font-bold transition" title="Hapus layout"><Trash2 size={16}/></button>}
                     </div>
                     <div className="flex gap-2">
-                        <select className="w-1/2 p-2 border rounded-lg bg-white text-sm font-bold text-blue-800" value={pageSize} onChange={e => setPageSize(e.target.value)}>
+                        <select className="w-1/2 p-2 border rounded-lg bg-white text-sm font-bold text-blue-800" value={pageSize} onChange={e => changePageSize(e.target.value)}>
                             <option value="A4">Size: A4</option><option value="F4">Size: F4</option>
                         </select>
-                        <select className="w-1/2 p-2 border rounded-lg bg-white text-sm font-bold text-blue-800" value={orientation} onChange={e => setOrientation(e.target.value)}>
+                        <select className="w-1/2 p-2 border rounded-lg bg-white text-sm font-bold text-blue-800" value={orientation} onChange={e => changeOrientation(e.target.value)}>
                             <option value="portrait">Potrait</option><option value="landscape">Landscape</option>
                         </select>
                     </div>
