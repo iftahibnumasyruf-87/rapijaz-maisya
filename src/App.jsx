@@ -2686,6 +2686,28 @@ const LayoutBuilder = () => {
     const [draggingType, setDraggingType] = useState(null);
     const [dragIndex, setDragIndex] = useState(null);
     const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+    const [initialRect, setInitialRect] = useState(null);
+
+    const handleResizeMouseDown = (e, el, direction) => {
+        e.stopPropagation();
+        setDraggingType(`resize_${direction}`);
+        setDragIndex(el.id);
+        const rect = canvasRef.current.getBoundingClientRect();
+        const scaleX = canvasWidth / rect.width;
+        const scaleY = canvasHeight / rect.height;
+        let rawX = (e.clientX - rect.left) * scaleX; 
+        let rawY = (e.clientY - rect.top) * scaleY;
+        setInitialRect({ 
+            width: el.width || (el.type === 'table_grades' ? 650 : 200), 
+            height: el.height || (el.type === 'table_grades' ? 300 : 30), 
+            startX: rawX, 
+            startY: rawY,
+            elX: el.x,
+            elY: el.y
+        });
+        setPast(p => [...p, elements]);
+        setFuture([]);
+    };
 
     const handleElementMouseDown = (e, el) => {
         e.stopPropagation(); setSelectedElementId(el.id); 
@@ -2722,6 +2744,33 @@ const LayoutBuilder = () => {
             guides.v.forEach(gx => { if (Math.abs(newX - gx) < snapThreshold) newX = gx; });
             guides.h.forEach(gy => { if (Math.abs(newY - gy) < snapThreshold) newY = gy; });
             updateElement(dragIndex, { x: newX, y: newY }, false);
+        } else if (draggingType && draggingType.startsWith('resize_')) {
+            const activeEl = elements.find(el => el.id === dragIndex);
+            if (!activeEl) return;
+            const direction = draggingType.split('_')[1];
+            
+            let newWidth = initialRect.width;
+            let newHeight = initialRect.height;
+            let newX = initialRect.elX;
+            let newY = initialRect.elY;
+            
+            const dx = rawX - initialRect.startX;
+            const dy = rawY - initialRect.startY;
+            
+            if (direction.includes('e')) { newWidth = Math.max(10, initialRect.width + dx); }
+            if (direction.includes('s')) { newHeight = Math.max(10, initialRect.height + dy); }
+            if (direction.includes('w')) { 
+                const deltaX = Math.min(initialRect.width - 10, dx);
+                newX = initialRect.elX + deltaX; 
+                newWidth = initialRect.width - deltaX; 
+            }
+            if (direction.includes('n')) { 
+                const deltaY = Math.min(initialRect.height - 10, dy);
+                newY = initialRect.elY + deltaY; 
+                newHeight = initialRect.height - deltaY; 
+            }
+            
+            updateElement(dragIndex, { width: newWidth, height: newHeight, x: newX, y: newY }, false);
         } else if (draggingType === 'guide_v') {
             const newGuides = { ...guides }; newGuides.v[dragIndex] = rawX; setGuides(newGuides);
         } else if (draggingType === 'guide_h') {
@@ -2736,7 +2785,7 @@ const LayoutBuilder = () => {
             if (draggingType === 'guide_h' && (guides.h[dragIndex] < -20 || guides.h[dragIndex] > canvasHeight + 20)) newGuides.h.splice(dragIndex, 1);
             setGuides(newGuides);
         }
-        setDraggingType(null); setDragIndex(null);
+        setDraggingType(null); setDragIndex(null); setInitialRect(null);
     };
 
     const handleImageUpload = (e) => {
@@ -3189,7 +3238,7 @@ const LayoutBuilder = () => {
                                 <div key={el.id} data-element-id={el.id} onMouseDown={(e) => handleElementMouseDown(e, el)}
                                     style={{
                                         position: 'absolute', left: `${el.x}px`, top: `${el.y}px`, fontSize: `${el.fontSize}px`, fontFamily: el.fontFamily || 'Arial, sans-serif', fontWeight: el.fontWeight,
-                                        width: (el.type === 'table_grades' || el.type === 'image') ? `${el.width}px` : 'auto', height: el.type === 'image' ? `${el.height}px` : 'auto',
+                                        width: el.width ? `${el.width}px` : 'auto', height: el.type === 'image' ? `${el.height}px` : 'auto',
                                         cursor: isDraggingThis ? 'grabbing' : 'grab', outline: isSelected ? '2px dashed #059669' : 'none', padding: (el.type === 'image' || el.type === 'table_grades') ? '0' : '2px',
                                         zIndex: isSelected ? 20 : (el.zIndex ?? 1), opacity: el.opacity ?? 1,
                                         pointerEvents: el.locked ? 'none' : 'auto'
@@ -3198,9 +3247,21 @@ const LayoutBuilder = () => {
                                 >
                                     {el.type === 'table_grades' ? renderDynamicTable(el, data, mockStudentGrades, mockClassAverages, false, 'raport', classesData) 
                                     : el.type === 'image' ? <img src={el.content} style={{ width: '100%', height: '100%', objectFit: el.objectFit || 'contain', objectPosition: `${el.objectPositionX ?? 50}% ${el.objectPositionY ?? 50}%`, pointerEvents: 'none' }} alt="elemen" />
-                                    : <div style={{ whiteSpace: 'pre-wrap' }}>{el.content}</div>}
+                                    : <div style={{ whiteSpace: 'pre-wrap', width: '100%', height: '100%' }}>{el.content}</div>}
                                     
-                                    {isSelected && <div className="absolute -top-3 -left-3 bg-emerald-600 text-white rounded-full p-1 shadow z-30"><GripHorizontal size={12} /></div>}
+                                    {isSelected && !el.locked && (
+                                        <>
+                                            <div className="absolute -top-3 -left-3 bg-emerald-600 text-white rounded-full p-1 shadow z-30 cursor-move" onMouseDown={(e) => handleElementMouseDown(e, el)}><GripHorizontal size={12} /></div>
+                                            <div className="absolute top-[-4px] left-1/2 w-2 h-2 bg-emerald-600 border border-white cursor-n-resize" style={{transform: 'translateX(-50%)'}} onMouseDown={(e) => handleResizeMouseDown(e, el, 'n')}/>
+                                            <div className="absolute bottom-[-4px] left-1/2 w-2 h-2 bg-emerald-600 border border-white cursor-s-resize" style={{transform: 'translateX(-50%)'}} onMouseDown={(e) => handleResizeMouseDown(e, el, 's')}/>
+                                            <div className="absolute left-[-4px] top-1/2 w-2 h-2 bg-emerald-600 border border-white cursor-w-resize" style={{transform: 'translateY(-50%)'}} onMouseDown={(e) => handleResizeMouseDown(e, el, 'w')}/>
+                                            <div className="absolute right-[-4px] top-1/2 w-2 h-2 bg-emerald-600 border border-white cursor-e-resize" style={{transform: 'translateY(-50%)'}} onMouseDown={(e) => handleResizeMouseDown(e, el, 'e')}/>
+                                            <div className="absolute top-[-4px] left-[-4px] w-2 h-2 bg-emerald-600 border border-white cursor-nw-resize" onMouseDown={(e) => handleResizeMouseDown(e, el, 'nw')}/>
+                                            <div className="absolute top-[-4px] right-[-4px] w-2 h-2 bg-emerald-600 border border-white cursor-ne-resize" onMouseDown={(e) => handleResizeMouseDown(e, el, 'ne')}/>
+                                            <div className="absolute bottom-[-4px] left-[-4px] w-2 h-2 bg-emerald-600 border border-white cursor-sw-resize" onMouseDown={(e) => handleResizeMouseDown(e, el, 'sw')}/>
+                                            <div className="absolute bottom-[-4px] right-[-4px] w-2 h-2 bg-emerald-600 border border-white cursor-se-resize" onMouseDown={(e) => handleResizeMouseDown(e, el, 'se')}/>
+                                        </>
+                                    )}
                                 </div>
                             );
                         })}
