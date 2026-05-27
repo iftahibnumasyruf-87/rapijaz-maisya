@@ -8,9 +8,10 @@ import {
   Type, User, CreditCard, Image as ImageIcon, Ruler, Type as TypeIcon, FileText,
   Columns, FileSignature, TrendingUp, UserX, Clock, Activity, ChevronDown,
   ZoomIn, ZoomOut, Maximize, Minimize, ChevronUp, Lock, Database, Copy, Undo, Redo, Eye, EyeOff,
-  AlignLeft, AlignCenter, AlignRight, AlignStartVertical, AlignCenterVertical, AlignEndVertical
+  AlignLeft, AlignCenter, AlignRight, AlignStartVertical, AlignCenterVertical, AlignEndVertical, BarChart2
 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, AreaChart, Area } from 'recharts';
 import * as XLSX from 'xlsx';
 
 // ==========================================
@@ -683,9 +684,12 @@ const HomeDashboard = () => {
     const stats = useMemo(() => {
         let missingGrades = [];
         let topStudent = { name: '-', avg: 0, kelas: '-' };
+        let topStudentsList = [];
         let mostAbsent = { name: '-', total: 0, kelas: '-', detail: '' };
+        let classAvgMap = {};
+        let subjectAvgMap = {};
 
-        if (!activeSetting.tahun) return { missingGrades, topStudent, mostAbsent };
+        if (!activeSetting.tahun) return { missingGrades, topStudent, top10Students: [], mostAbsent, classAverages: [], subjectAverages: [] };
 
         const subjectIds = data.subjects.map(s => s.id);
 
@@ -694,17 +698,32 @@ const HomeDashboard = () => {
             const classGrades = data.grades.find(g => g.id === gradeDocId)?.data || {};
             const studentsInClass = getStudentsInClass(data.students, data.classes, c.id);
             const className = getClassNameFromValue(data.classes, c.id);
+            
+            let classTotalScore = 0;
+            let classTotalCount = 0;
 
             if (studentsInClass.length > 0) {
                 data.subjects.forEach(sub => {
                     let hasGrade = false;
+                    let subjTotal = 0;
+                    let subjCount = 0;
                     studentsInClass.forEach(st => {
                         if (classGrades[st.id] && classGrades[st.id][sub.id] !== undefined && classGrades[st.id][sub.id] !== '') {
                             hasGrade = true;
+                            const val = Number(classGrades[st.id][sub.id]);
+                            if (!isNaN(val)) {
+                                subjTotal += val;
+                                subjCount++;
+                            }
                         }
                     });
                     if (!hasGrade) {
                         missingGrades.push({ subject: sub.nameId, guru: sub.guru || '-', kelas: className });
+                    }
+                    if (subjCount > 0) {
+                        if (!subjectAvgMap[sub.nameId]) subjectAvgMap[sub.nameId] = { total: 0, count: 0 };
+                        subjectAvgMap[sub.nameId].total += subjTotal;
+                        subjectAvgMap[sub.nameId].count += subjCount;
                     }
                 });
 
@@ -719,6 +738,13 @@ const HomeDashboard = () => {
                         }
                     });
                     const avg = countGrade > 0 ? (totalGrade / countGrade) : 0;
+                    
+                    if (countGrade > 0) {
+                        topStudentsList.push({ name: st.nama, avg: Number(avg.toFixed(2)), kelas: className });
+                        classTotalScore += totalGrade;
+                        classTotalCount += countGrade;
+                    }
+
                     if (avg > topStudent.avg) {
                         topStudent = { name: st.nama, avg: avg.toFixed(2), kelas: className };
                     }
@@ -736,10 +762,24 @@ const HomeDashboard = () => {
                         mostAbsent = { name: st.nama, total: totalAbs, kelas: className, detail: absDetail.join(', ') };
                     }
                 });
+                
+                if (classTotalCount > 0) {
+                    classAvgMap[className] = classTotalScore / classTotalCount;
+                }
             }
         });
+        
+        topStudentsList.sort((a, b) => b.avg - a.avg);
+        const top10Students = topStudentsList.slice(0, 5); // Ambil Top 5
+        
+        const classAverages = Object.keys(classAvgMap).map(k => ({ name: k, 'Rata-Rata': Number(classAvgMap[k].toFixed(2)) }));
+        const subjectAverages = Object.keys(subjectAvgMap).map(k => ({ name: k, 'Rata-Rata': Number((subjectAvgMap[k].total / subjectAvgMap[k].count).toFixed(2)) }));
+        
+        // Sort for better chart view
+        classAverages.sort((a, b) => a.name.localeCompare(b.name));
+        subjectAverages.sort((a, b) => b['Rata-Rata'] - a['Rata-Rata']); // Highest to lowest
 
-        return { missingGrades, topStudent, mostAbsent };
+        return { missingGrades, topStudent, top10Students, mostAbsent, classAverages, subjectAverages };
     }, [data, activeSetting]);
 
     // Logika pengurutan tabel Logs
@@ -871,6 +911,91 @@ const HomeDashboard = () => {
                     </div>
                 </div>
             </div>
+            
+            {activeSetting.tahun && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-2">
+                    <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+                        <div className="flex items-center gap-3 mb-4 border-b pb-3">
+                            <div className="bg-blue-100 p-2 rounded-lg text-blue-600"><BarChart2 size={20}/></div>
+                            <h3 className="font-bold text-gray-800">Rata-Rata Nilai per Kelas</h3>
+                        </div>
+                        <div className="h-[250px] w-full">
+                            {stats.classAverages.length > 0 ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={stats.classAverages} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                                        <XAxis dataKey="name" tick={{fontSize: 12}} tickMargin={10} axisLine={false} tickLine={false} />
+                                        <YAxis domain={[0, 100]} tick={{fontSize: 12}} axisLine={false} tickLine={false} />
+                                        <Tooltip cursor={{fill: '#f8fafc'}} contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
+                                        <Bar dataKey="Rata-Rata" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={50} />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="h-full flex items-center justify-center text-gray-400">Belum ada data nilai</div>
+                            )}
+                        </div>
+                    </div>
+                    
+                    <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex flex-col">
+                        <div className="flex items-center gap-3 mb-4 border-b pb-3">
+                            <div className="bg-yellow-100 p-2 rounded-lg text-yellow-600"><Users size={20}/></div>
+                            <h3 className="font-bold text-gray-800">Top 5 Santri Berprestasi</h3>
+                        </div>
+                        <div className="flex-1 overflow-x-auto">
+                            <table className="w-full text-left text-sm border-collapse">
+                                <thead className="bg-gray-50 text-gray-500">
+                                    <tr>
+                                        <th className="p-3 rounded-l-lg w-10 text-center">#</th>
+                                        <th className="p-3">Nama Santri</th>
+                                        <th className="p-3">Kelas</th>
+                                        <th className="p-3 rounded-r-lg text-center">Rata-Rata</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {stats.top10Students.length > 0 ? stats.top10Students.map((st, idx) => (
+                                        <tr key={idx} className="border-b border-gray-50 hover:bg-emerald-50/30 transition">
+                                            <td className="p-3 text-center font-bold text-emerald-600">{idx + 1}</td>
+                                            <td className="p-3 font-semibold text-gray-700">{st.name}</td>
+                                            <td className="p-3 text-gray-500">{st.kelas}</td>
+                                            <td className="p-3 text-center font-bold text-gray-800">{st.avg}</td>
+                                        </tr>
+                                    )) : (
+                                        <tr><td colSpan="4" className="text-center py-8 text-gray-400">Belum ada data nilai</td></tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 lg:col-span-2">
+                        <div className="flex items-center gap-3 mb-4 border-b pb-3">
+                            <div className="bg-purple-100 p-2 rounded-lg text-purple-600"><Activity size={20}/></div>
+                            <h3 className="font-bold text-gray-800">Rata-Rata Nilai per Mata Pelajaran (Seluruh Kelas)</h3>
+                        </div>
+                        <div className="h-[300px] w-full">
+                            {stats.subjectAverages.length > 0 ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <AreaChart data={stats.subjectAverages} margin={{ top: 10, right: 10, left: 0, bottom: 60 }}>
+                                        <defs>
+                                            <linearGradient id="colorRata" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3}/>
+                                                <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                                        <XAxis dataKey="name" tick={{fontSize: 11}} tickMargin={10} axisLine={false} tickLine={false} angle={-45} textAnchor="end" />
+                                        <YAxis domain={[0, 100]} tick={{fontSize: 12}} axisLine={false} tickLine={false} />
+                                        <Tooltip cursor={{stroke: '#e2e8f0', strokeWidth: 2}} contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
+                                        <Area type="monotone" dataKey="Rata-Rata" stroke="#8b5cf6" strokeWidth={3} fillOpacity={1} fill="url(#colorRata)" activeDot={{r: 6, strokeWidth: 0, fill: '#8b5cf6'}} />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="h-full flex items-center justify-center text-gray-400">Belum ada data nilai</div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {currentUser?.role === 'admin' && (
                 <>
@@ -3712,6 +3837,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
     const [selectedClass, setSelectedClass] = useState('');
     const [selectedStudent, setSelectedStudent] = useState('');
     const [useKatrol, setUseKatrol] = useState(false);
+    const [isBatchMode, setIsBatchMode] = useState(false);
     
     const activeSetting = data.settings.find(s => s.isActive) || {};
     const activeStudents = getStudentsForYear(data.studentSnapshots, activeSetting, data.students);
@@ -3774,22 +3900,82 @@ const CetakDokumen = ({ mode = 'raport' }) => {
 
     const handleWA = () => {
         if(!studentData) return;
-        const text = `Assalamu'alaikum. Berikut adalah pemberitahuan nilai ${mode} ananda *${studentData.nama}* kelas *${getClassNameFromValue(classesData, selectedClass)}*. Harap hubungi sekolah untuk mengambil berkas cetak fisiknya.`;
+        const className = getClassNameFromValue(classesData, selectedClass);
+        const tahun = activeSetting.tahun || '-';
+        const semester = activeSetting.semester || '-';
+
+        // Hitung ringkasan nilai per mapel (ambil max 10 mapel)
+        const relevantSubjects = data.subjects.filter(s =>
+            isSubjectVisibleInClass(s, selectedClass, classesData)
+        ).slice(0, 10);
+
+        const gradeLines = relevantSubjects.map(s => {
+            const gradeObj = studentGrades[s.id];
+            let val = '-';
+            if (gradeObj && typeof gradeObj === 'object') {
+                const raport = computeRaportScore(gradeObj.uts, gradeObj.uas);
+                val = raport !== '' ? raport : '-';
+            } else if (gradeObj !== undefined && gradeObj !== '') {
+                val = gradeObj;
+            }
+            return `\u2022 ${s.nameId}: *${val}*`;
+        }).join('\n');
+
+        // Hitung rata-rata
+        let totalVal = 0; let countVal = 0;
+        relevantSubjects.forEach(s => {
+            const gradeObj = studentGrades[s.id];
+            let num = null;
+            if (gradeObj && typeof gradeObj === 'object') {
+                const r = computeRaportScore(gradeObj.uts, gradeObj.uas);
+                num = r !== '' ? Number(r) : null;
+            } else if (gradeObj !== undefined && gradeObj !== '' && !isNaN(gradeObj)) {
+                num = Number(gradeObj);
+            }
+            if (num !== null) { totalVal += num; countVal++; }
+        });
+        const avgVal = countVal > 0 ? (totalVal / countVal).toFixed(2) : '-';
+
+        const text = `\uD83C\uDF93 *Laporan Nilai ${mode === 'raport' ? 'Raport' : 'Ijazah'}*\nPonpes Imam Syafi'i Brebes\n\nAssalamu'alaikum Wr. Wb.\n\nDengan hormat, berikut adalah informasi nilai ananda:\n\nNama: *${studentData.nama}*\nKelas: *${className}*\nTA: *${tahun} | Semester ${semester}*\n\n\uD83D\uDCDA *Nilai Mata Pelajaran:*\n${gradeLines}\n\n\uD83D\uDCCA Rata-Rata: *${avgVal}*\n\nSemoga nilai ini menjadi motivasi untuk terus belajar. Silakan hubungi sekolah untuk pengambilan berkas fisik.\n\nWassalamu'alaikum Wr. Wb. \uD83E\uDD32`;
         addLog(`Membagikan Info ${mode} via WA untuk ${studentData.nama}`);
         window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
     };
 
+    const handleBatchSavePDF = () => {
+        if(!selectedClass || studentsInClass.length === 0) return;
+        setIsBatchMode(true);
+        setTimeout(() => {
+            const originalTitle = document.title;
+            const ts = activeSetting.tahun ? activeSetting.tahun.replace(/\//g, '-') : 'tahun';
+            const ss = activeSetting.semester || '1';
+            const ks = getClassNameFromValue(classesData, selectedClass).replace(/\s+/g, '_');
+            document.title = mode === 'raport' ? `raport_masal_${ts}_${ss}_${ks}` : `ijazah_masal_${ts}_${ks}`;
+            addLog(`Mencetak massal ${mode} untuk kelas ${ks}`);
+            window.print();
+            setTimeout(() => { 
+                document.title = originalTitle; 
+                setIsBatchMode(false);
+            }, 2000);
+        }, 1000);
+    };
+
     const getStyles = (el) => ({ position: 'absolute', left: `${el.x}px`, top: `${el.y}px`, fontSize: `${el.fontSize}px`, fontFamily: el.fontFamily || 'Arial, sans-serif', fontWeight: el.fontWeight, color: 'black' });
 
-    const renderElement = (el) => {
+    const studentsToRender = isBatchMode ? studentsInClass : (studentData ? [studentData] : []);
+
+    const renderElementForStudent = (el, stdData) => {
         let content = el.content;
-        if (studentData && typeof content === 'string') {
-            content = content.replace('{{nama_santri}}', studentData.nama || '').replace('{{nis}}', studentData.nis || '').replace('{{kelas}}', getClassNameFromValue(classesData, studentData.kelas) || '')
-                             .replace('{{catatan_wali}}', studentGrades['catatan_wali'] || '');
-            if (data.studentFields) data.studentFields.forEach(f => content = content.replace(new RegExp(`{{${f.key}}}`, 'g'), studentData[f.key] || ''));
+        const sGrades = classGradesDoc[stdData.id] || {};
+        
+        if (stdData && typeof content === 'string') {
+            content = content.replace('{{nama_santri}}', stdData.nama || '')
+                             .replace('{{nis}}', stdData.nis || '')
+                             .replace('{{kelas}}', getClassNameFromValue(classesData, stdData.kelas) || '')
+                             .replace('{{catatan_wali}}', sGrades['catatan_wali'] || '');
+            if (data.studentFields) data.studentFields.forEach(f => content = content.replace(new RegExp(`{{${f.key}}}`, 'g'), stdData[f.key] || ''));
         }
 
-        if (el.type === 'table_grades') return <div style={{...getStyles(el), width: `${el.width}px`}}>{renderDynamicTable(el, data, studentGrades, classAverages, useKatrol, mode, classesData)}</div>;
+        if (el.type === 'table_grades') return <div style={{...getStyles(el), width: `${el.width}px`}}>{renderDynamicTable(el, data, sGrades, classAverages, useKatrol, mode, classesData)}</div>;
         if (el.type === 'image') return <img src={el.content} style={{...getStyles(el), width: `${el.width}px`, height: `${el.height}px`, objectFit: 'contain'}} alt="C" />;
         return <div style={{...getStyles(el), whiteSpace: 'pre-wrap'}}>{content}</div>;
     };
@@ -3812,15 +3998,26 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                         <button onClick={handleSavePDF} disabled={!selectedStudent} className="w-full bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-lg font-bold flex justify-center items-center gap-2 transition"><Download size={18}/> Simpan sbg PDF</button>
                         <button onClick={handleWA} disabled={!selectedStudent} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-lg font-bold flex justify-center items-center gap-2 transition"><Share2 size={18}/> Kirim Info via WA</button>
                     </div>
+                    <div className="pt-2 border-t mt-4">
+                        <button onClick={handleBatchSavePDF} disabled={!selectedClass || studentsInClass.length === 0} className="w-full bg-orange-600 hover:bg-orange-700 text-white py-2.5 rounded-lg font-bold flex justify-center items-center gap-2 transition"><Printer size={18}/> Cetak Semua (1 Kelas)</button>
+                        <p className="text-xs text-gray-500 text-center mt-2">Cetak raport seluruh siswa di kelas yang dipilih dalam 1 file PDF.</p>
+                    </div>
                 </div>
             </div>
             <div className="flex-1 bg-gray-200 p-8 rounded-xl overflow-auto flex flex-col items-center gap-8 border border-gray-300 print:bg-white print:p-0 print:border-none print:overflow-visible print:gap-0 relative">
-                {selectedStudent ? (
+                {studentsToRender.length > 0 ? (
                     <div className="print-wrapper w-full flex flex-col items-center gap-8 print:gap-0 print:block">
-                        {pages.map((pageElements, index) => (
-                            <div key={index} className="print-container bg-white shadow-xl relative print:shadow-none print:m-0" style={{ width: `${canvasWidth}px`, height: `${canvasHeight}px`, pageBreakAfter: index < pages.length - 1 ? 'always' : 'auto' }}>
-                                {pageElements.length > 0 ? pageElements.map(el => <React.Fragment key={el.id}>{renderElement(el)}</React.Fragment>) : (activeLayout.length === 0 && index === 0 ? <div className="absolute inset-0 flex items-center justify-center text-gray-400 print:hidden">Layout belum disetting oleh Admin.</div> : <div className="absolute inset-0 flex items-center justify-center text-gray-400 print:hidden">Halaman {index + 1} kosong.</div>)}
-                            </div>
+                        {studentsToRender.map((std, stdIndex) => (
+                            <React.Fragment key={std.id}>
+                                {pages.map((pageElements, index) => {
+                                    const isLastPageOfLastStudent = stdIndex === studentsToRender.length - 1 && index === pages.length - 1;
+                                    return (
+                                        <div key={`${std.id}-${index}`} className="print-container bg-white shadow-xl relative print:shadow-none print:m-0" style={{ width: `${canvasWidth}px`, height: `${canvasHeight}px`, pageBreakAfter: isLastPageOfLastStudent ? 'auto' : 'always' }}>
+                                            {pageElements.length > 0 ? pageElements.map(el => <React.Fragment key={el.id}>{renderElementForStudent(el, std)}</React.Fragment>) : (activeLayout.length === 0 && index === 0 ? <div className="absolute inset-0 flex items-center justify-center text-gray-400 print:hidden">Layout belum disetting oleh Admin.</div> : <div className="absolute inset-0 flex items-center justify-center text-gray-400 print:hidden">Halaman {index + 1} kosong.</div>)}
+                                        </div>
+                                    );
+                                })}
+                            </React.Fragment>
                         ))}
                     </div>
                 ) : <div className="flex items-center justify-center h-full text-gray-400 print:hidden">Pilih santri untuk melihat preview {mode}.</div>}
@@ -3895,6 +4092,19 @@ const LeggerKelas = () => {
         });
         r.sort((a, b) => b.avg - a.avg); return r;
     }, [students, subjects, grades, selectedClass]);
+
+    const handleSendWA = (row) => {
+        const className = getClassNameFromValue(classesData, selectedClass);
+        const tahun = activeSetting.tahun || '-';
+        const semester = activeSetting.semester || '-';
+        const gradeLines = subjects.slice(0, 10).map(s => {
+            const val = getSubjectGradeValue(row.grades[s.id]);
+            return `\u2022 ${s.nameId}: *${val !== null ? val : '-'}*`;
+        }).join('\n');
+        const text = `\uD83C\uDF93 *Laporan Nilai Santri*\nPonpes Imam Syafi'i Brebes\n\nNama: *${row.nama}*\nKelas: *${className}*\nTA: *${tahun} Sem ${semester}*\n\n\uD83D\uDCDA *Ringkasan Nilai:*\n${gradeLines}\n\n\uD83D\uDCCA Rata-Rata: *${row.avg}* | Predikat: *${row.predikat}*\n\nAlhamdulillah, terima kasih atas kepercayaan Anda. \uD83E\uDD32`;
+        addLog(`Kirim info nilai ${row.nama} via WA`);
+        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    };
 
     const exportExcel = () => {
         const className = getClassNameFromValue(classesData, selectedClass);
@@ -3983,7 +4193,7 @@ const LeggerKelas = () => {
                                 <th rowSpan={3} className="p-3 border-b border-gray-700 text-center w-12 sticky left-0 z-30 bg-gray-900">Rank</th>
                                 <th rowSpan={3} className="p-3 border-b border-gray-700 sticky left-12 z-30 bg-gray-900">Nama Santri</th>
                                 {subjects.length > 0 && <th colSpan={subjects.length} className="p-3 border-b border-gray-700 text-center bg-gray-900">Mata Pelajaran</th>}
-                                <th rowSpan={3} className="p-3 border-b border-gray-700 text-center bg-gray-700">Total</th><th rowSpan={3} className="p-3 border-b border-gray-700 text-center bg-gray-700">Rata-rata</th><th rowSpan={3} className="p-3 border-b border-gray-700 text-center bg-gray-700">Predikat</th>
+                                <th rowSpan={3} className="p-3 border-b border-gray-700 text-center bg-gray-700">Total</th><th rowSpan={3} className="p-3 border-b border-gray-700 text-center bg-gray-700">Rata-rata</th><th rowSpan={3} className="p-3 border-b border-gray-700 text-center bg-gray-700">Predikat</th><th rowSpan={3} className="p-3 border-b border-gray-700 text-center bg-emerald-700 print:hidden">WA</th>
                             </tr>
                             <tr className="bg-gray-700 text-white text-sm">
                                 {Object.entries(groupBy(subjects, 'kategori')).map(([cat, subs]) => (
@@ -4007,6 +4217,11 @@ const LeggerKelas = () => {
                                         return <td key={s.id} className={`p-3 text-center border-r ${isRed ? 'text-red-600 font-bold bg-red-50' : ''}`}>{display}</td>;
                                     })}
                                     <td className="p-3 text-center font-bold bg-emerald-50 border-r">{row.total}</td><td className="p-3 text-center font-bold bg-emerald-100 border-r">{row.avg}</td><td className="p-3 text-center font-bold bg-emerald-50">{row.predikat}</td>
+                                    <td className="p-3 text-center print:hidden">
+                                        <button onClick={() => handleSendWA(row)} title="Kirim Nilai via WhatsApp" className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 mx-auto transition">
+                                            <Share2 size={13}/> WA
+                                        </button>
+                                    </td>
                                 </tr>
                             ))}
                         </tbody>
@@ -4149,13 +4364,13 @@ const Dashboard = () => {
   ];
 
   const menuItems = [
-    { id: 'dashboard', label: 'Dashbord', icon: Home, roles: ['admin', 'user'] },
+    { id: 'dashboard', label: 'Dashboard', icon: Home, roles: ['admin', 'guru', 'user'] },
     { id: 'master_data', label: 'Master Data', icon: Users, roles: ['admin'], subItems: masterDataSubItems },
     { id: 'layout_builder', label: 'Desain Layout', icon: LayoutTemplate, roles: ['admin'] },
-    { id: 'input_nilai', label: 'Input Nilai', icon: CheckSquare, roles: ['admin', 'user'], subItems: inputNilaiSubItems },
-    { id: 'legger', label: 'Legger Kelas', icon: BookOpen, roles: ['admin', 'user'] },
-    { id: 'cetak_raport', label: 'Cetak Raport', icon: Printer, roles: ['admin', 'user'] },
-    { id: 'cetak_ijazah', label: 'Cetak Ijazah', icon: Printer, roles: ['admin', 'user'] },
+    { id: 'input_nilai', label: 'Input Nilai', icon: CheckSquare, roles: ['admin', 'guru', 'user'], subItems: inputNilaiSubItems },
+    { id: 'legger', label: 'Legger Kelas', icon: BookOpen, roles: ['admin', 'guru', 'user'] },
+    { id: 'cetak_raport', label: 'Cetak Raport', icon: Printer, roles: ['admin', 'guru', 'user'] },
+    { id: 'cetak_ijazah', label: 'Cetak Ijazah', icon: Printer, roles: ['admin'] },
   ];
 
   const filteredMenu = menuItems.filter(m => m.roles.includes(currentUser?.role));
@@ -4273,7 +4488,11 @@ const Dashboard = () => {
             {!isSidebarCompact && (
               <div className="flex-1 overflow-hidden">
                 <p className="font-bold text-sm truncate text-white">{currentUser?.name}</p>
-                <p className="text-xs text-emerald-300 uppercase">{currentUser?.role}</p>
+                <span className={`text-xs font-semibold uppercase px-2 py-0.5 rounded-full ${
+                  currentUser?.role === 'admin' ? 'bg-emerald-500 text-white' :
+                  currentUser?.role === 'guru' ? 'bg-blue-500 text-white' :
+                  'bg-gray-500 text-white'
+                }`}>{currentUser?.role || 'user'}</span>
               </div>
             )}
           </div>
@@ -4322,16 +4541,5 @@ const Dashboard = () => {
 };
 
 export default function App() {
-  useEffect(() => {
-    let link = document.querySelector("link[rel~='icon']");
-    if (!link) {
-      link = document.createElement('link');
-      link.rel = 'icon';
-      document.head.appendChild(link);
-    }
-    link.href = 'https://i.ibb.co.com/DfZSFRsP/Chat-GPT-Image-3-Mei-2026-04-08-56.png';
-    document.title = "Rapijaz - Ponpes Imam Syafi'i";
-  }, []);
-
   return <AppProvider><AppContext.Consumer>{({ currentUser }) => currentUser ? <Dashboard /> : <Login />}</AppContext.Consumer></AppProvider>;
 }
