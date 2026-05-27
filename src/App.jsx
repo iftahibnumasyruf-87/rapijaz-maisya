@@ -2468,7 +2468,7 @@ const defaultTableColumns = [
 const LayoutBuilder = () => {
     const { data, allData, saveToDb, deleteFromDb, showNotification } = useContext(AppContext);
     const classesData = allData?.classes || data.classes || [];
-    const [activeLayout, setActiveLayout] = useState('raport');
+    const [activeLayout, setActiveLayout] = useState(() => data.layouts?.length > 0 ? data.layouts[0].id : 'raport');
     const [elements, setElements] = useState([]);
     const [newLayoutName, setNewLayoutName] = useState('');
     const [showNewLayoutForm, setShowNewLayoutForm] = useState(false);
@@ -2558,9 +2558,15 @@ const LayoutBuilder = () => {
     // Auto-save effect
     useEffect(() => {
         if (!activeLayout) return;
+        
+        // Cek apakah layout ini benar-benar ada di database
+        // Jangan auto-save (membuat baru otomatis) jika layout sudah dihapus
+        const layoutExists = data.layouts && data.layouts.some(l => l.id === activeLayout);
+        if (!layoutExists && data.layouts?.length > 0) return;
+
         const timer = setTimeout(() => {
             saveToDb('layouts', activeLayout, {
-                name: data.layouts.find(l => l.id === activeLayout)?.name || activeLayout,
+                name: data.layouts?.find(l => l.id === activeLayout)?.name || activeLayout,
                 elements,
                 pageSize,
                 orientation,
@@ -2672,7 +2678,8 @@ const LayoutBuilder = () => {
         if (confirm(`Hapus layout "${data.layouts.find(l => l.id === layoutId)?.name || layoutId}"?`)) {
             deleteFromDb('layouts', layoutId, false, `Menghapus layout ${layoutId}`);
             if (activeLayout === layoutId) {
-                setActiveLayout(data.layouts.find(l => l.id !== layoutId)?.id || 'raport');
+                const remainingLayouts = data.layouts.filter(l => l.id !== layoutId);
+                setActiveLayout(remainingLayouts.length > 0 ? remainingLayouts[0].id : 'raport');
             }
         }
     };
