@@ -2477,6 +2477,7 @@ const LayoutBuilder = () => {
     const [selectedElementId, setSelectedElementId] = useState(null);
     const [currentPage, setCurrentPage] = useState(0);
     const [orientation, setOrientation] = useState('portrait');
+    const [margins, setMargins] = useState({ top: 0, bottom: 0, left: 0, right: 0 });
     const [zoom, setZoom] = useState(0.5);
     const [past, setPast] = useState([]);
     const [future, setFuture] = useState([]);
@@ -2543,14 +2544,32 @@ const LayoutBuilder = () => {
             setPageSize(savedLayout.pageSize || 'A4');
             setOrientation(savedLayout.orientation || 'portrait');
             setGuides(savedLayout.guides || { h: [], v: [] });
+            setMargins(savedLayout.margins || { top: 0, bottom: 0, left: 0, right: 0 });
         } else {
             setElements([]); setPageSize('A4'); setOrientation('portrait'); setGuides({ h: [], v: [] });
+            setMargins({ top: 0, bottom: 0, left: 0, right: 0 });
         }
         setPast([]);
         setFuture([]);
         setSelectedElementId(null);
         setCurrentPage(0);
     }, [activeLayout, data.layouts]);
+
+    // Auto-save effect
+    useEffect(() => {
+        if (!activeLayout) return;
+        const timer = setTimeout(() => {
+            saveToDb('layouts', activeLayout, {
+                name: data.layouts.find(l => l.id === activeLayout)?.name || activeLayout,
+                elements,
+                pageSize,
+                orientation,
+                guides,
+                margins
+            }, true); // silent save
+        }, 1500);
+        return () => clearTimeout(timer);
+    }, [elements, pageSize, orientation, guides, margins]);
 
     const addElement = (type, customKey = null) => {
         const isWatermark = type === 'watermark';
@@ -2631,7 +2650,7 @@ const LayoutBuilder = () => {
         setSelectedElementId(null);
     };
 
-    const saveLayout = () => saveToDb('layouts', activeLayout, { name: activeLayout, elements, pageSize, orientation, guides }, false, `Menyimpan desain layout ${activeLayout}`);
+    const saveLayout = () => saveToDb('layouts', activeLayout, { name: data.layouts.find(l => l.id === activeLayout)?.name || activeLayout, elements, pageSize, orientation, guides, margins }, false, `Menyimpan desain layout ${activeLayout}`);
 
     const createNewLayout = () => {
         if (!newLayoutName.trim()) {
@@ -2643,7 +2662,7 @@ const LayoutBuilder = () => {
             showNotification('Layout dengan nama ini sudah ada', 'error');
             return;
         }
-        saveToDb('layouts', layoutId, { name: newLayoutName, elements: [], pageSize: 'A4', orientation: 'portrait', guides: { v: [], h: [] } }, false, `Membuat layout baru: ${newLayoutName}`);
+        saveToDb('layouts', layoutId, { name: newLayoutName, elements: [], pageSize: 'A4', orientation: 'portrait', guides: { v: [], h: [] }, margins: { top: 0, bottom: 0, left: 0, right: 0 } }, false, `Membuat layout baru: ${newLayoutName}`);
         setNewLayoutName('');
         setShowNewLayoutForm(false);
         setActiveLayout(layoutId);
@@ -2676,7 +2695,8 @@ const LayoutBuilder = () => {
             elements: clonedElements,
             pageSize: source.pageSize || 'A4',
             orientation: source.orientation || 'portrait',
-            guides: JSON.parse(JSON.stringify(source.guides || { h: [], v: [] }))
+            guides: JSON.parse(JSON.stringify(source.guides || { h: [], v: [] })),
+            margins: JSON.parse(JSON.stringify(source.margins || { top: 0, bottom: 0, left: 0, right: 0 }))
         }, false, `Menduplikat layout: ${sourceName}`);
         setActiveLayout(newId);
         showNotification(`Layout "${newName}" berhasil dibuat!`, 'success');
@@ -2846,6 +2866,16 @@ const LayoutBuilder = () => {
                             <option value="portrait">Potrait</option><option value="landscape">Landscape</option>
                         </select>
                     </div>
+                    <div className="flex flex-col gap-2 p-3 bg-indigo-50 border border-indigo-100 rounded-lg">
+                        <p className="text-xs font-bold text-indigo-800 uppercase tracking-wider">Pengaturan Margin (mm)</p>
+                        <div className="grid grid-cols-4 gap-2">
+                            <div className="flex flex-col"><label className="text-[10px] text-indigo-600 mb-1 font-bold">Atas</label><input type="number" value={margins.top} onChange={e=>setMargins({...margins, top: Number(e.target.value)})} className="w-full p-1.5 border border-indigo-200 rounded text-xs" /></div>
+                            <div className="flex flex-col"><label className="text-[10px] text-indigo-600 mb-1 font-bold">Bawah</label><input type="number" value={margins.bottom} onChange={e=>setMargins({...margins, bottom: Number(e.target.value)})} className="w-full p-1.5 border border-indigo-200 rounded text-xs" /></div>
+                            <div className="flex flex-col"><label className="text-[10px] text-indigo-600 mb-1 font-bold">Kiri</label><input type="number" value={margins.left} onChange={e=>setMargins({...margins, left: Number(e.target.value)})} className="w-full p-1.5 border border-indigo-200 rounded text-xs" /></div>
+                            <div className="flex flex-col"><label className="text-[10px] text-indigo-600 mb-1 font-bold">Kanan</label><input type="number" value={margins.right} onChange={e=>setMargins({...margins, right: Number(e.target.value)})} className="w-full p-1.5 border border-indigo-200 rounded text-xs" /></div>
+                        </div>
+                    </div>
+                    <button onClick={() => { document.title = "Print_Preview_Layout"; window.print(); }} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-lg font-bold flex justify-center items-center gap-2 transition shadow-sm"><Printer size={16}/> Print Preview</button>
                     {showNewLayoutForm && (
                         <div className="border-t pt-3 space-y-2">
                             <p className="text-xs font-semibold text-gray-600">Nama Layout Baru</p>
@@ -3209,7 +3239,7 @@ const LayoutBuilder = () => {
                     {/* Corner box */}
                     {showRuler && <div style={{ position: 'absolute', left: 0, top: 0, width: 40, height: 28, background: '#1e293b' }}/>}
                     {/* Canvas wrapper */}
-                    <div style={{ position: 'absolute', left: showRuler ? 40 : 0, top: showRuler ? 28 : 0, width: canvasWidth * zoom, height: canvasHeight * zoom }} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
+                    <div className="print-wrapper" style={{ position: 'absolute', left: showRuler ? 40 : 0, top: showRuler ? 28 : 0, width: canvasWidth * zoom, height: canvasHeight * zoom }} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
                         {/* drag bars — only show when ruler is hidden to avoid overlap */}
                         {showGuideBars && !showRuler && (
                             <div onMouseDown={createHGuide} title="Tarik ke bawah untuk buat garis bantu horizontal" className="absolute top-[-22px] left-0 right-0 h-[22px] bg-slate-700 text-slate-300 text-xs flex justify-center items-center cursor-row-resize hover:bg-slate-600 transition select-none rounded-t"><Ruler size={12} className="mr-1"/> Tarik Garis Horizontal</div>
@@ -3224,8 +3254,8 @@ const LayoutBuilder = () => {
                         {showGuideBars && showRuler && (
                             <div onMouseDown={createVGuide} title="Klik ruler kiri untuk buat garis bantu vertikal" className="absolute" style={{ left: -40, top: 0, bottom: 0, width: 40, cursor: 'col-resize', zIndex: 5 }}/>
                         )}
-                        <div ref={canvasRef} style={{ width: canvasWidth, height: canvasHeight, transform: `scale(${zoom})`, transformOrigin: 'top left', position: 'absolute', top: 0, left: 0 }} className="bg-white shadow-xl">
-                        {showGrid && <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'linear-gradient(#f0f0f0 1px, transparent 1px), linear-gradient(90deg, #f0f0f0 1px, transparent 1px)', backgroundSize: '20px 20px', opacity: 0.5 }}></div>}
+                        <div ref={canvasRef} style={{ width: canvasWidth, height: canvasHeight, transform: `scale(${zoom})`, transformOrigin: 'top left', position: 'absolute', top: 0, left: 0 }} className="print-container bg-white shadow-xl">
+                        {showGrid && <div className="absolute inset-0 pointer-events-none print:hidden" style={{ backgroundImage: 'linear-gradient(#f0f0f0 1px, transparent 1px), linear-gradient(90deg, #f0f0f0 1px, transparent 1px)', backgroundSize: '20px 20px', opacity: 0.5 }}></div>}
                         
                         {guides.v.map((gx, i) => (<div key={`v-${i}`} onMouseDown={(e) => startDragGuide(e, 'v', i)} onDoubleClick={() => setGuides(prev => ({...prev, v: prev.v.filter((_, idx) => idx !== i)}))} style={{ position: 'absolute', left: `${gx}px`, top: 0, bottom: 0, borderLeft: '1px dashed #0ea5e9', cursor: 'col-resize', zIndex: 10 }} className="hover:border-l-2 hover:border-blue-500 group"><div className="absolute -top-5 -left-4 bg-blue-500 text-white text-[10px] px-1 rounded opacity-0 group-hover:opacity-100">{Math.round(gx)}</div></div>))}
                         {guides.h.map((gy, i) => (<div key={`h-${i}`} onMouseDown={(e) => startDragGuide(e, 'h', i)} onDoubleClick={() => setGuides(prev => ({...prev, h: prev.h.filter((_, idx) => idx !== i)}))} style={{ position: 'absolute', top: `${gy}px`, left: 0, right: 0, borderTop: '1px dashed #0ea5e9', cursor: 'row-resize', zIndex: 10 }} className="hover:border-t-2 hover:border-blue-500 group"><div className="absolute -left-6 -top-2 bg-blue-500 text-white text-[10px] px-1 rounded opacity-0 group-hover:opacity-100">{Math.round(gy)}</div></div>))}
@@ -3270,7 +3300,16 @@ const LayoutBuilder = () => {
                 </div>{/* end ruler+canvas outer */}
             </div>
             
-            <style>{`@import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&display=swap');`}</style>
+            <style>{`
+            @import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&display=swap');
+            @media print { 
+                body * { visibility: hidden; } 
+                .print-wrapper, .print-wrapper * { visibility: visible; } 
+                .print-wrapper { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; margin: 0 !important; padding: 0 !important; } 
+                .print-container { position: relative !important; margin: 0 !important; padding: 0 !important; box-shadow: none !important; border: none !important; transform: scale(1) !important; left: 0 !important; top: 0 !important; } 
+                @page { size: ${pageSize === 'F4' ? '215.9mm 330.2mm' : 'A4'} ${orientation}; margin: ${margins.top}mm ${margins.right}mm ${margins.bottom}mm ${margins.left}mm; } 
+            }
+            `}</style>
             <style>{`.custom-scrollbar::-webkit-scrollbar { width: 6px; } .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }`}</style>
         </div>
     );
@@ -3899,6 +3938,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
     const [selectedStudent, setSelectedStudent] = useState('');
     const [useKatrol, setUseKatrol] = useState(false);
     const [isBatchMode, setIsBatchMode] = useState(false);
+    const [printMargins, setPrintMargins] = useState({ top: 0, bottom: 0, left: 0, right: 0 });
     
     const activeSetting = data.settings.find(s => s.isActive) || {};
     const activeStudents = getStudentsForYear(data.studentSnapshots, activeSetting, data.students);
@@ -3914,6 +3954,10 @@ const CetakDokumen = ({ mode = 'raport' }) => {
     const baseHeight = pageDimensions[layoutPageSize].height;
     const canvasWidth = layoutOrientation === 'landscape' ? baseHeight : baseWidth;
     const canvasHeight = layoutOrientation === 'landscape' ? baseWidth : baseHeight;
+
+    useEffect(() => {
+        setPrintMargins(layoutSettings.margins || { top: 0, bottom: 0, left: 0, right: 0 });
+    }, [JSON.stringify(layoutSettings.margins)]);
 
     useEffect(() => {
         const styleId = 'custom-fonts-style-print';
@@ -4054,6 +4098,16 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                     <select className="w-full p-2 border rounded-lg" value={selectedClass} onChange={e => {setSelectedClass(e.target.value); setSelectedStudent('');}}><option value="">-- Kelas --</option>{data.classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
                     <select className="w-full p-2 border rounded-lg" value={selectedStudent} onChange={e => setSelectedStudent(e.target.value)} disabled={!selectedClass}><option value="">-- Santri --</option>{studentsInClass.map(s => <option key={s.id} value={s.id}>{s.nama}</option>)}</select>
                     <div className="pt-4 border-t"><label className="flex items-center gap-2 bg-yellow-50 p-3 rounded-lg border border-yellow-200 cursor-pointer"><input type="checkbox" className="w-5 h-5 text-yellow-600" checked={useKatrol} onChange={e => setUseKatrol(e.target.checked)} /><div><p className="font-bold text-yellow-800 text-sm">Gunakan Nilai Katrol</p><p className="text-xs text-yellow-700">Nilai merah otomatis menjadi KKM</p></div></label></div>
+                    <div className="pt-4 border-t">
+                        <p className="text-sm font-bold text-gray-700 mb-2">Penyesuaian Margin Printer (mm)</p>
+                        <div className="grid grid-cols-4 gap-2">
+                            <div className="flex flex-col"><label className="text-[10px] text-gray-500 mb-1">Atas</label><input type="number" value={printMargins.top} onChange={e=>setPrintMargins({...printMargins, top: Number(e.target.value)})} className="w-full p-2 border rounded text-xs" /></div>
+                            <div className="flex flex-col"><label className="text-[10px] text-gray-500 mb-1">Bawah</label><input type="number" value={printMargins.bottom} onChange={e=>setPrintMargins({...printMargins, bottom: Number(e.target.value)})} className="w-full p-2 border rounded text-xs" /></div>
+                            <div className="flex flex-col"><label className="text-[10px] text-gray-500 mb-1">Kiri</label><input type="number" value={printMargins.left} onChange={e=>setPrintMargins({...printMargins, left: Number(e.target.value)})} className="w-full p-2 border rounded text-xs" /></div>
+                            <div className="flex flex-col"><label className="text-[10px] text-gray-500 mb-1">Kanan</label><input type="number" value={printMargins.right} onChange={e=>setPrintMargins({...printMargins, right: Number(e.target.value)})} className="w-full p-2 border rounded text-xs" /></div>
+                        </div>
+                        <p className="text-[10px] text-gray-400 mt-1">Margin awal diambil dari master Layout.</p>
+                    </div>
                     <div className="pt-4 flex flex-col gap-3">
                         <button onClick={handlePrint} disabled={!selectedStudent} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-bold flex justify-center items-center gap-2 transition"><Printer size={18}/> Print Langsung</button>
                         <button onClick={handleSavePDF} disabled={!selectedStudent} className="w-full bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-lg font-bold flex justify-center items-center gap-2 transition"><Download size={18}/> Simpan sbg PDF</button>
@@ -4083,7 +4137,16 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                     </div>
                 ) : <div className="flex items-center justify-center h-full text-gray-400 print:hidden">Pilih santri untuk melihat preview {mode}.</div>}
             </div>
-            <style>{`@import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&display=swap'); @media print { body * { visibility: hidden; } .print-wrapper, .print-wrapper * { visibility: visible; } .print-wrapper { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; } .print-container { position: relative; margin: 0; padding: 0; box-shadow: none; } @page { size: ${cssPageSize}; margin: 0; } }`}</style>
+            <style>{`
+            @import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&display=swap');
+            @media print { 
+                body * { visibility: hidden; } 
+                .print-wrapper, .print-wrapper * { visibility: visible; } 
+                .print-wrapper { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; margin: 0 !important; padding: 0 !important; } 
+                .print-container { position: relative !important; margin: 0 !important; padding: 0 !important; box-shadow: none !important; border: none !important; transform: scale(1) !important; left: 0 !important; top: 0 !important; } 
+                @page { size: ${cssPageSize}; margin: ${printMargins.top}mm ${printMargins.right}mm ${printMargins.bottom}mm ${printMargins.left}mm; } 
+            }
+            `}</style>
         </div>
     );
 };
