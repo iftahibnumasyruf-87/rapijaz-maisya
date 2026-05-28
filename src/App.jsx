@@ -8,7 +8,7 @@ import {
   Type, User, CreditCard, Image as ImageIcon, Ruler, Type as TypeIcon, FileText,
   Columns, FileSignature, TrendingUp, UserX, Clock, Activity, ChevronDown,
   ZoomIn, ZoomOut, Maximize, Minimize, ChevronUp, Lock, Database, Copy, Undo, Redo, Eye, EyeOff,
-  AlignLeft, AlignCenter, AlignRight, AlignStartVertical, AlignCenterVertical, AlignEndVertical, BarChart2
+  AlignLeft, AlignCenter, AlignRight, AlignStartVertical, AlignCenterVertical, AlignEndVertical, BarChart2, AlignJustify
 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, AreaChart, Area } from 'recharts';
@@ -3121,6 +3121,15 @@ const LayoutBuilder = () => {
                                         <div className="w-2/3"><label className="text-[10px] text-gray-500 font-bold uppercase">Ukuran Teks</label><input type="number" className="w-full p-1.5 border rounded text-sm" value={activeEl.fontSize} onChange={e => updateElement(selectedElementId, { fontSize: Number(e.target.value) })}/></div>
                                         <div className="w-1/3 flex items-end"><button onClick={() => updateElement(selectedElementId, { fontWeight: activeEl.fontWeight === 'bold' ? 'normal' : 'bold' })} className={`w-full border p-1.5 rounded text-sm font-bold transition ${activeEl.fontWeight === 'bold' ? 'bg-gray-800 text-white' : 'bg-white hover:bg-gray-100'}`}>B</button></div>
                                     </div>
+                                    <div className="mt-2">
+                                        <label className="text-[10px] text-gray-500 font-bold uppercase mb-1 block">Rata Teks</label>
+                                        <div className="w-full flex items-center border rounded overflow-hidden">
+                                            <button onClick={() => updateElement(selectedElementId, { textAlign: 'left' })} className={`flex-1 p-1.5 flex justify-center transition ${(!activeEl.textAlign || activeEl.textAlign === 'left') ? 'bg-gray-800 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`} title="Rata Kiri"><AlignLeft size={16}/></button>
+                                            <button onClick={() => updateElement(selectedElementId, { textAlign: 'center' })} className={`flex-1 p-1.5 flex justify-center transition border-l ${activeEl.textAlign === 'center' ? 'bg-gray-800 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`} title="Rata Tengah"><AlignCenter size={16}/></button>
+                                            <button onClick={() => updateElement(selectedElementId, { textAlign: 'right' })} className={`flex-1 p-1.5 flex justify-center transition border-l ${activeEl.textAlign === 'right' ? 'bg-gray-800 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`} title="Rata Kanan"><AlignRight size={16}/></button>
+                                            <button onClick={() => updateElement(selectedElementId, { textAlign: 'justify' })} className={`flex-1 p-1.5 flex justify-center transition border-l ${activeEl.textAlign === 'justify' ? 'bg-gray-800 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`} title="Rata Kiri Kanan (Justify)"><AlignJustify size={16}/></button>
+                                        </div>
+                                    </div>
                                 </>
                             )}
 
@@ -3416,7 +3425,7 @@ const LayoutBuilder = () => {
                                 >
                                     {el.type === 'table_grades' ? renderDynamicTable(el, data, mockStudentGrades, mockClassAverages, false, 'raport', classesData) 
                                     : el.type === 'image' ? <img src={el.content} style={{ width: '100%', height: '100%', objectFit: el.objectFit || 'contain', objectPosition: `${el.objectPositionX ?? 50}% ${el.objectPositionY ?? 50}%`, pointerEvents: 'none' }} alt="elemen" />
-                                    : <div style={{ whiteSpace: 'pre-wrap', width: '100%', height: '100%' }}>{el.content}</div>}
+                                    : <div style={{ whiteSpace: 'pre-wrap', width: '100%', height: '100%', textAlign: el.textAlign || 'left' }}>{el.content}</div>}
                                     
                                     {isSelected && !el.locked && (
                                         <>
@@ -4203,7 +4212,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
         }, 1000);
     };
 
-    const getStyles = (el) => ({ position: 'absolute', left: `${el.x}px`, top: `${el.y}px`, fontSize: `${el.fontSize}px`, fontFamily: el.fontFamily || 'Arial, sans-serif', fontWeight: el.fontWeight, color: 'black' });
+    const getStyles = (el) => ({ position: 'absolute', left: `${el.x}px`, top: `${el.y}px`, fontSize: `${el.fontSize}px`, fontFamily: el.fontFamily || 'Arial, sans-serif', fontWeight: el.fontWeight, color: 'black', textAlign: el.textAlign || 'left' });
 
     const studentsToRender = isBatchMode ? studentsInClass : (studentData ? [studentData] : []);
 
