@@ -2534,6 +2534,28 @@ const LayoutBuilder = () => {
     const [showGrid, setShowGrid] = useState(true);
     const [isBottomMenuExpanded, setIsBottomMenuExpanded] = useState(true);
     const canvasRef = useRef(null);
+    const layoutContainerRef = useRef(null);
+    const [isFullscreen, setIsFullscreen] = useState(false);
+
+    useEffect(() => {
+        const handleFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    }, []);
+
+    const toggleFullscreen = async () => {
+        try {
+            if (!layoutContainerRef.current) return;
+            if (!document.fullscreenElement) {
+                await layoutContainerRef.current.requestFullscreen();
+            } else {
+                await document.exitFullscreen();
+            }
+        } catch (err) {
+            console.error('Fullscreen error:', err);
+            showNotification('Fullscreen tidak didukung di browser ini', 'error');
+        }
+    };
 
     const baseWidth = pageDimensions[pageSize].width;
     const baseHeight = pageDimensions[pageSize].height;
@@ -2982,7 +3004,7 @@ const LayoutBuilder = () => {
     const mockClassAverages = {};
 
     return (
-        <div className="flex flex-col md:flex-row gap-6 h-[80vh] print:h-auto print:block">
+        <div ref={layoutContainerRef} className={`flex flex-col md:flex-row gap-6 print:h-auto print:block ${isFullscreen ? 'h-screen w-screen bg-gray-50 p-4' : 'h-[80vh]'}`}>
             <div className="w-full md:w-[320px] bg-white rounded-xl shadow-sm flex flex-col border border-gray-100 shrink-0 overflow-hidden print:hidden">
                 <div className="p-4 border-b bg-gray-50 flex items-center justify-between z-10 shrink-0">
                     <h3 className="font-bold text-gray-800 text-lg">Layout Builder</h3>
@@ -3321,6 +3343,10 @@ const LayoutBuilder = () => {
                         <button onClick={() => setZoom(z => Math.max(0.3, z - 0.1))} className="text-gray-500 hover:text-emerald-600" title="Zoom Out"><ZoomOut size={18}/></button>
                         <span className="text-sm font-bold text-gray-700 w-10 text-center">{Math.round(zoom * 100)}%</span>
                         <button onClick={() => setZoom(z => Math.min(2, z + 0.1))} className="text-gray-500 hover:text-emerald-600" title="Zoom In"><ZoomIn size={18}/></button>
+                        <div className="w-px h-4 bg-gray-300"></div>
+                        <button onClick={toggleFullscreen} className="text-gray-500 hover:text-emerald-600 transition" title={isFullscreen ? "Keluar Fullscreen" : "Layar Penuh (Fullscreen)"}>
+                            {isFullscreen ? <Minimize size={18}/> : <Maximize size={18}/>}
+                        </button>
                         {selectedElementId && activeEl && (<>
                         <div className="w-px h-4 bg-gray-300"></div>
                         <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">Align</span>
