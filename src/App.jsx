@@ -4128,6 +4128,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
     const [useKatrol, setUseKatrol] = useState(false);
     const [isBatchMode, setIsBatchMode] = useState(false);
     const [printMargins, setPrintMargins] = useState({ top: 0, bottom: 0, left: 0, right: 0 });
+    const [printScale, setPrintScale] = useState(0.9);
     
     const activeSetting = data.settings.find(s => s.isActive) || {};
     const activeStudents = getStudentsForYear(data.studentSnapshots, activeSetting, data.students);
@@ -4297,6 +4298,17 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                         </div>
                         <p className="text-[10px] text-gray-400 mt-1 leading-tight">Margin awal diambil dari master Layout. Setting ini akan menggeser cetakan secara fisik di kertas.</p>
                     </div>
+                    <div className="pt-4 border-t">
+                        <p className="text-sm font-bold text-gray-700 mb-1">Skala Cetak (Print Scale)</p>
+                        <div className="flex items-center gap-3">
+                            <input type="range" min="0.5" max="1.0" step="0.01" value={printScale} onChange={e => setPrintScale(Number(e.target.value))} className="flex-1 h-2 accent-blue-600" />
+                            <div className="flex items-center gap-1 shrink-0">
+                                <input type="number" min="50" max="100" value={Math.round(printScale * 100)} onChange={e => setPrintScale(Math.min(1, Math.max(0.5, Number(e.target.value) / 100)))} className="w-14 p-1.5 border rounded text-xs text-center font-bold" />
+                                <span className="text-xs text-gray-500">%</span>
+                            </div>
+                        </div>
+                        <p className="text-[10px] text-gray-400 mt-1 leading-tight">Default 90% karena DPI printer fisik berbeda dengan layar. Sesuaikan sampai hasil cetak pas di kertas.</p>
+                    </div>
                     <div className="pt-4 flex flex-col gap-3">
                         <button onClick={handlePrint} disabled={!selectedStudent} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-bold flex justify-center items-center gap-2 transition"><Printer size={18}/> Print Langsung</button>
                         <button onClick={handleSavePDF} disabled={!selectedStudent} className="w-full bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-lg font-bold flex justify-center items-center gap-2 transition"><Download size={18}/> Simpan sbg PDF</button>
@@ -4331,8 +4343,17 @@ const CetakDokumen = ({ mode = 'raport' }) => {
             @media print { 
                 body * { visibility: hidden; } 
                 .print-wrapper, .print-wrapper * { visibility: visible; } 
-                .print-wrapper { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; margin: 0 !important; padding: 0 !important; } 
-                .print-container { position: relative !important; padding: 0 !important; box-shadow: none !important; border: none !important; transform: scale(1) !important; left: 0 !important; top: 0 !important; } 
+                .print-wrapper { 
+                    position: absolute !important; 
+                    left: 0 !important; 
+                    top: 0 !important; 
+                    margin: 0 !important; 
+                    padding: 0 !important;
+                    transform: scale(${printScale}) !important;
+                    transform-origin: top left !important;
+                    width: ${Math.round(100 / printScale)}% !important;
+                } 
+                .print-container { position: relative !important; padding: 0 !important; box-shadow: none !important; border: none !important; transform: none !important; left: 0 !important; top: 0 !important; margin: 0 !important; } 
                 @page { size: ${cssPageSize}; margin: 0 !important; } 
             }
             `}</style>
