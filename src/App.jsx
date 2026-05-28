@@ -2536,6 +2536,7 @@ const LayoutBuilder = () => {
     const canvasRef = useRef(null);
     const layoutContainerRef = useRef(null);
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [showSidebar, setShowSidebar] = useState(true);
 
     useEffect(() => {
         const handleFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
@@ -3005,6 +3006,7 @@ const LayoutBuilder = () => {
 
     return (
         <div ref={layoutContainerRef} className={`flex flex-col md:flex-row gap-6 print:h-auto print:block ${isFullscreen ? 'h-screen w-screen bg-gray-50 p-4' : 'h-[80vh]'}`}>
+            {showSidebar && (
             <div className="w-full md:w-[320px] bg-white rounded-xl shadow-sm flex flex-col border border-gray-100 shrink-0 overflow-hidden print:hidden">
                 <div className="p-4 border-b bg-gray-50 flex items-center justify-between z-10 shrink-0">
                     <h3 className="font-bold text-gray-800 text-lg">Layout Builder</h3>
@@ -3323,11 +3325,16 @@ const LayoutBuilder = () => {
                     )}
                 </div>
             </div>
+            )}
 
             <div className="flex-1 bg-gray-200 rounded-xl overflow-auto p-4 flex flex-col items-center border border-gray-300 relative select-none custom-scrollbar print:bg-white print:p-0 print:border-none print:overflow-visible print:static">
                 
                 {showToolbar && (
                     <div className="bg-white px-4 py-2 rounded-full shadow-sm flex items-center gap-4 mb-4 shrink-0 border border-gray-200 sticky top-0 z-50">
+                        <button onClick={() => setShowSidebar(!showSidebar)} className="text-gray-500 hover:text-emerald-600 transition" title={showSidebar ? "Sembunyikan Panel Kiri" : "Tampilkan Panel Kiri"}>
+                            <Columns size={18} className={!showSidebar ? "opacity-50" : ""}/>
+                        </button>
+                        <div className="w-px h-4 bg-gray-300"></div>
                         <button onClick={() => setCurrentPage(Math.max(0, currentPage - 1))} disabled={currentPage === 0} className="text-gray-500 hover:text-emerald-600 disabled:opacity-30"><ChevronDown className="rotate-90" size={18}/></button>
                         <span className="text-sm font-bold text-gray-700">Halaman {currentPage + 1}</span>
                         <button onClick={() => setCurrentPage(currentPage + 1)} disabled={currentPage >= (elements.length > 0 ? Math.max(...elements.map(e => e.pageIndex || 0)) : 0) + 1} className="text-gray-500 hover:text-emerald-600 disabled:opacity-30"><ChevronDown className="-rotate-90" size={18}/></button>
