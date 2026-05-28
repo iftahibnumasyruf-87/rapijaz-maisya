@@ -447,6 +447,15 @@ const AppProvider = ({ children }) => {
       }
     }
 
+    // Pastikan bucket 'layout-images' di Supabase Storage sudah ada
+    try {
+      const { data: buckets } = await supabase.storage.listBuckets();
+      const bucketExists = buckets?.some(b => b.name === 'layout-images');
+      if (!bucketExists) {
+        await supabase.storage.createBucket('layout-images', { public: true, allowedMimeTypes: ['image/*'], fileSizeLimit: 5242880 });
+      }
+    } catch (_) { /* storage mungkin dibatasi oleh RLS, tidak masalah */ }
+
     if (!skipMigration) {
       const migrated = await migrateLegacyData(newData);
       if (migrated) {
@@ -530,7 +539,15 @@ const AppProvider = ({ children }) => {
         }));
       }
     } catch (err) {
-      if(!silent) showNotification('Gagal menyimpan data.', 'error');
+      console.error('saveToDb error:', err);
+      const msg = err?.message || '';
+      if (!silent) {
+        if (msg.includes('too large') || msg.includes('exceeded') || msg.includes('413')) {
+          showNotification('Gagal simpan: Data terlalu besar. Gunakan gambar lebih kecil (< 200KB).', 'error');
+        } else {
+          showNotification(`Gagal menyimpan data. ${msg}`, 'error');
+        }
+      }
     }
   };
 
@@ -2860,9 +2877,43 @@ const LayoutBuilder = () => {
         setDraggingType(null); setDragIndex(null); setInitialRect(null);
     };
 
-    const handleImageUpload = (e) => {
+    const handleImageUpload = async (e) => {
         const file = e.target.files[0];
-        if (file) {
+        if (!file) return;
+
+        // Jika ukuran file < 200KB, boleh pakai base64 (aman untuk DB)
+        // Jika lebih besar, upload ke Supabase Storage agar tidak gagal simpan
+        const MAX_BASE64_SIZE = 200 * 1024; // 200KB
+
+        if (file.size <= MAX_BASE64_SIZE) {
+            const reader = new FileReader();
+            reader.onload = (ev) => updateElement(selectedElementId, { content: ev.target.result });
+            reader.readAsDataURL(file);
+            return;
+        }
+
+        // Upload ke Supabase Storage
+        showNotification('Mengupload gambar, mohon tunggu...', 'info');
+        try {
+            const ext = file.name.split('.').pop();
+            const fileName = `layout_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+            const { error: uploadError } = await supabase.storage
+                .from('layout-images')
+                .upload(fileName, file, { upsert: true, contentType: file.type });
+
+            if (uploadError) throw uploadError;
+
+            const { data: urlData } = supabase.storage
+                .from('layout-images')
+                .getPublicUrl(fileName);
+
+            if (!urlData?.publicUrl) throw new Error('Gagal mendapatkan URL gambar');
+
+            updateElement(selectedElementId, { content: urlData.publicUrl });
+            showNotification('Gambar berhasil diupload!');
+        } catch (err) {
+            // Fallback: jika storage gagal (bucket belum dibuat), paksa base64
+            showNotification('Storage tidak tersedia, menggunakan metode lain...', 'warning');
             const reader = new FileReader();
             reader.onload = (ev) => updateElement(selectedElementId, { content: ev.target.result });
             reader.readAsDataURL(file);
