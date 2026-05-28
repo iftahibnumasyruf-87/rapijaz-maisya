@@ -3030,8 +3030,9 @@ const LayoutBuilder = () => {
                         </select>
                     </div>
                     <div className="flex flex-col gap-2 p-3 bg-indigo-50 border border-indigo-100 rounded-lg">
-                        <p className="text-xs font-bold text-indigo-800 uppercase tracking-wider">Pengaturan Margin (mm)</p>
-                        <div className="grid grid-cols-4 gap-2">
+                        <p className="text-xs font-bold text-indigo-800 uppercase tracking-wider">Batas Area Aman / Margin (mm)</p>
+                        <p className="text-[10px] text-indigo-600 leading-tight">Garis merah putus-putus akan muncul di kanvas sebagai panduan area aman cetak (tidak akan ikut ter-print).</p>
+                        <div className="grid grid-cols-4 gap-2 mt-1">
                             <div className="flex flex-col"><label className="text-[10px] text-indigo-600 mb-1 font-bold">Atas</label><input type="number" value={margins.top} onChange={e=>setMargins({...margins, top: Number(e.target.value)})} className="w-full p-1.5 border border-indigo-200 rounded text-xs" /></div>
                             <div className="flex flex-col"><label className="text-[10px] text-indigo-600 mb-1 font-bold">Bawah</label><input type="number" value={margins.bottom} onChange={e=>setMargins({...margins, bottom: Number(e.target.value)})} className="w-full p-1.5 border border-indigo-200 rounded text-xs" /></div>
                             <div className="flex flex-col"><label className="text-[10px] text-indigo-600 mb-1 font-bold">Kiri</label><input type="number" value={margins.left} onChange={e=>setMargins({...margins, left: Number(e.target.value)})} className="w-full p-1.5 border border-indigo-200 rounded text-xs" /></div>
@@ -3438,6 +3439,13 @@ const LayoutBuilder = () => {
                         <div ref={canvasRef} style={{ width: canvasWidth, height: canvasHeight, transform: `scale(${zoom})`, transformOrigin: 'top left', position: 'absolute', top: 0, left: 0 }} className="print-container bg-white shadow-xl">
                         {showGrid && <div className="absolute inset-0 pointer-events-none print:hidden" style={{ backgroundImage: 'linear-gradient(#f0f0f0 1px, transparent 1px), linear-gradient(90deg, #f0f0f0 1px, transparent 1px)', backgroundSize: '20px 20px', opacity: 0.5 }}></div>}
                         
+                        {/* Safe Area Visual Guide */}
+                        {(margins.top > 0 || margins.bottom > 0 || margins.left > 0 || margins.right > 0) && (
+                            <div className="absolute border border-red-400 border-dashed pointer-events-none z-10 print:hidden" style={{ top: `${margins.top}mm`, bottom: `${margins.bottom}mm`, left: `${margins.left}mm`, right: `${margins.right}mm` }}>
+                                <div className="absolute -top-4 -left-[1px] text-[9px] text-red-500 font-bold bg-white px-1">Batas Area Aman Printer</div>
+                            </div>
+                        )}
+
                         {guides.v.map((gx, i) => (<div key={`v-${i}`} onMouseDown={(e) => startDragGuide(e, 'v', i)} onDoubleClick={() => setGuides(prev => ({...prev, v: prev.v.filter((_, idx) => idx !== i)}))} style={{ position: 'absolute', left: `${gx}px`, top: 0, bottom: 0, borderLeft: '1px dashed #0ea5e9', cursor: 'col-resize', zIndex: 10 }} className="hover:border-l-2 hover:border-blue-500 group print:hidden"><div className="absolute -top-5 -left-4 bg-blue-500 text-white text-[10px] px-1 rounded opacity-0 group-hover:opacity-100">{Math.round(gx)}</div></div>))}
                         {guides.h.map((gy, i) => (<div key={`h-${i}`} onMouseDown={(e) => startDragGuide(e, 'h', i)} onDoubleClick={() => setGuides(prev => ({...prev, h: prev.h.filter((_, idx) => idx !== i)}))} style={{ position: 'absolute', top: `${gy}px`, left: 0, right: 0, borderTop: '1px dashed #0ea5e9', cursor: 'row-resize', zIndex: 10 }} className="hover:border-t-2 hover:border-blue-500 group print:hidden"><div className="absolute -left-6 -top-2 bg-blue-500 text-white text-[10px] px-1 rounded opacity-0 group-hover:opacity-100">{Math.round(gy)}</div></div>))}
 
@@ -3488,7 +3496,7 @@ const LayoutBuilder = () => {
                 .print-wrapper, .print-wrapper * { visibility: visible; } 
                 .print-wrapper { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; margin: 0 !important; padding: 0 !important; } 
                 .print-container { position: relative !important; margin: 0 !important; padding: 0 !important; box-shadow: none !important; border: none !important; transform: scale(1) !important; left: 0 !important; top: 0 !important; } 
-                @page { size: ${pageSize === 'F4' ? '215.9mm 330.2mm' : 'A4'} ${orientation}; margin: ${margins.top}mm ${margins.right}mm ${margins.bottom}mm ${margins.left}mm; } 
+                @page { size: ${pageSize === 'F4' ? '215.9mm 330.2mm' : 'A4'} ${orientation}; margin: 0 !important; } 
             }
             `}</style>
             <style>{`.custom-scrollbar::-webkit-scrollbar { width: 6px; } .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }`}</style>
@@ -4287,7 +4295,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                             <div className="flex flex-col"><label className="text-[10px] text-gray-500 mb-1">Kiri</label><input type="number" value={printMargins.left} onChange={e=>setPrintMargins({...printMargins, left: Number(e.target.value)})} className="w-full p-2 border rounded text-xs" /></div>
                             <div className="flex flex-col"><label className="text-[10px] text-gray-500 mb-1">Kanan</label><input type="number" value={printMargins.right} onChange={e=>setPrintMargins({...printMargins, right: Number(e.target.value)})} className="w-full p-2 border rounded text-xs" /></div>
                         </div>
-                        <p className="text-[10px] text-gray-400 mt-1">Margin awal diambil dari master Layout.</p>
+                        <p className="text-[10px] text-gray-400 mt-1 leading-tight">Margin awal diambil dari master Layout. Setting ini akan menggeser cetakan secara fisik di kertas.</p>
                     </div>
                     <div className="pt-4 flex flex-col gap-3">
                         <button onClick={handlePrint} disabled={!selectedStudent} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-bold flex justify-center items-center gap-2 transition"><Printer size={18}/> Print Langsung</button>
@@ -4308,7 +4316,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                                 {pages.map((pageElements, index) => {
                                     const isLastPageOfLastStudent = stdIndex === studentsToRender.length - 1 && index === pages.length - 1;
                                     return (
-                                        <div key={`${std.id}-${index}`} className="print-container bg-white shadow-xl relative print:shadow-none print:m-0" style={{ width: `${canvasWidth}px`, height: `${canvasHeight}px`, pageBreakAfter: isLastPageOfLastStudent ? 'auto' : 'always' }}>
+                                        <div key={`${std.id}-${index}`} className="print-container bg-white shadow-xl relative print:shadow-none print:!m-0" style={{ width: `${canvasWidth}px`, height: `${canvasHeight}px`, pageBreakAfter: isLastPageOfLastStudent ? 'auto' : 'always', marginTop: `${printMargins.top}mm`, marginLeft: `${printMargins.left}mm` }}>
                                             {pageElements.length > 0 ? pageElements.map(el => <React.Fragment key={el.id}>{renderElementForStudent(el, std)}</React.Fragment>) : (activeLayout.length === 0 && index === 0 ? <div className="absolute inset-0 flex items-center justify-center text-gray-400 print:hidden">Layout belum disetting oleh Admin.</div> : <div className="absolute inset-0 flex items-center justify-center text-gray-400 print:hidden">Halaman {index + 1} kosong.</div>)}
                                         </div>
                                     );
@@ -4324,8 +4332,8 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                 body * { visibility: hidden; } 
                 .print-wrapper, .print-wrapper * { visibility: visible; } 
                 .print-wrapper { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; margin: 0 !important; padding: 0 !important; } 
-                .print-container { position: relative !important; margin: 0 !important; padding: 0 !important; box-shadow: none !important; border: none !important; transform: scale(1) !important; left: 0 !important; top: 0 !important; } 
-                @page { size: ${cssPageSize}; margin: ${printMargins.top}mm ${printMargins.right}mm ${printMargins.bottom}mm ${printMargins.left}mm; } 
+                .print-container { position: relative !important; padding: 0 !important; box-shadow: none !important; border: none !important; transform: scale(1) !important; left: 0 !important; top: 0 !important; } 
+                @page { size: ${cssPageSize}; margin: 0 !important; } 
             }
             `}</style>
         </div>
