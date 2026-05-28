@@ -2043,7 +2043,7 @@ const MasterData = ({ activeTab }) => {
         );
             case 'students':
                 return (
-                        <div className="relative">
+                        <div className="relative print:static">
                             <div className="mb-4 flex flex-wrap gap-2 items-center">
                                 <button disabled={isBulkProcessing} onClick={() => generateExcelTemplate('students')} className="bg-emerald-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-emerald-700 shadow-sm disabled:opacity-50"><Download size={16}/> Download Template Excel</button>
                                 <label className={`bg-emerald-100 text-emerald-700 px-4 py-2 rounded-lg cursor-pointer flex items-center gap-2 hover:bg-emerald-200 ${isBulkProcessing ? 'opacity-50 pointer-events-none' : ''}`}>
@@ -3293,7 +3293,7 @@ const LayoutBuilder = () => {
                 </div>
             </div>
 
-            <div className="flex-1 bg-gray-200 rounded-xl overflow-auto p-4 flex flex-col items-center border border-gray-300 relative select-none custom-scrollbar print:bg-white print:p-0 print:border-none print:overflow-visible">
+            <div className="flex-1 bg-gray-200 rounded-xl overflow-auto p-4 flex flex-col items-center border border-gray-300 relative select-none custom-scrollbar print:bg-white print:p-0 print:border-none print:overflow-visible print:static">
                 
                 {showToolbar && (
                     <div className="bg-white px-4 py-2 rounded-full shadow-sm flex items-center gap-4 mb-4 shrink-0 border border-gray-200 sticky top-0 z-50">
@@ -3326,7 +3326,7 @@ const LayoutBuilder = () => {
                     </div>
                 )}
 
-                <div className="relative" style={{ flexShrink: 0, width: `${canvasWidth * zoom + (showRuler ? 40 : 0)}px`, minWidth: `${canvasWidth * zoom + (showRuler ? 40 : 0)}px`, height: `${canvasHeight * zoom + (showRuler ? 28 : 0)}px` }}>
+                <div className="relative print:static" style={{ flexShrink: 0, width: `${canvasWidth * zoom + (showRuler ? 40 : 0)}px`, minWidth: `${canvasWidth * zoom + (showRuler ? 40 : 0)}px`, height: `${canvasHeight * zoom + (showRuler ? 28 : 0)}px` }}>
                     {/* Horizontal ruler in cm */}
                     {showRuler && (
                     <div style={{ position: 'absolute', left: 40, top: 0, width: canvasWidth * zoom, height: 28, background: '#334155', display: 'flex', alignItems: 'stretch' }}>
@@ -4258,7 +4258,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                     </div>
                 </div>
             </div>
-            <div className="flex-1 bg-gray-200 p-8 rounded-xl overflow-auto flex flex-col items-center gap-8 border border-gray-300 print:bg-white print:p-0 print:border-none print:overflow-visible print:gap-0 relative">
+            <div className="flex-1 bg-gray-200 p-8 rounded-xl overflow-auto flex flex-col items-center gap-8 border border-gray-300 print:bg-white print:p-0 print:border-none print:overflow-visible print:gap-0 relative print:static">
                 {studentsToRender.length > 0 ? (
                     <div className="print-wrapper w-full flex flex-col items-center gap-8 print:gap-0 print:block">
                         {studentsToRender.map((std, stdIndex) => (
@@ -4788,7 +4788,7 @@ const Dashboard = () => {
           </div>
         </header>
         
-        <main className="flex-1 overflow-hidden p-4 md:p-6 print:p-0 print:overflow-visible relative flex flex-col">{renderContent()}</main>
+        <main className="flex-1 overflow-hidden p-4 md:p-6 print:p-0 print:overflow-visible relative flex flex-col print:static">{renderContent()}</main>
       </div>
 
       <Modal isOpen={isLogoutModalOpen} onClose={() => setIsLogoutModalOpen(false)} title="Konfirmasi Keluar">
