@@ -378,6 +378,7 @@ const AppProvider = ({ children }) => {
 
   const [loading, setLoading] = useState(true);
   const [notification, setNotification] = useState(null);
+  const [autoSaveStatus, setAutoSaveStatus] = useState('idle'); // 'idle' | 'saving' | 'saved'
 
   useEffect(() => {
     currentUserRef.current = currentUser;
@@ -576,7 +577,7 @@ const AppProvider = ({ children }) => {
 
 
   return (
-    <AppContext.Provider value={{ data, allData, activeSetting, SEMESTER_SPECIFIC_COLS, currentUser, setCurrentUser, saveToDb, deleteFromDb, showNotification, addLog }}>
+    <AppContext.Provider value={{ data, allData, activeSetting, SEMESTER_SPECIFIC_COLS, currentUser, setCurrentUser, saveToDb, deleteFromDb, showNotification, addLog, autoSaveStatus, setAutoSaveStatus }}>
       {loading ? <div className="flex h-screen items-center justify-center bg-gray-50"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div></div> : children}
       {notification && (
         <div className={`fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-lg text-white font-medium flex items-center gap-2 z-50 transition-all ${notification.type === 'error' ? 'bg-red-500' : 'bg-emerald-600'}`}>
@@ -633,6 +634,35 @@ const CurrentTime = () => {
             <div className="text-gray-600 text-[11px] font-medium flex items-center gap-1">
                 {dayName}, {dateMasehi} / {getHijriDate(time)}
             </div>
+        </div>
+    );
+};
+
+const AutoSaveIndicator = () => {
+    const { autoSaveStatus } = useContext(AppContext);
+    if (autoSaveStatus === 'idle') return null;
+
+    return (
+        <div className="flex items-center gap-1.5 text-gray-400 transition-all duration-300">
+            {autoSaveStatus === 'saving' ? (
+                <>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                        className="animate-spin text-blue-400" style={{ width: 18, height: 18, animationDuration: '1s' }}>
+                        <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                    </svg>
+                    <span className="text-xs text-blue-400 font-medium">Menyimpan...</span>
+                </>
+            ) : (
+                <>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                        className="text-emerald-500" style={{ width: 18, height: 18 }}>
+                        <path d="M12 2a5 5 0 0 1 4.9 4H18a4 4 0 0 1 0 8H6a4 4 0 0 1 0-8h1.1A5 5 0 0 1 12 2z"/>
+                        <polyline points="9 12 11 14 15 10"/>
+                    </svg>
+                    <span className="text-xs text-emerald-500 font-medium">Tersimpan</span>
+                </>
+            )}
         </div>
     );
 };
@@ -2483,7 +2513,7 @@ const defaultTableColumns = [
 ];
 
 const LayoutBuilder = () => {
-    const { data, allData, saveToDb, deleteFromDb, showNotification } = useContext(AppContext);
+    const { data, allData, saveToDb, deleteFromDb, showNotification, setAutoSaveStatus } = useContext(AppContext);
     const classesData = allData?.classes || data.classes || [];
     const [activeLayout, setActiveLayout] = useState(() => data.layouts?.length > 0 ? data.layouts[0].id : 'raport');
     const [elements, setElements] = useState([]);
@@ -2626,8 +2656,11 @@ const LayoutBuilder = () => {
         const layoutExists = data.layouts && data.layouts.some(l => l.id === activeLayout);
         if (!layoutExists && data.layouts?.length > 0) return;
 
-        const timer = setTimeout(() => {
-            saveToDb('layouts', activeLayout, {
+        // Tampilkan status 'menyimpan' saat timer berjalan
+        setAutoSaveStatus('saving');
+
+        const timer = setTimeout(async () => {
+            await saveToDb('layouts', activeLayout, {
                 name: data.layouts?.find(l => l.id === activeLayout)?.name || activeLayout,
                 elements,
                 pageSize,
@@ -2635,8 +2668,11 @@ const LayoutBuilder = () => {
                 guides,
                 margins
             }, true); // silent save
+            setAutoSaveStatus('saved');
+            // Hilangkan indikator setelah 3 detik
+            setTimeout(() => setAutoSaveStatus('idle'), 3000);
         }, 1500);
-        return () => clearTimeout(timer);
+        return () => { clearTimeout(timer); };
     }, [elements, pageSize, orientation, guides, margins]);
 
     const addElement = (type, customKey = null) => {
@@ -4738,6 +4774,7 @@ const Dashboard = () => {
           </div>
           
           <div className="hidden sm:flex items-center gap-4">
+              <AutoSaveIndicator />
               {isTahunSet ? (
                 <div className="bg-emerald-100 text-emerald-800 px-3 py-1.5 rounded-lg text-sm font-bold border border-emerald-200 flex items-center gap-2">
                     <CheckCircle size={16} /> TA: {activeSetting.tahun} ({activeSetting.semester})
