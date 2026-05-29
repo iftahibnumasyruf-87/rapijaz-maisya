@@ -8,7 +8,7 @@ import {
   Type, User, CreditCard, Image as ImageIcon, Ruler, Type as TypeIcon, FileText,
   Columns, FileSignature, TrendingUp, UserX, Clock, Activity, ChevronDown,
   ZoomIn, ZoomOut, Maximize, Minimize, ChevronUp, Lock, Database, Copy, Undo, Redo, Eye, EyeOff,
-  AlignLeft, AlignCenter, AlignRight, AlignStartVertical, AlignCenterVertical, AlignEndVertical, BarChart2, AlignJustify
+  AlignLeft, AlignCenter, AlignRight, AlignStartVertical, AlignCenterVertical, AlignEndVertical, BarChart2, AlignJustify, Layers
 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, AreaChart, Area } from 'recharts';
@@ -2521,7 +2521,9 @@ const LayoutBuilder = () => {
     const [showNewLayoutForm, setShowNewLayoutForm] = useState(false);
     const [pageSize, setPageSize] = useState('A4');
     const [guides, setGuides] = useState({ h: [], v: [] });
-    const [selectedElementId, setSelectedElementId] = useState(null);
+    const [selectedIds, setSelectedIds] = useState([]);
+    const selectedElementId = selectedIds.length === 1 ? selectedIds[0] : null;
+    const [selectionBox, setSelectionBox] = useState(null);
     const [currentPage, setCurrentPage] = useState(0);
     const [orientation, setOrientation] = useState('portrait');
     const [margins, setMargins] = useState({ top: 0, bottom: 0, left: 0, right: 0 });
@@ -2615,7 +2617,7 @@ const LayoutBuilder = () => {
 
     useEffect(() => {
         const handleKeyDown = (e) => {
-            if (!selectedElementId) return;
+            if (selectedIds.length === 0) return;
             
             // Jangan jalankan panah jika pengguna sedang mengetik di input/textarea
             if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
@@ -2624,28 +2626,23 @@ const LayoutBuilder = () => {
 
             if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
                 e.preventDefault();
-                
-                const activeEl = elements.find(el => el.id === selectedElementId);
-                if (!activeEl) return;
-                
-                // Tahan tombol Shift untuk menggeser lebih cepat (10 pixel), jika tidak 1 pixel
                 const step = e.shiftKey ? 10 : 1;
-                let newX = activeEl.x;
-                let newY = activeEl.y;
-                
-                if (e.key === 'ArrowUp') newY -= step;
-                if (e.key === 'ArrowDown') newY += step;
-                if (e.key === 'ArrowLeft') newX -= step;
-                if (e.key === 'ArrowRight') newX += step;
-                
-                // Gunakan false agar history undo tidak penuh dengan setiap pergeseran 1px
-                updateElement(selectedElementId, { x: newX, y: newY }, false);
+                let dx = 0, dy = 0;
+                if (e.key === 'ArrowUp') dy = -step;
+                if (e.key === 'ArrowDown') dy = step;
+                if (e.key === 'ArrowLeft') dx = -step;
+                if (e.key === 'ArrowRight') dx = step;
+                // Geser semua elemen yang sedang dipilih (tanpa menambah history tiap pixel)
+                setElements(prev => prev.map(el => {
+                    if (!selectedIds.includes(el.id)) return el;
+                    return { ...el, x: (el.x || 0) + dx, y: (el.y || 0) + dy };
+                }));
             }
         };
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [selectedElementId, elements]);
+    }, [selectedIds, elements]);
 
     const prevLayoutRef = useRef(null);
 
@@ -2666,7 +2663,7 @@ const LayoutBuilder = () => {
         }
         setPast([]);
         setFuture([]);
-        setSelectedElementId(null);
+        setSelectedIds([]);
         setCurrentPage(0);
     }, [activeLayout, data.layouts]);
 
@@ -2719,7 +2716,7 @@ const LayoutBuilder = () => {
         setPast(p => [...p, elements]);
         setFuture([]);
         setElements([...elements, newEl]);
-        setSelectedElementId(newEl.id);
+        setSelectedIds([newEl.id]);
     };
 
     const updateElement = (id, changes, commit = true) => {
@@ -2734,7 +2731,7 @@ const LayoutBuilder = () => {
         setPast(p => [...p, elements]);
         setFuture([]);
         setElements(elements.filter(el => el.id !== id));
-        setSelectedElementId(null);
+        setSelectedIds([]);
     };
 
     const duplicateElement = (id) => {
@@ -2756,7 +2753,7 @@ const LayoutBuilder = () => {
         setPast(p => [...p, elements]);
         setFuture([]);
         setElements([...elements, newEl]);
-        setSelectedElementId(newEl.id);
+        setSelectedIds([newEl.id]);
     };
 
     const undo = () => {
@@ -2765,7 +2762,7 @@ const LayoutBuilder = () => {
         setPast(past.slice(0, past.length - 1));
         setFuture([elements, ...future]);
         setElements(previous);
-        setSelectedElementId(null);
+        setSelectedIds([]);
     };
 
     const redo = () => {
@@ -2774,7 +2771,7 @@ const LayoutBuilder = () => {
         setFuture(future.slice(1));
         setPast([...past, elements]);
         setElements(next);
-        setSelectedElementId(null);
+        setSelectedIds([]);
     };
 
     const saveLayout = () => saveToDb('layouts', activeLayout, { name: data.layouts.find(l => l.id === activeLayout)?.name || activeLayout, elements, pageSize, orientation, guides, margins }, false, `Menyimpan desain layout ${activeLayout}`);
@@ -2858,7 +2855,36 @@ const LayoutBuilder = () => {
     };
 
     const handleElementMouseDown = (e, el) => {
-        e.stopPropagation(); setSelectedElementId(el.id); 
+        e.stopPropagation();
+
+        if (e.shiftKey) {
+            // Shift+Klik: toggle elemen masuk/keluar dari seleksi
+            setSelectedIds(prev => prev.includes(el.id) ? prev.filter(id => id !== el.id) : [...prev, el.id]);
+            return;
+        }
+
+        // Jika klik pada elemen yang sudah ada di multi-seleksi → mulai multi-drag
+        if (selectedIds.includes(el.id) && selectedIds.length > 1 && !el.locked) {
+            const canvasRect = canvasRef.current.getBoundingClientRect();
+            const scaleX = canvasWidth / canvasRect.width;
+            const scaleY = canvasHeight / canvasRect.height;
+            const mouseX = (e.clientX - canvasRect.left) * scaleX;
+            const mouseY = (e.clientY - canvasRect.top) * scaleY;
+            const positions = {};
+            selectedIds.forEach(id => {
+                const found = elements.find(el2 => el2.id === id);
+                if (found) positions[id] = { x: found.x || 0, y: found.y || 0 };
+            });
+            setInitialRect({ mouseX, mouseY, positions });
+            setDraggingType('multi_element');
+            setDragIndex(el.id);
+            setPast(p => [...p, elements]);
+            setFuture([]);
+            return;
+        }
+
+        // Single select + drag
+        setSelectedIds([el.id]);
         if (!el.locked) {
             setDraggingType('element'); setDragIndex(el.id);
             const rect = e.target.getBoundingClientRect();
@@ -2892,6 +2918,17 @@ const LayoutBuilder = () => {
             guides.v.forEach(gx => { if (Math.abs(newX - gx) < snapThreshold) newX = gx; });
             guides.h.forEach(gy => { if (Math.abs(newY - gy) < snapThreshold) newY = gy; });
             updateElement(dragIndex, { x: newX, y: newY }, false);
+        } else if (draggingType === 'multi_element') {
+            if (!initialRect?.positions) return;
+            const dx = rawX - initialRect.mouseX;
+            const dy = rawY - initialRect.mouseY;
+            setElements(prev => prev.map(el => {
+                const initPos = initialRect.positions[el.id];
+                if (!initPos) return el;
+                return { ...el, x: initPos.x + dx, y: initPos.y + dy };
+            }));
+        } else if (draggingType === 'selection') {
+            setSelectionBox(prev => prev ? { ...prev, endX: rawX, endY: rawY } : prev);
         } else if (draggingType && draggingType.startsWith('resize_')) {
             const activeEl = elements.find(el => el.id === dragIndex);
             if (!activeEl) return;
@@ -2927,6 +2964,23 @@ const LayoutBuilder = () => {
     };
 
     const handleMouseUp = () => {
+        // Finalisasi rubber-band selection
+        if (draggingType === 'selection' && selectionBox) {
+            const minX = Math.min(selectionBox.startX, selectionBox.endX);
+            const maxX = Math.max(selectionBox.startX, selectionBox.endX);
+            const minY = Math.min(selectionBox.startY, selectionBox.endY);
+            const maxY = Math.max(selectionBox.startY, selectionBox.endY);
+            if (maxX - minX > 5 || maxY - minY > 5) {
+                const selected = elements.filter(el => {
+                    if ((el.pageIndex || 0) !== currentPage || el.locked) return false;
+                    const ex = el.x || 0; const ey = el.y || 0;
+                    const ew = el.width || 200; const eh = el.height || 30;
+                    return ex < maxX && ex + ew > minX && ey < maxY && ey + eh > minY;
+                });
+                if (selected.length > 0) setSelectedIds(selected.map(el => el.id));
+            }
+            setSelectionBox(null);
+        }
         if (draggingType?.startsWith('guide_')) {
             const newGuides = { ...guides };
             if (draggingType === 'guide_v' && (guides.v[dragIndex] < -20 || guides.v[dragIndex] > canvasWidth + 20)) newGuides.v.splice(dragIndex, 1);
@@ -2934,6 +2988,19 @@ const LayoutBuilder = () => {
             setGuides(newGuides);
         }
         setDraggingType(null); setDragIndex(null); setInitialRect(null);
+    };
+
+    // Klik pada background kanvas → mulai rubber-band selection
+    const handleCanvasMouseDown = (e) => {
+        if (e.target !== canvasRef.current) return;
+        const rect = canvasRef.current.getBoundingClientRect();
+        const scaleX = canvasWidth / rect.width;
+        const scaleY = canvasHeight / rect.height;
+        const startX = (e.clientX - rect.left) * scaleX;
+        const startY = (e.clientY - rect.top) * scaleY;
+        if (!e.shiftKey) setSelectedIds([]);
+        setSelectionBox({ startX, startY, endX: startX, endY: startY });
+        setDraggingType('selection');
     };
 
     const handleImageUpload = async (e) => {
@@ -2998,6 +3065,73 @@ const LayoutBuilder = () => {
             'bottom': { y: canvasHeight - actualHeight },
         }[direction];
         if (changes) updateElement(selectedElementId, changes);
+    };
+
+    // ---- MULTI-SELECT: Group, Ungroup, Align ----
+    const groupElements = () => {
+        if (selectedIds.length < 2) return;
+        const selected = elements.filter(el => selectedIds.includes(el.id) && (el.pageIndex || 0) === currentPage);
+        if (selected.length < 2) return;
+        const minX = Math.min(...selected.map(el => el.x || 0));
+        const minY = Math.min(...selected.map(el => el.y || 0));
+        const maxX = Math.max(...selected.map(el => (el.x || 0) + (el.width || 200)));
+        const maxY = Math.max(...selected.map(el => (el.y || 0) + (el.height || 30)));
+        const children = selected.map(el => ({ ...el, x: (el.x || 0) - minX, y: (el.y || 0) - minY }));
+        const groupEl = {
+            id: Date.now().toString(), type: 'group', pageIndex: currentPage,
+            x: minX, y: minY, width: maxX - minX, height: maxY - minY,
+            zIndex: Math.max(...selected.map(el => el.zIndex ?? 1)), opacity: 1, children,
+        };
+        setPast(p => [...p, elements]); setFuture([]);
+        setElements([...elements.filter(el => !selectedIds.includes(el.id)), groupEl]);
+        setSelectedIds([groupEl.id]);
+    };
+
+    const ungroupElements = () => {
+        const groupEl = elements.find(el => el.id === selectedElementId && el.type === 'group');
+        if (!groupEl) return;
+        const base = Date.now();
+        const ungrouped = (groupEl.children || []).map((child, idx) => ({
+            ...child,
+            id: `${base}_${idx}_${Math.random().toString(36).slice(2)}`,
+            x: (child.x || 0) + (groupEl.x || 0),
+            y: (child.y || 0) + (groupEl.y || 0),
+            pageIndex: currentPage,
+        }));
+        setPast(p => [...p, elements]); setFuture([]);
+        setElements([...elements.filter(el => el.id !== selectedElementId), ...ungrouped]);
+        setSelectedIds(ungrouped.map(el => el.id));
+    };
+
+    const alignMultiple = (direction) => {
+        if (selectedIds.length < 2) return;
+        const selected = elements.filter(el => selectedIds.includes(el.id));
+        const updMap = {};
+        if (direction === 'left') {
+            const minX = Math.min(...selected.map(el => el.x || 0));
+            selected.forEach(el => { updMap[el.id] = { x: minX }; });
+        } else if (direction === 'right') {
+            const maxX = Math.max(...selected.map(el => (el.x || 0) + (el.width || 200)));
+            selected.forEach(el => { updMap[el.id] = { x: maxX - (el.width || 200) }; });
+        } else if (direction === 'center') {
+            const minX = Math.min(...selected.map(el => el.x || 0));
+            const maxX = Math.max(...selected.map(el => (el.x || 0) + (el.width || 200)));
+            const cx = (minX + maxX) / 2;
+            selected.forEach(el => { updMap[el.id] = { x: cx - (el.width || 200) / 2 }; });
+        } else if (direction === 'top') {
+            const minY = Math.min(...selected.map(el => el.y || 0));
+            selected.forEach(el => { updMap[el.id] = { y: minY }; });
+        } else if (direction === 'bottom') {
+            const maxY = Math.max(...selected.map(el => (el.y || 0) + (el.height || 30)));
+            selected.forEach(el => { updMap[el.id] = { y: maxY - (el.height || 30) }; });
+        } else if (direction === 'middle') {
+            const minY = Math.min(...selected.map(el => el.y || 0));
+            const maxY = Math.max(...selected.map(el => (el.y || 0) + (el.height || 30)));
+            const cy = (minY + maxY) / 2;
+            selected.forEach(el => { updMap[el.id] = { y: cy - (el.height || 30) / 2 }; });
+        }
+        setPast(p => [...p, elements]); setFuture([]);
+        setElements(elements.map(el => selectedIds.includes(el.id) ? { ...el, ...(updMap[el.id] || {}) } : el));
     };
     
     // Memberikan objek dummy default agar renderDynamicTable tidak crash saat proses desain layout
@@ -3082,10 +3216,16 @@ const LayoutBuilder = () => {
                                 {elements.filter(el => (el.pageIndex || 0) === currentPage).map((el, i) => (
                                     <button 
                                         key={el.id} 
-                                        onClick={() => setSelectedElementId(el.id)} 
-                                        className={`w-full text-left px-2 py-1.5 rounded text-xs flex items-center justify-between transition ${selectedElementId === el.id ? 'bg-blue-100 text-blue-800 font-bold border border-blue-200' : 'hover:bg-gray-100 text-gray-700 border border-transparent'}`}
+                                        onClick={(e) => {
+                                            if (e.shiftKey) {
+                                                setSelectedIds(prev => prev.includes(el.id) ? prev.filter(id => id !== el.id) : [...prev, el.id]);
+                                            } else {
+                                                setSelectedIds([el.id]);
+                                            }
+                                        }} 
+                                        className={`w-full text-left px-2 py-1.5 rounded text-xs flex items-center justify-between transition ${selectedIds.includes(el.id) ? 'bg-blue-100 text-blue-800 font-bold border border-blue-200' : 'hover:bg-gray-100 text-gray-700 border border-transparent'}`}
                                     >
-                                        <span className="truncate w-[80%]">{el.type === 'image' ? (el.zIndex === 0 ? 'Gambar Watermark' : 'Gambar') : el.type === 'table_grades' ? 'Tabel Nilai' : (el.content || '').slice(0, 20) + ((el.content || '').length > 20 ? '...' : '')}</span>
+                                        <span className="truncate w-[80%]">{el.type === 'group' ? 'Grup Elemen' : el.type === 'image' ? (el.zIndex === 0 ? 'Gambar Watermark' : 'Gambar') : el.type === 'table_grades' ? 'Tabel Nilai' : (el.content || '').slice(0, 20) + ((el.content || '').length > 20 ? '...' : '')}</span>
                                         {el.locked && <Lock size={12} className="text-yellow-600"/>}
                                     </button>
                                 ))}
@@ -3094,11 +3234,73 @@ const LayoutBuilder = () => {
                         </div>
                     </div>
 
-                    {selectedElementId && activeEl && (
+                    {selectedIds.length > 1 && (
+                        <div className="space-y-3 pt-2 pb-8 bg-indigo-50/50 p-3 rounded-lg border border-indigo-100">
+                            <p className="text-xs font-bold text-indigo-800 uppercase flex items-center justify-between">
+                                {selectedIds.length} Elemen Terpilih
+                                <button onClick={() => setSelectedIds([])} className="text-gray-400 hover:text-gray-700"><X size={14}/></button>
+                            </p>
+                            
+                            <div className="grid grid-cols-2 gap-2 mt-2">
+                                <button onClick={groupElements} className="bg-white border hover:bg-gray-50 text-indigo-700 py-1.5 rounded text-[10px] font-bold transition flex items-center justify-center gap-1"><Layers size={14}/> Group</button>
+                                <button onClick={() => {
+                                    setPast(p => [...p, elements]); setFuture([]);
+                                    setElements(elements.map(el => selectedIds.includes(el.id) ? { ...el, locked: true } : el));
+                                    setSelectedIds([]);
+                                }} className="bg-white border hover:bg-gray-50 text-yellow-700 py-1.5 rounded text-[10px] font-bold transition flex items-center justify-center gap-1"><Lock size={14}/> Kunci Semua</button>
+                            </div>
+
+                            <div className="pt-2 border-t mt-3">
+                                <p className="text-[10px] font-bold text-gray-500 uppercase mb-2">Align (Ratakan)</p>
+                                <div className="grid grid-cols-3 gap-1">
+                                    <button onClick={() => alignMultiple('left')} className="p-1.5 bg-white border rounded hover:bg-indigo-50 text-gray-600 flex justify-center" title="Rata Kiri"><AlignLeft size={16}/></button>
+                                    <button onClick={() => alignMultiple('center')} className="p-1.5 bg-white border rounded hover:bg-indigo-50 text-gray-600 flex justify-center" title="Rata Tengah Horiz"><AlignCenter size={16}/></button>
+                                    <button onClick={() => alignMultiple('right')} className="p-1.5 bg-white border rounded hover:bg-indigo-50 text-gray-600 flex justify-center" title="Rata Kanan"><AlignRight size={16}/></button>
+                                    <button onClick={() => alignMultiple('top')} className="p-1.5 bg-white border rounded hover:bg-indigo-50 text-gray-600 flex justify-center mt-1" title="Rata Atas"><AlignStartVertical size={16}/></button>
+                                    <button onClick={() => alignMultiple('middle')} className="p-1.5 bg-white border rounded hover:bg-indigo-50 text-gray-600 flex justify-center mt-1" title="Rata Tengah Vertikal"><AlignCenterVertical size={16}/></button>
+                                    <button onClick={() => alignMultiple('bottom')} className="p-1.5 bg-white border rounded hover:bg-indigo-50 text-gray-600 flex justify-center mt-1" title="Rata Bawah"><AlignEndVertical size={16}/></button>
+                                </div>
+                            </div>
+                            
+                            <div className="pt-2 border-t mt-3">
+                                <p className="text-[10px] font-bold text-gray-500 uppercase mb-2">Ubah Ukuran Bersama</p>
+                                <div className="flex gap-2">
+                                    <div className="w-1/2">
+                                        <label className="text-[10px] text-gray-500 font-bold uppercase">Set Lebar</label>
+                                        <input type="number" className="w-full p-1.5 border rounded text-sm" placeholder="Otomatis" onChange={e => {
+                                            const val = Number(e.target.value);
+                                            if (val > 0) {
+                                                setPast(p => [...p, elements]); setFuture([]);
+                                                setElements(elements.map(el => selectedIds.includes(el.id) ? { ...el, width: val } : el));
+                                            }
+                                        }}/>
+                                    </div>
+                                    <div className="w-1/2">
+                                        <label className="text-[10px] text-gray-500 font-bold uppercase">Set Tinggi</label>
+                                        <input type="number" className="w-full p-1.5 border rounded text-sm" placeholder="Otomatis" onChange={e => {
+                                            const val = Number(e.target.value);
+                                            if (val > 0) {
+                                                setPast(p => [...p, elements]); setFuture([]);
+                                                setElements(elements.map(el => selectedIds.includes(el.id) ? { ...el, height: val } : el));
+                                            }
+                                        }}/>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button onClick={() => {
+                                setPast(p => [...p, elements]); setFuture([]);
+                                setElements(elements.filter(el => !selectedIds.includes(el.id)));
+                                setSelectedIds([]);
+                            }} className="w-full mt-3 bg-red-50 hover:bg-red-100 text-red-600 py-2 rounded text-[11px] font-bold flex justify-center items-center gap-1 transition"><Trash2 size={14}/> Hapus Semua Terpilih</button>
+                        </div>
+                    )}
+
+                    {selectedIds.length === 1 && activeEl && (
                         <div className="space-y-3 pt-2 pb-8 bg-blue-50/30 p-3 rounded-lg border border-blue-100">
                             <p className="text-xs font-bold text-blue-800 uppercase flex items-center justify-between">
-                                Sedang Edit: {activeEl.type === 'table_grades' ? 'Tabel' : activeEl.type === 'image' ? 'Gambar' : 'Teks'}
-                                <button onClick={() => setSelectedElementId(null)} className="text-gray-400 hover:text-gray-700"><X size={14}/></button>
+                                Sedang Edit: {activeEl.type === 'group' ? 'Grup' : activeEl.type === 'table_grades' ? 'Tabel' : activeEl.type === 'image' ? 'Gambar' : 'Teks'}
+                                <button onClick={() => setSelectedIds([])} className="text-gray-400 hover:text-gray-700"><X size={14}/></button>
                             </p>
 
                             {activeEl.locked ? (
@@ -3283,10 +3485,13 @@ const LayoutBuilder = () => {
                                 </div>
                             )}
 
-                            <div className="flex gap-2 mt-4">
-                                <button onClick={() => {updateElement(selectedElementId, { locked: true }); setSelectedElementId(null);}} className="w-1/3 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 py-2 rounded text-[11px] font-bold flex justify-center items-center gap-1 transition" title="Kunci posisi agar tidak tergeser"><Lock size={14}/> Kunci</button>
-                                <button onClick={() => duplicateElement(selectedElementId)} className="w-1/3 bg-blue-50 hover:bg-blue-100 text-blue-600 py-2 rounded text-[11px] font-bold flex justify-center items-center gap-1 transition"><Copy size={14}/> Duplikat</button>
-                                <button onClick={() => removeElement(selectedElementId)} className="w-1/3 bg-red-50 hover:bg-red-100 text-red-600 py-2 rounded text-[11px] font-bold flex justify-center items-center gap-1 transition"><Trash2 size={14}/> Hapus</button>
+                            <div className="flex gap-2 mt-4 flex-wrap">
+                                {activeEl.type === 'group' && (
+                                    <button onClick={ungroupElements} className="w-full mb-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 py-2 rounded text-[11px] font-bold flex justify-center items-center gap-1 transition"><Layers size={14}/> Ungroup</button>
+                                )}
+                                <button onClick={() => {updateElement(selectedElementId, { locked: true }); setSelectedIds([]);}} className="flex-1 min-w-[30%] bg-yellow-50 hover:bg-yellow-100 text-yellow-700 py-2 rounded text-[11px] font-bold flex justify-center items-center gap-1 transition" title="Kunci posisi agar tidak tergeser"><Lock size={14}/> Kunci</button>
+                                <button onClick={() => duplicateElement(selectedElementId)} className="flex-1 min-w-[30%] bg-blue-50 hover:bg-blue-100 text-blue-600 py-2 rounded text-[11px] font-bold flex justify-center items-center gap-1 transition"><Copy size={14}/> Duplikat</button>
+                                <button onClick={() => removeElement(selectedElementId)} className="flex-1 min-w-[30%] bg-red-50 hover:bg-red-100 text-red-600 py-2 rounded text-[11px] font-bold flex justify-center items-center gap-1 transition"><Trash2 size={14}/> Hapus</button>
                             </div>
                                 </>
                             )}
@@ -3355,16 +3560,29 @@ const LayoutBuilder = () => {
                         <button onClick={toggleFullscreen} className="text-gray-500 hover:text-emerald-600 transition" title={isFullscreen ? "Keluar Fullscreen" : "Layar Penuh (Fullscreen)"}>
                             {isFullscreen ? <Minimize size={18}/> : <Maximize size={18}/>}
                         </button>
-                        {selectedElementId && activeEl && (<>
+                        {selectedIds.length > 0 && (<>
                         <div className="w-px h-4 bg-gray-300"></div>
                         <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">Align</span>
-                        <button onClick={() => alignElement('left')}   title="Rata Kiri"            className="text-gray-500 hover:text-indigo-600 transition"><AlignLeft size={18}/></button>
-                        <button onClick={() => alignElement('center')} title="Tengah Horizontal"   className="text-gray-500 hover:text-indigo-600 transition"><AlignCenter size={18}/></button>
-                        <button onClick={() => alignElement('right')}  title="Rata Kanan"           className="text-gray-500 hover:text-indigo-600 transition"><AlignRight size={18}/></button>
+                        <button onClick={() => selectedIds.length > 1 ? alignMultiple('left') : alignElement('left')}   title="Rata Kiri"            className="text-gray-500 hover:text-indigo-600 transition"><AlignLeft size={18}/></button>
+                        <button onClick={() => selectedIds.length > 1 ? alignMultiple('center') : alignElement('center')} title="Tengah Horizontal"   className="text-gray-500 hover:text-indigo-600 transition"><AlignCenter size={18}/></button>
+                        <button onClick={() => selectedIds.length > 1 ? alignMultiple('right') : alignElement('right')}  title="Rata Kanan"           className="text-gray-500 hover:text-indigo-600 transition"><AlignRight size={18}/></button>
                         <div className="w-px h-4 bg-gray-300"></div>
-                        <button onClick={() => alignElement('top')}    title="Rata Atas"            className="text-gray-500 hover:text-indigo-600 transition"><AlignStartVertical size={18}/></button>
-                        <button onClick={() => alignElement('middle')} title="Tengah Vertikal"     className="text-gray-500 hover:text-indigo-600 transition"><AlignCenterVertical size={18}/></button>
-                        <button onClick={() => alignElement('bottom')} title="Rata Bawah"           className="text-gray-500 hover:text-indigo-600 transition"><AlignEndVertical size={18}/></button>
+                        <button onClick={() => selectedIds.length > 1 ? alignMultiple('top') : alignElement('top')}    title="Rata Atas"            className="text-gray-500 hover:text-indigo-600 transition"><AlignStartVertical size={18}/></button>
+                        <button onClick={() => selectedIds.length > 1 ? alignMultiple('middle') : alignElement('middle')} title="Tengah Vertikal"     className="text-gray-500 hover:text-indigo-600 transition"><AlignCenterVertical size={18}/></button>
+                        <button onClick={() => selectedIds.length > 1 ? alignMultiple('bottom') : alignElement('bottom')} title="Rata Bawah"           className="text-gray-500 hover:text-indigo-600 transition"><AlignEndVertical size={18}/></button>
+                        
+                        {selectedIds.length > 1 && (
+                            <>
+                                <div className="w-px h-4 bg-gray-300 ml-2"></div>
+                                <button onClick={groupElements} title="Group Elemen" className="text-gray-500 hover:text-indigo-600 transition ml-2"><Layers size={18}/></button>
+                            </>
+                        )}
+                        {selectedIds.length === 1 && activeEl?.type === 'group' && (
+                            <>
+                                <div className="w-px h-4 bg-gray-300 ml-2"></div>
+                                <button onClick={ungroupElements} title="Ungroup Elemen" className="text-gray-500 hover:text-indigo-600 transition ml-2"><Layers size={18}/></button>
+                            </>
+                        )}
                         </>)}
                     </div>
                 )}
@@ -3436,7 +3654,7 @@ const LayoutBuilder = () => {
                         {showGuideBars && showRuler && (
                             <div onMouseDown={createVGuide} title="Klik ruler kiri untuk buat garis bantu vertikal" className="absolute" style={{ left: -40, top: 0, bottom: 0, width: 40, cursor: 'col-resize', zIndex: 5 }}/>
                         )}
-                        <div ref={canvasRef} style={{ width: canvasWidth, height: canvasHeight, transform: `scale(${zoom})`, transformOrigin: 'top left', position: 'absolute', top: 0, left: 0 }} className="print-container bg-white shadow-xl">
+                        <div ref={canvasRef} onMouseDown={handleCanvasMouseDown} style={{ width: canvasWidth, height: canvasHeight, transform: `scale(${zoom})`, transformOrigin: 'top left', position: 'absolute', top: 0, left: 0 }} className="print-container bg-white shadow-xl">
                         {showGrid && <div className="absolute inset-0 pointer-events-none print:hidden" style={{ backgroundImage: 'linear-gradient(#f0f0f0 1px, transparent 1px), linear-gradient(90deg, #f0f0f0 1px, transparent 1px)', backgroundSize: '20px 20px', opacity: 0.5 }}></div>}
                         
                         {/* Safe Area Visual Guide */}
@@ -3450,8 +3668,8 @@ const LayoutBuilder = () => {
                         {guides.h.map((gy, i) => (<div key={`h-${i}`} onMouseDown={(e) => startDragGuide(e, 'h', i)} onDoubleClick={() => setGuides(prev => ({...prev, h: prev.h.filter((_, idx) => idx !== i)}))} style={{ position: 'absolute', top: `${gy}px`, left: 0, right: 0, borderTop: '1px dashed #0ea5e9', cursor: 'row-resize', zIndex: 10 }} className="hover:border-t-2 hover:border-blue-500 group print:hidden"><div className="absolute -left-6 -top-2 bg-blue-500 text-white text-[10px] px-1 rounded opacity-0 group-hover:opacity-100">{Math.round(gy)}</div></div>))}
 
                         {elements.filter(el => (el.pageIndex || 0) === currentPage).map(el => {
-                            const isSelected = selectedElementId === el.id;
-                            const isDraggingThis = draggingType === 'element' && dragIndex === el.id;
+                            const isSelected = selectedIds.includes(el.id);
+                            const isDraggingThis = (draggingType === 'element' && dragIndex === el.id) || (draggingType === 'multi_element' && selectedIds.includes(el.id));
                             
                             return (
                                 <div key={el.id} data-element-id={el.id} onMouseDown={(e) => handleElementMouseDown(e, el)}
@@ -3464,11 +3682,26 @@ const LayoutBuilder = () => {
                                     }}
                                     className={`hover:outline hover:outline-1 hover:outline-gray-400 ${el.type === 'table_grades' ? 'bg-white' : ''}`}
                                 >
-                                    {el.type === 'table_grades' ? renderDynamicTable(el, data, mockStudentGrades, mockClassAverages, false, 'raport', classesData) 
+                                    {el.type === 'group' ? (
+                                        <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+                                            {(el.children || []).map(child => (
+                                                <div key={child.id} style={{
+                                                    position: 'absolute', left: `${child.x}px`, top: `${child.y}px`, fontSize: `${child.fontSize}px`, fontFamily: child.fontFamily || 'Arial, sans-serif', fontWeight: child.fontWeight,
+                                                    width: child.width ? `${child.width}px` : 'auto', height: child.type === 'image' ? `${child.height}px` : 'auto',
+                                                    padding: (child.type === 'image' || child.type === 'table_grades') ? '0' : '2px',
+                                                    zIndex: child.zIndex ?? 1, opacity: child.opacity ?? 1
+                                                }}>
+                                                    {child.type === 'table_grades' ? renderDynamicTable(child, data, mockStudentGrades, mockClassAverages, false, 'raport', classesData) 
+                                                    : child.type === 'image' ? <img src={child.content} style={{ width: '100%', height: '100%', objectFit: child.objectFit || 'contain', objectPosition: `${child.objectPositionX ?? 50}% ${child.objectPositionY ?? 50}%`, pointerEvents: 'none' }} alt="elemen" />
+                                                    : <div style={{ whiteSpace: 'pre-wrap', width: '100%', height: '100%', textAlign: child.textAlign || 'left' }}>{child.content}</div>}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : el.type === 'table_grades' ? renderDynamicTable(el, data, mockStudentGrades, mockClassAverages, false, 'raport', classesData) 
                                     : el.type === 'image' ? <img src={el.content} style={{ width: '100%', height: '100%', objectFit: el.objectFit || 'contain', objectPosition: `${el.objectPositionX ?? 50}% ${el.objectPositionY ?? 50}%`, pointerEvents: 'none' }} alt="elemen" />
                                     : <div style={{ whiteSpace: 'pre-wrap', width: '100%', height: '100%', textAlign: el.textAlign || 'left' }}>{el.content}</div>}
                                     
-                                    {isSelected && !el.locked && (
+                                    {isSelected && !el.locked && selectedIds.length === 1 && (
                                         <>
                                             <div className="absolute -top-3 -left-3 bg-emerald-600 text-white rounded-full p-1 shadow z-30 cursor-move" onMouseDown={(e) => handleElementMouseDown(e, el)}><GripHorizontal size={12} /></div>
                                             <div className="absolute top-[-4px] left-1/2 w-2 h-2 bg-emerald-600 border border-white cursor-n-resize" style={{transform: 'translateX(-50%)'}} onMouseDown={(e) => handleResizeMouseDown(e, el, 'n')}/>
@@ -3484,6 +3717,20 @@ const LayoutBuilder = () => {
                                 </div>
                             );
                         })}
+
+                        {draggingType === 'selection' && selectionBox && (
+                            <div style={{
+                                position: 'absolute',
+                                left: Math.min(selectionBox.startX, selectionBox.endX),
+                                top: Math.min(selectionBox.startY, selectionBox.endY),
+                                width: Math.abs(selectionBox.endX - selectionBox.startX),
+                                height: Math.abs(selectionBox.endY - selectionBox.startY),
+                                backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                                border: '1px solid rgb(59, 130, 246)',
+                                pointerEvents: 'none',
+                                zIndex: 9999
+                            }} />
+                        )}
                     </div>{/* end canvasRef */}
                     </div>{/* end canvas position wrapper */}
                 </div>{/* end ruler+canvas outer */}
@@ -3877,10 +4124,10 @@ const InputNilai = ({ activeInputTab }) => {
                         )}
                         <tr className="bg-emerald-600 text-white text-sm">
                             {subjectsInClass.map(sub => (
-                                <th key={sub.id} className="p-2 border-b border-r border-emerald-500 text-center min-w-[120px] bg-emerald-700">
-                                    <div className="font-bold truncate">{sub.nameId}</div>
-                                    <div className="text-[10px] text-emerald-200 font-normal truncate mt-0.5">(Guru: {sub.guru || '-'})</div>
-                                    <div className="text-[10px] text-yellow-300 font-bold truncate mt-0.5">KKM: {sub.kkm || '-'}</div>
+                                <th key={sub.id} className="p-3 border-b border-r border-emerald-500 text-center min-w-[210px] bg-emerald-700">
+                                    <div className="font-bold">{sub.nameId}</div>
+                                    <div className="text-[11px] text-emerald-200 font-normal mt-0.5">(Guru: {sub.guru || '-'})</div>
+                                    <div className="text-[11px] text-yellow-300 font-bold mt-0.5">KKM: {sub.kkm || '-'}</div>
                                     <div className="text-[11px] text-slate-100 font-semibold mt-2">UTS / UAS / Raport</div>
                                 </th>
                             ))}
@@ -3901,11 +4148,11 @@ const InputNilai = ({ activeInputTab }) => {
                                         if (raport !== '') { rowRaportTotal += raport; rowRaportCount++; classTotals[sub.id] += raport; classCounts[sub.id]++; }
                                         const isRed = raport !== '' && raport < Number(sub.kkm || 0);
                                         return (
-                                            <td key={sub.id} className="p-2 border-r bg-white hover:bg-emerald-50">
-                                                <div className="grid grid-cols-3 gap-2 items-center">
-                                                    <input type="text" dir="auto" title="Nilai UTS (angka)" placeholder="UTS" className="w-full p-2 border rounded text-center font-semibold outline-none text-gray-800 focus:border-emerald-500" value={uts} onChange={e => handleGradeChange(st.id, sub.id, e.target.value, 'uts')} />
-                                                    <input type="text" dir="auto" title="Nilai UAS (angka)" placeholder="UAS" className="w-full p-2 border rounded text-center font-semibold outline-none text-gray-800 focus:border-emerald-500" value={uas} onChange={e => handleGradeChange(st.id, sub.id, e.target.value, 'uas')} />
-                                                    <div className={`rounded border p-2 text-sm font-bold text-center ${isRed ? 'text-red-600 bg-red-50 border-red-200' : 'text-gray-800 bg-gray-50 border-gray-200'}`}>
+                                        <td key={sub.id} className="p-2 border-r bg-white hover:bg-emerald-50">
+                                                <div className="grid grid-cols-3 gap-1 items-center">
+                                                    <input type="text" dir="auto" title="Nilai UTS (angka)" placeholder="UTS" className="w-full min-w-[56px] p-2 border rounded text-center text-base font-bold outline-none text-gray-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-300" value={uts} onChange={e => handleGradeChange(st.id, sub.id, e.target.value, 'uts')} />
+                                                    <input type="text" dir="auto" title="Nilai UAS (angka)" placeholder="UAS" className="w-full min-w-[56px] p-2 border rounded text-center text-base font-bold outline-none text-gray-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-300" value={uas} onChange={e => handleGradeChange(st.id, sub.id, e.target.value, 'uas')} />
+                                                    <div className={`rounded border p-2 text-base font-bold text-center min-w-[56px] ${isRed ? 'text-red-600 bg-red-50 border-red-200' : 'text-gray-800 bg-gray-50 border-gray-200'}`}>
                                                         {raport === '' ? '-' : raport}
                                                     </div>
                                                 </div>
