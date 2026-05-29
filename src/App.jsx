@@ -2990,9 +2990,17 @@ const LayoutBuilder = () => {
         setDraggingType(null); setDragIndex(null); setInitialRect(null);
     };
 
-    // Klik pada background kanvas → mulai rubber-band selection
+    // Klik pada background kanvas atau area scroll sekitarnya → mulai rubber-band selection
     const handleCanvasMouseDown = (e) => {
-        if (e.target !== canvasRef.current) return;
+        // Hanya jalankan jika target bukan elemen interaktif atau dalam elemen kanvas
+        if (
+            e.target.closest('button') || 
+            e.target.closest('input') || 
+            e.target.closest('select') ||
+            e.target.closest('[data-element-id]') ||
+            e.target.closest('svg') // abaikan klik pada svg ruler
+        ) return;
+
         const rect = canvasRef.current.getBoundingClientRect();
         const scaleX = canvasWidth / rect.width;
         const scaleY = canvasHeight / rect.height;
@@ -3336,13 +3344,20 @@ const LayoutBuilder = () => {
                                 <div className="w-1/2"><label className="text-[10px] text-gray-500 font-bold uppercase" title="0 = transparan penuh, 1 = tidak transparan">Transparansi (0-1)</label><input type="number" step="0.1" min="0" max="1" className="w-full p-1.5 border rounded text-sm" value={activeEl.opacity ?? 1} onChange={e => updateElement(selectedElementId, { opacity: Number(e.target.value) })}/></div>
                             </div>
 
-                            {activeEl.type !== 'table_grades' && activeEl.type !== 'image' && (
+                            {activeEl.type !== 'table_grades' && activeEl.type !== 'image' && activeEl.type !== 'group' && (
                                 <>
                                     <div>
                                         <label className="text-[10px] text-gray-500 font-bold uppercase">Jenis Font</label>
-                                        <select className="w-full p-1.5 border rounded text-sm outline-none bg-white" value={activeEl.fontFamily || 'Arial, sans-serif'} onChange={e => updateElement(selectedElementId, { fontFamily: e.target.value })}>
+                                        <input 
+                                            list="font-options" 
+                                            className="w-full p-1.5 border rounded text-sm outline-none bg-white" 
+                                            value={activeEl.fontFamily || 'Arial, sans-serif'} 
+                                            onChange={e => updateElement(selectedElementId, { fontFamily: e.target.value })}
+                                            placeholder="Ketik nama font di komputer (contoh: Tahoma)"
+                                        />
+                                        <datalist id="font-options">
                                             {allFonts.map((font, idx) => <option key={idx} value={font.value}>{font.name}</option>)}
-                                        </select>
+                                        </datalist>
                                     </div>
                                     <div className="flex gap-2">
                                         <div className="w-2/3"><label className="text-[10px] text-gray-500 font-bold uppercase">Ukuran Teks</label><input type="number" className="w-full p-1.5 border rounded text-sm" value={activeEl.fontSize} onChange={e => updateElement(selectedElementId, { fontSize: Number(e.target.value) })}/></div>
@@ -3356,6 +3371,12 @@ const LayoutBuilder = () => {
                                             <button onClick={() => updateElement(selectedElementId, { textAlign: 'right' })} className={`flex-1 p-1.5 flex justify-center transition border-l ${activeEl.textAlign === 'right' ? 'bg-gray-800 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`} title="Rata Kanan"><AlignRight size={16}/></button>
                                             <button onClick={() => updateElement(selectedElementId, { textAlign: 'justify' })} className={`flex-1 p-1.5 flex justify-center transition border-l ${activeEl.textAlign === 'justify' ? 'bg-gray-800 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`} title="Rata Kiri Kanan (Justify)"><AlignJustify size={16}/></button>
                                         </div>
+                                    </div>
+                                    <div className="mt-2">
+                                        <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 bg-white p-2 border rounded cursor-pointer">
+                                            <input type="checkbox" checked={activeEl.isRtl || false} onChange={e => updateElement(selectedElementId, { isRtl: e.target.checked })} />
+                                            Format Teks Arab (RTL)
+                                        </label>
                                     </div>
                                 </>
                             )}
@@ -3533,7 +3554,7 @@ const LayoutBuilder = () => {
             </div>
             )}
 
-            <div className="flex-1 bg-gray-200 rounded-xl overflow-auto p-4 flex flex-col items-center border border-gray-300 relative select-none custom-scrollbar print:bg-white print:p-0 print:border-none print:overflow-visible print:static">
+            <div id="canvas-scroll-area" onMouseDown={handleCanvasMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp} className="flex-1 bg-gray-200 rounded-xl overflow-auto p-4 flex flex-col items-center border border-gray-300 relative select-none custom-scrollbar print:bg-white print:p-0 print:border-none print:overflow-visible print:static">
                 
                 {showToolbar && (
                     <div className="bg-white px-4 py-2 rounded-full shadow-sm flex items-center gap-4 mb-4 shrink-0 border border-gray-200 sticky top-0 z-50">
@@ -3639,7 +3660,7 @@ const LayoutBuilder = () => {
                     {/* Corner box */}
                     {showRuler && <div style={{ position: 'absolute', left: 0, top: 0, width: 40, height: 28, background: '#1e293b' }}/>}
                     {/* Canvas wrapper */}
-                    <div className="print-wrapper" style={{ position: 'absolute', left: showRuler ? 40 : 0, top: showRuler ? 28 : 0, width: canvasWidth * zoom, height: canvasHeight * zoom }} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
+                    <div className="print-wrapper" style={{ position: 'absolute', left: showRuler ? 40 : 0, top: showRuler ? 28 : 0, width: canvasWidth * zoom, height: canvasHeight * zoom }}>
                         {/* drag bars — only show when ruler is hidden to avoid overlap */}
                         {showGuideBars && !showRuler && (
                             <div onMouseDown={createHGuide} title="Tarik ke bawah untuk buat garis bantu horizontal" className="absolute top-[-22px] left-0 right-0 h-[22px] bg-slate-700 text-slate-300 text-xs flex justify-center items-center cursor-row-resize hover:bg-slate-600 transition select-none rounded-t"><Ruler size={12} className="mr-1"/> Tarik Garis Horizontal</div>
@@ -3654,7 +3675,7 @@ const LayoutBuilder = () => {
                         {showGuideBars && showRuler && (
                             <div onMouseDown={createVGuide} title="Klik ruler kiri untuk buat garis bantu vertikal" className="absolute" style={{ left: -40, top: 0, bottom: 0, width: 40, cursor: 'col-resize', zIndex: 5 }}/>
                         )}
-                        <div ref={canvasRef} onMouseDown={handleCanvasMouseDown} style={{ width: canvasWidth, height: canvasHeight, transform: `scale(${zoom})`, transformOrigin: 'top left', position: 'absolute', top: 0, left: 0 }} className="print-container bg-white shadow-xl">
+                        <div ref={canvasRef} style={{ width: canvasWidth, height: canvasHeight, transform: `scale(${zoom})`, transformOrigin: 'top left', position: 'absolute', top: 0, left: 0 }} className="print-container bg-white shadow-xl">
                         {showGrid && <div className="absolute inset-0 pointer-events-none print:hidden" style={{ backgroundImage: 'linear-gradient(#f0f0f0 1px, transparent 1px), linear-gradient(90deg, #f0f0f0 1px, transparent 1px)', backgroundSize: '20px 20px', opacity: 0.5 }}></div>}
                         
                         {/* Safe Area Visual Guide */}
@@ -3693,13 +3714,13 @@ const LayoutBuilder = () => {
                                                 }}>
                                                     {child.type === 'table_grades' ? renderDynamicTable(child, data, mockStudentGrades, mockClassAverages, false, 'raport', classesData) 
                                                     : child.type === 'image' ? <img src={child.content} style={{ width: '100%', height: '100%', objectFit: child.objectFit || 'contain', objectPosition: `${child.objectPositionX ?? 50}% ${child.objectPositionY ?? 50}%`, pointerEvents: 'none' }} alt="elemen" />
-                                                    : <div style={{ whiteSpace: 'pre-wrap', width: '100%', height: '100%', textAlign: child.textAlign || 'left' }}>{child.content}</div>}
+                                                    : <div style={{ whiteSpace: 'pre-wrap', width: '100%', height: '100%', textAlign: child.textAlign || 'left', direction: child.isRtl ? 'rtl' : 'ltr' }}>{child.content}</div>}
                                                 </div>
                                             ))}
                                         </div>
                                     ) : el.type === 'table_grades' ? renderDynamicTable(el, data, mockStudentGrades, mockClassAverages, false, 'raport', classesData) 
                                     : el.type === 'image' ? <img src={el.content} style={{ width: '100%', height: '100%', objectFit: el.objectFit || 'contain', objectPosition: `${el.objectPositionX ?? 50}% ${el.objectPositionY ?? 50}%`, pointerEvents: 'none' }} alt="elemen" />
-                                    : <div style={{ whiteSpace: 'pre-wrap', width: '100%', height: '100%', textAlign: el.textAlign || 'left' }}>{el.content}</div>}
+                                    : <div style={{ whiteSpace: 'pre-wrap', width: '100%', height: '100%', textAlign: el.textAlign || 'left', direction: el.isRtl ? 'rtl' : 'ltr' }}>{el.content}</div>}
                                     
                                     {isSelected && !el.locked && selectedIds.length === 1 && (
                                         <>
