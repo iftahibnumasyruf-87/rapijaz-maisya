@@ -2852,9 +2852,14 @@ const LayoutBuilder = () => {
         const scaleY = canvasHeight / rect.height;
         let rawX = (e.clientX - rect.left) * scaleX; 
         let rawY = (e.clientY - rect.top) * scaleY;
+        
+        const domNode = document.querySelector(`[data-element-id="${el.id}"]`);
+        const actualWidth = domNode ? domNode.offsetWidth : (el.width || (el.type === 'table_grades' ? 650 : 200));
+        const actualHeight = domNode ? domNode.offsetHeight : (el.height || (el.type === 'table_grades' ? 300 : 30));
+
         setInitialRect({ 
-            width: el.width || (el.type === 'table_grades' ? 650 : 200), 
-            height: el.height || (el.type === 'table_grades' ? 300 : 30), 
+            width: actualWidth, 
+            height: actualHeight, 
             startX: rawX, 
             startY: rawY,
             elX: el.x,
@@ -3720,7 +3725,7 @@ const LayoutBuilder = () => {
                                 <div key={el.id} data-element-id={el.id} onMouseDown={(e) => handleElementMouseDown(e, el)}
                                     style={{
                                         position: 'absolute', left: `${el.x}px`, top: `${el.y}px`, fontSize: `${el.fontSize}px`, fontFamily: el.fontFamily || 'Arial, sans-serif', fontWeight: el.fontWeight,
-                                        width: el.width ? `${el.width}px` : 'auto', height: el.type === 'image' ? `${el.height}px` : 'auto',
+                                        width: el.width ? `${el.width}px` : 'auto', height: (el.type === 'image' || el.type === 'table_grades') ? (el.height ? `${el.height}px` : 'auto') : 'auto',
                                         cursor: isDraggingThis ? 'grabbing' : 'grab', outline: isSelected ? '2px dashed #059669' : 'none', padding: (el.type === 'image' || el.type === 'table_grades') ? '0' : '2px',
                                         zIndex: isSelected ? 20 : (el.zIndex ?? 1), opacity: el.opacity ?? 1,
                                         pointerEvents: el.locked ? 'none' : 'auto'
