@@ -8,7 +8,7 @@ import {
   Type, User, CreditCard, Image as ImageIcon, Ruler, Type as TypeIcon, FileText,
   Columns, FileSignature, TrendingUp, UserX, Clock, Activity, ChevronDown,
   ZoomIn, ZoomOut, Maximize, Minimize, ChevronUp, Lock, Database, Copy, Undo, Redo, Eye, EyeOff,
-  AlignLeft, AlignCenter, AlignRight, AlignStartVertical, AlignCenterVertical, AlignEndVertical, BarChart2, AlignJustify, Layers
+  AlignLeft, AlignCenter, AlignRight, AlignStartVertical, AlignCenterVertical, AlignEndVertical, BarChart2, AlignJustify, Layers, Calendar
 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, AreaChart, Area } from 'recharts';
@@ -2386,7 +2386,6 @@ const MasterData = ({ activeTab }) => {
     </div>
   );
 };
-
 // ==========================================
 // RENDERER LOGIC FOR TABLES
 // ==========================================
@@ -2397,15 +2396,20 @@ const groupBy = (array, key) => array.reduce((result, item) => {
 }, {});
 
 const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatrol = false, mode = 'raport', classesData = []) => {
+    const activeSetting = data.settings?.find(s => s.key === 'activeSetting')?.value || {};
+    const toArabicNumbers = (val) => String(val).replace(/[0-9]/g, w => ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'][w]);
+
     const columns = el.columns || [];
     if(columns.length === 0) return <div className="p-4 border bg-red-50 text-red-500 text-xs">Tabel belum dikonfigurasi. Silakan edit kolom di panel kiri.</div>;
+
+    const toArabic = (val) => el.isRtl && val != null ? toArabicNumbers(val) : (val != null ? val : '-');
 
     const renderHeaders = () => (
         <thead>
             <tr className="bg-gray-100">
                 {columns.map((col, idx) => (
                     <th key={idx} className="border border-black p-1 text-center font-bold" style={{width: `${col.width}%`}}>
-                        {col.header}
+                        {toArabic(col.header)}
                     </th>
                 ))}
             </tr>
@@ -2422,30 +2426,30 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
             let isRed = !isKatrol && rawGrade > 0 && rawGrade < Number(sub.kkm || 0);
 
             switch(col.type) {
-                case 'NO': content = idx + 1; style={textAlign: 'center'}; break;
-                case 'MAPEL_ID': content = sub.nameId || sub.name; break;
-                case 'MAPEL_AR': content = sub.nameAr; style={textAlign: 'right', fontFamily: '"Amiri", "Scheherazade New", serif'}; break;
-                case 'KKM': content = sub.kkm; style={textAlign: 'center'}; break;
+                case 'NO': content = toArabic(idx + 1); style={textAlign: 'center'}; break;
+                case 'MAPEL_ID': content = toArabic(sub.nameId || sub.name); break;
+                case 'MAPEL_AR': content = toArabic(sub.nameAr); style={textAlign: 'right', fontFamily: '"Amiri", "Scheherazade New", serif'}; break;
+                case 'KKM': content = toArabic(sub.kkm); style={textAlign: 'center'}; break;
                 case 'NILAI': 
-                    content = finalGrade || '-'; 
+                    content = finalGrade ? toArabic(finalGrade) : '-'; 
                     style={textAlign: 'center', fontWeight: 'bold', color: isRed ? 'red' : 'inherit'}; 
                     break;
                 case 'RATA_KELAS': 
-                    content = classAverages[sub.id] || '-'; 
+                    content = classAverages[sub.id] ? toArabic(classAverages[sub.id]) : '-'; 
                     style={textAlign: 'center'}; 
                     break;
                 default: 
                     if(col.type.startsWith('PRESENCE_')) {
                         const pId = col.type.replace('PRESENCE_', '');
-                        content = studentGrades[pId] || '-';
+                        content = studentGrades[pId] ? toArabic(studentGrades[pId]) : '-';
                         style={textAlign: 'center'};
                     } else if(col.type.startsWith('SIKAP_')) {
                         const sId = col.type.replace('SIKAP_', '');
-                        content = studentGrades[sId] || '-';
+                        content = studentGrades[sId] ? toArabic(studentGrades[sId]) : '-';
                         style={textAlign: 'center'};
                     } else if(col.type.startsWith('EKSKUL_')) {
                         const eId = col.type.replace('EKSKUL_', '');
-                        content = studentGrades[eId] || '-';
+                        content = studentGrades[eId] ? toArabic(studentGrades[eId]) : '-';
                         style={textAlign: 'center'};
                     }
             }
@@ -2462,12 +2466,12 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
         const grouped = groupBy(subjectsToRender, 'kategori');
         let globalIndex = 0;
         return (
-            <table className="w-full border-collapse border border-black text-sm" style={{ width: '100%', fontSize: `${el.fontSize}px`, fontFamily: el.fontFamily }}>
+            <table className="w-full border-collapse border border-black text-sm" dir={el.isRtl ? 'rtl' : 'ltr'} style={{ width: '100%', fontSize: `${el.fontSize}px`, fontFamily: el.fontFamily }}>
                 {renderHeaders()}
                 <tbody>
                     {Object.entries(grouped).sort(([a],[b]) => a.localeCompare(b)).map(([cat, subs]) => (
                         <React.Fragment key={cat}>
-                            {cat && <tr><td colSpan={columns.length} className="border border-black p-1 font-bold bg-gray-50">{cat}</td></tr>}
+                            {cat && <tr><td colSpan={columns.length} className="border border-black p-1 font-bold bg-gray-50" style={{ textAlign: el.isRtl ? 'right' : 'left' }}>{toArabic(cat)}</td></tr>}
                             {subs.map(sub => {
                                 globalIndex++;
                                 return <tr key={sub.id}>{renderRowCells(sub, globalIndex - 1)}</tr>
@@ -2479,7 +2483,7 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
         );
     } else {
         return (
-            <table className="w-full border-collapse border border-black text-sm" style={{ width: '100%', fontSize: `${el.fontSize}px`, fontFamily: el.fontFamily }}>
+            <table className="w-full border-collapse border border-black text-sm" dir={el.isRtl ? 'rtl' : 'ltr'} style={{ width: '100%', fontSize: `${el.fontSize}px`, fontFamily: el.fontFamily }}>
                 {renderHeaders()}
                 <tbody>
                     {subjectsToRender.map((sub, idx) => (
@@ -2513,7 +2517,7 @@ const defaultTableColumns = [
 ];
 
 const LayoutBuilder = () => {
-    const { data, allData, saveToDb, deleteFromDb, showNotification, setAutoSaveStatus } = useContext(AppContext);
+    const { data, allData, activeSetting, saveToDb, deleteFromDb, showNotification, setAutoSaveStatus } = useContext(AppContext);
     const classesData = allData?.classes || data.classes || [];
     const [activeLayout, setActiveLayout] = useState(() => data.layouts?.length > 0 ? data.layouts[0].id : 'raport');
     const [elements, setElements] = useState([]);
@@ -3203,9 +3207,20 @@ const LayoutBuilder = () => {
                         <p className="text-xs font-semibold text-gray-500 uppercase mt-4 mb-1">Variabel Santri & Wali</p>
                         <div className="grid grid-cols-2 gap-1">
                             <button onClick={() => addElement('nama_santri')} className="bg-blue-50 hover:bg-blue-100 text-blue-700 py-1.5 rounded text-xs flex justify-center gap-1"><User size={14}/> Nama</button>
+                            <button onClick={() => addElement('nama_santri_ar')} className="bg-blue-50 hover:bg-blue-100 text-blue-700 py-1.5 rounded text-xs flex justify-center gap-1"><User size={14}/> Nama (Arab)</button>
                             <button onClick={() => addElement('nis')} className="bg-blue-50 hover:bg-blue-100 text-blue-700 py-1.5 rounded text-xs flex justify-center gap-1"><CreditCard size={14}/> NIS</button>
                             <button onClick={() => addElement('kelas')} className="bg-blue-50 hover:bg-blue-100 text-blue-700 py-1.5 rounded text-xs flex justify-center gap-1"><BookOpen size={14}/> Kelas</button>
+                            <button onClick={() => addElement('kelas_ar')} className="bg-blue-50 hover:bg-blue-100 text-blue-700 py-1.5 rounded text-xs flex justify-center gap-1"><BookOpen size={14}/> Kelas (Arab)</button>
+                            <button onClick={() => addElement('wali_kelas')} className="bg-purple-50 hover:bg-purple-100 text-purple-700 py-1.5 rounded text-xs flex justify-center gap-1"><User size={14}/> Wali Kelas</button>
                             <button onClick={() => addElement('catatan_wali')} className="col-span-2 bg-pink-50 hover:bg-pink-100 text-pink-700 py-1.5 rounded text-xs flex justify-center gap-1"><FileSignature size={14}/> Catatan Wali Kelas</button>
+                        </div>
+                        
+                        <p className="text-xs font-semibold text-gray-500 uppercase mt-4 mb-1">Variabel Umum</p>
+                        <div className="grid grid-cols-2 gap-1">
+                            <button onClick={() => addElement('tahun_ajaran')} className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 py-1.5 rounded text-xs flex justify-center gap-1"><Calendar size={14}/> Tahun Ajaran</button>
+                            <button onClick={() => addElement('tahun_ajaran_ar')} className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 py-1.5 rounded text-xs flex justify-center gap-1"><Calendar size={14}/> Thn Ajaran (Arab)</button>
+                            <button onClick={() => addElement('semester')} className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 py-1.5 rounded text-xs flex justify-center gap-1"><BookOpen size={14}/> Semester</button>
+                            <button onClick={() => addElement('semester_ar')} className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 py-1.5 rounded text-xs flex justify-center gap-1"><BookOpen size={14}/> Semester (Arab)</button>
                         </div>
                         
                         {data.studentFields && data.studentFields.length > 0 && (
@@ -3374,7 +3389,7 @@ const LayoutBuilder = () => {
                                     </div>
                                     <div className="mt-2">
                                         <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 bg-white p-2 border rounded cursor-pointer">
-                                            <input type="checkbox" checked={activeEl.isRtl || false} onChange={e => updateElement(selectedElementId, { isRtl: e.target.checked })} />
+                                            <input type="checkbox" checked={activeEl?.isRtl || false} onChange={e => updateElement(selectedElementId, { isRtl: e.target.checked })} />
                                             Format Teks Arab (RTL)
                                         </label>
                                     </div>
@@ -3446,11 +3461,16 @@ const LayoutBuilder = () => {
                                     </div>
                                     
                                     <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 bg-white p-2 border rounded cursor-pointer">
-                                        <input type="checkbox" checked={activeEl.groupByCategory || false} onChange={e => updateElement(selectedElementId, { groupByCategory: e.target.checked })} />
+                                        <input type="checkbox" checked={activeEl?.groupByCategory || false} onChange={e => updateElement(selectedElementId, { groupByCategory: e.target.checked })} />
                                         Kelompokkan per Kategori Pelajaran
                                     </label>
+                                    
+                                    <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 bg-white p-2 border rounded cursor-pointer mt-1">
+                                        <input type="checkbox" checked={activeEl?.isRtl || false} onChange={e => updateElement(selectedElementId, { isRtl: e.target.checked })} />
+                                        Format Tabel Arab (RTL & Angka Arab)
+                                    </label>
 
-                                    <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
+                                    <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar mt-2">
                                         {(activeEl.columns || []).map((col, idx) => (
                                             <div key={col.id} className="bg-white p-2 border rounded border-l-4 border-l-orange-400 relative group">
                                                 <button onClick={() => {
@@ -4530,13 +4550,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
         let content = el.content;
         const sGrades = classGradesDoc[stdData.id] || {};
         
-        if (stdData && typeof content === 'string') {
-            content = content.replace('{{nama_santri}}', stdData.nama || '')
-                             .replace('{{nis}}', stdData.nis || '')
-                             .replace('{{kelas}}', getClassNameFromValue(classesData, stdData.kelas) || '')
-                             .replace('{{catatan_wali}}', sGrades['catatan_wali'] || '');
-            if (data.studentFields) data.studentFields.forEach(f => content = content.replace(new RegExp(`{{${f.key}}}`, 'g'), stdData[f.key] || ''));
-        }
+
 
         if (el.type === 'table_grades') return <div style={{...getStyles(el), width: `${el.width}px`}}>{renderDynamicTable(el, data, sGrades, classAverages, useKatrol, mode, classesData)}</div>;
         if (el.type === 'image') return <img src={el.content} style={{...getStyles(el), width: `${el.width}px`, height: `${el.height}px`, objectFit: 'contain'}} alt="C" />;
