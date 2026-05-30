@@ -2469,15 +2469,21 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
             <table className="w-full border-collapse border border-black text-sm" dir={el.isRtl ? 'rtl' : 'ltr'} style={{ width: '100%', fontSize: `${el.fontSize}px`, fontFamily: el.fontFamily }}>
                 {renderHeaders()}
                 <tbody>
-                    {Object.entries(grouped).sort(([a],[b]) => a.localeCompare(b)).map(([cat, subs]) => (
+                    {Object.entries(grouped).sort(([a],[b]) => a.localeCompare(b)).map(([cat, subs]) => {
+                        // Jika RTL aktif, tampilkan nama kategori dalam bahasa Arab
+                        const catLabel = el.isRtl
+                            ? (data.subjectCategories?.find(c => normalizeValue(c.name) === normalizeValue(cat))?.nameAr || cat)
+                            : cat;
+                        return (
                         <React.Fragment key={cat}>
-                            {cat && <tr><td colSpan={columns.length} className="border border-black p-1 font-bold bg-gray-50" style={{ textAlign: el.isRtl ? 'right' : 'left' }}>{toArabic(cat)}</td></tr>}
+                            {cat && <tr><td colSpan={columns.length} className="border border-black p-1 font-bold bg-gray-50" style={{ textAlign: el.isRtl ? 'right' : 'left', fontFamily: el.isRtl ? '"Amiri", "Scheherazade New", serif' : 'inherit' }}>{catLabel}</td></tr>}
                             {subs.map(sub => {
                                 globalIndex++;
                                 return <tr key={sub.id}>{renderRowCells(sub, globalIndex - 1)}</tr>
                             })}
                         </React.Fragment>
-                    ))}
+                        );
+                    })}
                 </tbody>
             </table>
         );
