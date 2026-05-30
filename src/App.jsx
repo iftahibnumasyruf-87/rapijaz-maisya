@@ -2466,7 +2466,7 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
         const grouped = groupBy(subjectsToRender, 'kategori');
         let globalIndex = 0;
         return (
-            <table className="w-full border-collapse border border-black text-sm" dir={el.isRtl ? 'rtl' : 'ltr'} style={{ width: '100%', fontSize: `${el.fontSize}px`, fontFamily: el.fontFamily }}>
+            <table className="w-full border-collapse border border-black text-sm" dir={el.isRtl ? 'rtl' : 'ltr'} style={{ width: '100%', height: el.height ? `${el.height}px` : 'auto', fontSize: `${el.fontSize}px`, fontFamily: el.fontFamily }}>
                 {renderHeaders()}
                 <tbody>
                     {Object.entries(grouped).sort(([a],[b]) => a.localeCompare(b)).map(([cat, subs]) => {
@@ -2489,7 +2489,7 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
         );
     } else {
         return (
-            <table className="w-full border-collapse border border-black text-sm" dir={el.isRtl ? 'rtl' : 'ltr'} style={{ width: '100%', fontSize: `${el.fontSize}px`, fontFamily: el.fontFamily }}>
+            <table className="w-full border-collapse border border-black text-sm" dir={el.isRtl ? 'rtl' : 'ltr'} style={{ width: '100%', height: el.height ? `${el.height}px` : 'auto', fontSize: `${el.fontSize}px`, fontFamily: el.fontFamily }}>
                 {renderHeaders()}
                 <tbody>
                     {subjectsToRender.map((sub, idx) => (
@@ -3406,9 +3406,7 @@ const LayoutBuilder = () => {
                                 <div className="flex flex-col gap-2">
                                     <div className="flex gap-2">
                                         <div className="w-1/2"><label className="text-[10px] text-gray-500 font-bold uppercase">Lebar (Width)</label><input type="number" className="w-full p-1.5 border rounded text-sm" value={activeEl.width} onChange={e => updateElement(selectedElementId, { width: Number(e.target.value) })}/></div>
-                                        {activeEl.type === 'image' && (
-                                            <div className="w-1/2"><label className="text-[10px] text-gray-500 font-bold uppercase">Tinggi (Height)</label><input type="number" className="w-full p-1.5 border rounded text-sm" value={activeEl.height} onChange={e => updateElement(selectedElementId, { height: Number(e.target.value) })}/></div>
-                                        )}
+                                        <div className="w-1/2"><label className="text-[10px] text-gray-500 font-bold uppercase">Tinggi (Height)</label><input type="number" className="w-full p-1.5 border rounded text-sm" value={activeEl.height || ''} onChange={e => updateElement(selectedElementId, { height: Number(e.target.value) })}/></div>
                                     </div>
                                     {activeEl.type === 'image' && (
                                         <button onClick={() => updateElement(selectedElementId, { x: 0, y: 0, width: canvasWidth, height: canvasHeight })} className="w-full bg-indigo-50 hover:bg-indigo-100 text-indigo-700 py-1.5 rounded text-[10px] font-bold transition">Paskan ke Ukuran Halaman</button>
