@@ -2503,7 +2503,7 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
         const grouped = groupBy(subjectsToRender, 'kategori');
         let globalIndex = 0;
         return (
-            <table className="w-full border-collapse text-sm" dir={el.isRtl ? 'rtl' : 'ltr'} style={{ width: '100%', height: el.height ? `${el.height}px` : 'auto', fontSize: `${el.fontSize}px`, fontFamily: el.fontFamily }}>
+            <table className="w-full border-collapse text-sm" dir={el.isRtl ? 'rtl' : 'ltr'} style={{ tableLayout: 'fixed', width: '100%', height: el.height ? `${el.height}px` : 'auto', fontSize: `${el.fontSize}px`, fontFamily: el.fontFamily }}>
                 {renderHeaders()}
                 <tbody>
                     {Object.entries(grouped).sort(([a],[b]) => a.localeCompare(b)).map(([cat, subs]) => {
@@ -2526,7 +2526,7 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
         );
     } else {
         return (
-            <table className="w-full border-collapse text-sm" dir={el.isRtl ? 'rtl' : 'ltr'} style={{ width: '100%', height: el.height ? `${el.height}px` : 'auto', fontSize: `${el.fontSize}px`, fontFamily: el.fontFamily }}>
+            <table className="w-full border-collapse text-sm" dir={el.isRtl ? 'rtl' : 'ltr'} style={{ tableLayout: 'fixed', width: '100%', height: el.height ? `${el.height}px` : 'auto', fontSize: `${el.fontSize}px`, fontFamily: el.fontFamily }}>
                 {renderHeaders()}
                 <tbody>
                     {subjectsToRender.map((sub, idx) => (
