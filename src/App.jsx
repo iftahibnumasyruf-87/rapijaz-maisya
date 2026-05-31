@@ -3870,7 +3870,6 @@ const LayoutBuilder = () => {
             </div>
             
             <style>{`
-            @import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&display=swap');
             @media print { 
                 body * { visibility: hidden; } 
                 .print-wrapper, .print-wrapper * { visibility: visible; } 
@@ -4537,11 +4536,16 @@ const CetakDokumen = ({ mode = 'raport' }) => {
     }, [JSON.stringify(layoutSettings.margins)]);
 
     useEffect(() => {
-        const styleId = 'custom-fonts-style-print';
-        let styleTag = document.getElementById(styleId);
-        if (!styleTag) { styleTag = document.createElement('style'); styleTag.id = styleId; document.head.appendChild(styleTag); }
-        const imports = data.fonts?.filter(f => f.url).map(f => `@import url('${f.url}');`).join('\n') || '';
-        styleTag.innerHTML = imports;
+        data.fonts?.filter(f => f.url).forEach(f => {
+            const linkId = `font-link-${btoa(f.url).replace(/[^a-zA-Z0-9]/g, '')}`;
+            if (!document.getElementById(linkId)) {
+                const link = document.createElement('link');
+                link.id = linkId;
+                link.rel = 'stylesheet';
+                link.href = f.url;
+                document.head.appendChild(link);
+            }
+        });
     }, [data.fonts]);
 
     const gradeDocId = getGradeDocId(selectedClass, classesData, activeSetting, data.grades);
@@ -4568,6 +4572,8 @@ const CetakDokumen = ({ mode = 'raport' }) => {
         return avgs;
     }, [classGradesDoc, gradeDocId]);
 
+    const [isExporting, setIsExporting] = useState(false);
+
     const handlePrint = () => { 
         document.title = "Cetak_Dokumen"; 
         addLog(`Mencetak ${mode} untuk ${studentData?.nama || 'Siswa'}`);
@@ -4589,23 +4595,29 @@ const CetakDokumen = ({ mode = 'raport' }) => {
         
         const oldZoom = previewZoom;
         setPreviewZoom(1.0);
+        setIsExporting(true);
         
         setTimeout(() => {
             const element = document.querySelector('.print-wrapper');
-            if(!element) return setPreviewZoom(oldZoom);
+            if(!element) {
+                setPreviewZoom(oldZoom);
+                setIsExporting(false);
+                return;
+            }
             
             const opt = {
                 margin:       0,
                 filename:     filename,
                 image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true },
+                html2canvas:  { scale: 2, useCORS: true, logging: false },
                 jsPDF:        { unit: 'mm', format: layoutPageSize === 'F4' ? [215.9, 330.2] : 'a4', orientation: layoutOrientation }
             };
             
             html2pdf().set(opt).from(element).save().then(() => {
                  setPreviewZoom(oldZoom);
+                 setIsExporting(false);
             });
-        }, 300);
+        }, 500);
     };
 
     const handleWA = () => {
@@ -4840,13 +4852,13 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                 </div>
                 <div className="flex-1 overflow-auto p-8 flex flex-col items-center gap-8 print:p-0 print:gap-0 print:block">
                 {studentsToRender.length > 0 ? (
-                    <div className="print-wrapper flex flex-col items-center gap-8 print:gap-0 print:block" style={{ transformOrigin: 'top center', transform: `scale(${previewZoom})`, marginBottom: `${(previewZoom - 1) * canvasHeight * pages.length}px` }}>
+                    <div className={`print-wrapper flex flex-col print:block ${isExporting ? 'gap-0 items-start' : 'items-center gap-8 print:gap-0'}`} style={{ transformOrigin: 'top left', transform: isExporting ? 'none' : `scale(${previewZoom})`, marginBottom: isExporting ? '0px' : `${(previewZoom - 1) * canvasHeight * pages.length}px` }}>
                         {studentsToRender.map((std, stdIndex) => (
                             <React.Fragment key={std.id}>
                                 {pages.map((pageElements, index) => {
                                     const isLastPageOfLastStudent = stdIndex === studentsToRender.length - 1 && index === pages.length - 1;
                                     return (
-                                        <div key={`${std.id}-${index}`} className="print-container bg-white shadow-xl relative print:shadow-none print:!m-0" style={{ width: `${canvasWidth}px`, height: `${canvasHeight}px`, pageBreakAfter: isLastPageOfLastStudent ? 'auto' : 'always', marginTop: index === 0 && stdIndex === 0 ? 0 : '32px', flexShrink: 0 }}>
+                                        <div key={`${std.id}-${index}`} className={`print-container bg-white relative print:shadow-none print:!m-0 ${isExporting ? '!m-0 shadow-none' : 'shadow-xl'}`} style={{ width: `${canvasWidth}px`, height: `${canvasHeight}px`, pageBreakAfter: isLastPageOfLastStudent ? 'auto' : 'always', marginTop: (index === 0 && stdIndex === 0) || isExporting ? 0 : '32px', flexShrink: 0 }}>
                                             {pageElements.length > 0 ? pageElements.map(el => <React.Fragment key={el.id}>{renderElementForStudent(el, std)}</React.Fragment>) : (activeLayout.length === 0 && index === 0 ? <div className="absolute inset-0 flex items-center justify-center text-gray-400 print:hidden">Layout belum disetting oleh Admin.<br/>Pilih layout di panel kiri.</div> : <div className="absolute inset-0 flex items-center justify-center text-gray-400 print:hidden">Halaman {index + 1} kosong.</div>)}
                                         </div>
                                     );
@@ -4858,7 +4870,6 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                 </div>
             </div>
             <style>{`
-            @import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&display=swap');
             @media print { 
                 body * { visibility: hidden; } 
                 .print-wrapper, .print-wrapper * { visibility: visible; } 
