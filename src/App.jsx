@@ -5344,8 +5344,8 @@ const Dashboard = () => {
     switch (activeMenu) {
       case 'dashboard': return <HomeDashboard />;
       case 'layout_builder': return <LayoutBuilder />;
-      case 'cetak_raport': return <CetakDokumen mode="raport" />;
-      case 'cetak_ijazah': return <CetakDokumen mode="ijazah" />;
+      case 'cetak_raport': return <CetakDokumen key="raport" mode="raport" />;
+      case 'cetak_ijazah': return <CetakDokumen key="ijazah" mode="ijazah" />;
       case 'legger': return <LeggerKelas />;
       default: return <div className="p-8 text-center text-gray-500">Menu tidak ditemukan</div>;
     }
