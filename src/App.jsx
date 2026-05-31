@@ -3524,10 +3524,25 @@ const LayoutBuilder = () => {
                                     <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar mt-2">
                                         {(activeEl.columns || []).map((col, idx) => (
                                             <div key={col.id} className="bg-white p-2 border rounded border-l-4 border-l-orange-400 relative group">
-                                                <button onClick={() => {
-                                                    const newCols = [...activeEl.columns]; newCols.splice(idx, 1);
-                                                    updateElement(selectedElementId, { columns: newCols });
-                                                }} className="absolute top-1 right-1 text-red-400 hover:text-red-600 bg-white rounded-full"><X size={14}/></button>
+                                                <div className="absolute top-1 right-1 flex gap-0.5 bg-white rounded shadow-sm border p-0.5 z-10">
+                                                    <button onClick={() => {
+                                                        if (idx === 0) return;
+                                                        const newCols = [...activeEl.columns];
+                                                        [newCols[idx - 1], newCols[idx]] = [newCols[idx], newCols[idx - 1]];
+                                                        updateElement(selectedElementId, { columns: newCols });
+                                                    }} disabled={idx === 0} className={`p-0.5 rounded ${idx === 0 ? 'text-gray-300' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-100'}`} title="Geser ke Kiri (Sebelumnya)"><ChevronUp size={14}/></button>
+                                                    <button onClick={() => {
+                                                        if (idx === activeEl.columns.length - 1) return;
+                                                        const newCols = [...activeEl.columns];
+                                                        [newCols[idx + 1], newCols[idx]] = [newCols[idx], newCols[idx + 1]];
+                                                        updateElement(selectedElementId, { columns: newCols });
+                                                    }} disabled={idx === activeEl.columns.length - 1} className={`p-0.5 rounded ${idx === activeEl.columns.length - 1 ? 'text-gray-300' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-100'}`} title="Geser ke Kanan (Selanjutnya)"><ChevronDown size={14}/></button>
+                                                    <div className="w-[1px] bg-gray-200 mx-0.5"></div>
+                                                    <button onClick={() => {
+                                                        const newCols = [...activeEl.columns]; newCols.splice(idx, 1);
+                                                        updateElement(selectedElementId, { columns: newCols });
+                                                    }} className="p-0.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded" title="Hapus Kolom"><X size={14}/></button>
+                                                </div>
                                                 
                                                 <input className="w-[85%] text-xs font-bold border-b mb-1 outline-none focus:border-orange-500" value={col.header} onChange={e => {
                                                     const newCols = [...activeEl.columns]; newCols[idx].header = e.target.value;
