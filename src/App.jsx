@@ -1927,15 +1927,6 @@ const MasterData = ({ activeTab }) => {
           <div>
             <div className="flex justify-between items-center mb-3 pb-3 border-b">
               <label className="flex items-center gap-2 text-sm cursor-pointer select-none bg-gray-50 hover:bg-gray-100 px-3 py-1.5 rounded-lg border">
-                  <input type="checkbox" checked={compactMode} onChange={e => setCompactMode(e.target.checked)} className="rounded text-emerald-600 focus:ring-emerald-500" />
-                  Mode Ringkas
-              </label>
-              {activeTab === 'subjects' && (
-                  <button onClick={handleSortAlphabetically} className="bg-blue-100 hover:bg-blue-200 text-blue-800 px-3 py-1.5 rounded-lg text-sm font-semibold transition flex items-center gap-2">
-                      Urutkan Abjad
-                  </button>
-              )}
-            </div>
                 <input type="checkbox" checked={hideInactive} onChange={e => setHideInactive(e.target.checked)} className="w-4 h-4 text-emerald-600 rounded" />
                 Sembunyikan semester nonaktif
               </label>
@@ -2011,8 +2002,14 @@ const MasterData = ({ activeTab }) => {
         );
       case 'subjects':
         return (
-          <table className="w-full text-left border-collapse">
-            <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm">
+          <div>
+            <div className="flex justify-end items-center mb-3 pb-3 border-b">
+              <button onClick={handleSortAlphabetically} className="bg-blue-100 hover:bg-blue-200 text-blue-800 px-3 py-1.5 rounded-lg text-sm font-semibold transition flex items-center gap-2">
+                  Urutkan Abjad
+              </button>
+            </div>
+            <table className="w-full text-left border-collapse">
+              <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm">
                 <th className="p-3 border-b text-center">No.</th>
                 <SortableHeader label="Kelas" sortKey="kelas" className="text-center" />
                 <SortableHeader label="Kategori" sortKey="kategori" />
@@ -2047,7 +2044,8 @@ const MasterData = ({ activeTab }) => {
                       </tr>
                   );
               })}</tbody>
-          </table>
+            </table>
+          </div>
         );
             case 'presences':
                 return (
