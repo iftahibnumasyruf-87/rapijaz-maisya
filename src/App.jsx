@@ -2432,21 +2432,41 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
 
             switch(col.type) {
                 case 'NO': content = toArabic(idx + 1); style={textAlign: 'center'}; break;
+                case 'NO_AR': content = toArabicNumbers(idx + 1); style={textAlign: 'center', fontFamily: '"Amiri", "Scheherazade New", serif'}; break;
+                
                 case 'MAPEL_ID': content = toArabic(sub.nameId || sub.name); break;
-                case 'MAPEL_AR': content = toArabic(sub.nameAr); style={textAlign: 'right', fontFamily: '"Amiri", "Scheherazade New", serif'}; break;
+                case 'MAPEL_AR': content = sub.nameAr || '-'; style={textAlign: 'right', fontFamily: '"Amiri", "Scheherazade New", serif'}; break;
+                
                 case 'KKM': content = toArabic(sub.kkm); style={textAlign: 'center'}; break;
+                case 'KKM_AR': content = sub.kkm ? toArabicNumbers(sub.kkm) : '-'; style={textAlign: 'center', fontFamily: '"Amiri", "Scheherazade New", serif'}; break;
+                
                 case 'NILAI': 
                     content = finalGrade ? toArabic(finalGrade) : '-'; 
                     style={textAlign: 'center', fontWeight: 'bold', color: isRed ? 'red' : 'inherit'}; 
                     break;
+                case 'NILAI_AR': 
+                    content = finalGrade ? toArabicNumbers(finalGrade) : '-'; 
+                    style={textAlign: 'center', fontWeight: 'bold', color: isRed ? 'red' : 'inherit', fontFamily: '"Amiri", "Scheherazade New", serif'}; 
+                    break;
+                    
                 case 'RATA_KELAS': 
                     content = classAverages[sub.id] ? toArabic(classAverages[sub.id]) : '-'; 
                     style={textAlign: 'center'}; 
                     break;
+                case 'RATA_KELAS_AR': 
+                    content = classAverages[sub.id] ? toArabicNumbers(classAverages[sub.id]) : '-'; 
+                    style={textAlign: 'center', fontFamily: '"Amiri", "Scheherazade New", serif'}; 
+                    break;
+                    
                 case 'KATEGORI':
                     const catName = el.isRtl ? (data.subjectCategories?.find(c => normalizeValue(c.name) === normalizeValue(sub.kategori))?.nameAr || sub.kategori) : sub.kategori;
                     content = toArabic(catName);
                     style = el.isRtl ? { textAlign: 'right', fontFamily: '"Amiri", "Scheherazade New", serif' } : { textAlign: 'left' };
+                    break;
+                case 'KATEGORI_AR':
+                    const catNameAr = data.subjectCategories?.find(c => normalizeValue(c.name) === normalizeValue(sub.kategori))?.nameAr || sub.kategori;
+                    content = catNameAr;
+                    style = { textAlign: 'right', fontFamily: '"Amiri", "Scheherazade New", serif' };
                     break;
                 default: 
                     if(col.type.startsWith('PRESENCE_')) {
@@ -3528,6 +3548,13 @@ const LayoutBuilder = () => {
                                                             <option value="NILAI">Nilai Angka Santri</option>
                                                             <option value="RATA_KELAS">Rata-rata Kelas</option>
                                                             <option value="SPASI_KOSONG">Spasi Pemisah (Tanpa Border)</option>
+                                                        </optgroup>
+                                                        <optgroup label="Pelajaran (Khusus Arab)">
+                                                            <option value="NO_AR">Nomor Urut (Arab)</option>
+                                                            <option value="KATEGORI_AR">Kategori Pelajaran (Arab)</option>
+                                                            <option value="KKM_AR">Nilai KKM (Arab)</option>
+                                                            <option value="NILAI_AR">Nilai Angka Santri (Arab)</option>
+                                                            <option value="RATA_KELAS_AR">Rata-rata Kelas (Arab)</option>
                                                         </optgroup>
                                                         {data.presences.length > 0 && (
                                                             <optgroup label="Aspek Presensi">
