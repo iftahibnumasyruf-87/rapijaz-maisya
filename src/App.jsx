@@ -2714,7 +2714,7 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
                                             <td 
                                                 key={`data-${segIdx}`} 
                                                 colSpan={seg.count} 
-                                                className="border border-black p-1 font-bold bg-gray-50" 
+                                                className={`border border-black p-1 font-bold ${el.isTransparent ? 'bg-transparent' : 'bg-gray-50'}`} 
                                                 style={{ textAlign: segTextAlign, fontFamily: segFontFamily }}
                                             >
                                                 {segLabel}
