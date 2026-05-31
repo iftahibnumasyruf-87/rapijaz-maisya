@@ -4674,13 +4674,13 @@ const CetakDokumen = ({ mode = 'raport' }) => {
     const studentsToRender = isBatchMode ? studentsInClass : (studentData ? [studentData] : []);
 
     const renderElementForStudent = (el, stdData) => {
-        let content = el.content;
         const sGrades = classGradesDoc[stdData.id] || {};
         const className = getClassNameFromValue(classesData, selectedClass);
         const classDataObj = classesData.find(c => c.id === selectedClass);
         
-        if (typeof content === 'string') {
-            content = content.replace(/\{\{nama_santri\}\}/gi, stdData.nama || '')
+        const replaceVariables = (str) => {
+            if (typeof str !== 'string') return str;
+            let replaced = str.replace(/\{\{nama_santri\}\}/gi, stdData.nama || '')
                              .replace(/\{\{nama_santri_ar\}\}/gi, stdData.nama_arab || '')
                              .replace(/\{\{nis\}\}/gi, stdData.nis || '')
                              .replace(/\{\{nisn\}\}/gi, stdData.nisn || '')
@@ -4691,12 +4691,14 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                              .replace(/\{\{semester\}\}/gi, activeSetting.semester || '')
                              .replace(/\{\{semester_ar\}\}/gi, activeSetting.semester_arab || '');
             
-            content = content.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
+            return replaced.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
                  if (stdData[key] !== undefined) return stdData[key];
                  if (stdData.fields && stdData.fields[key] !== undefined) return stdData.fields[key];
                  return match;
             });
-        }
+        };
+
+        let content = replaceVariables(el.content);
         
         const baseStyle = {
             position: 'absolute',
@@ -4759,7 +4761,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                         };
                         if (child.type === 'table_grades') return <div key={child.id} style={{...childStyle, background: child.isTransparent ? 'transparent' : 'white', overflow:'hidden'}}>{renderDynamicTable(child, data, sGrades, classAverages, useKatrol, mode, classesData)}</div>;
                         if (child.type === 'image') return <img key={child.id} src={child.content} style={{...childStyle, objectFit: child.objectFit||'contain', objectPosition:`${child.objectPositionX??50}% ${child.objectPositionY??50}%`}} alt="c" />;
-                        return <div key={child.id} style={{...childStyle, whiteSpace:'pre-wrap', direction: child.isRtl ? 'rtl' : 'ltr'}}>{child.content}</div>;
+                        return <div key={child.id} style={{...childStyle, whiteSpace:'pre-wrap', direction: child.isRtl ? 'rtl' : 'ltr'}}>{replaceVariables(child.content)}</div>;
                     })}
                 </div>
             );
@@ -4854,7 +4856,6 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                     </div>
                 ) : <div className="flex items-center justify-center h-full text-gray-400 print:hidden">Pilih santri untuk melihat preview {mode}.</div>}
                 </div>
-            </div>
             </div>
             <style>{`
             @import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&display=swap');
