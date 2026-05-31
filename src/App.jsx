@@ -8,7 +8,8 @@ import {
   Type, User, CreditCard, Image as ImageIcon, Ruler, Type as TypeIcon, FileText,
   Columns, FileSignature, TrendingUp, UserX, Clock, Activity, ChevronDown,
   ZoomIn, ZoomOut, Maximize, Minimize, ChevronUp, Lock, Database, Copy, Undo, Redo, Eye, EyeOff,
-  AlignLeft, AlignCenter, AlignRight, AlignStartVertical, AlignCenterVertical, AlignEndVertical, BarChart2, AlignJustify, Layers, Calendar
+  AlignLeft, AlignCenter, AlignRight, AlignStartVertical, AlignCenterVertical, AlignEndVertical, BarChart2, AlignJustify, Layers, Calendar,
+  Minus, Square
 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, AreaChart, Area } from 'recharts';
@@ -2753,20 +2754,27 @@ const LayoutBuilder = () => {
 
     const addElement = (type, customKey = null) => {
         const isWatermark = type === 'watermark';
+        const isLine = type === 'line';
+        const isShape = type === 'shape';
         const elementType = isWatermark ? 'image' : type;
 
         let defaultContent = elementType === 'text' ? 'Teks Baru' : elementType === 'image' ? 'https://via.placeholder.com/150' : `{{${elementType}}}`;
         if (customKey) defaultContent = `{{${customKey}}}`;
+        if (isLine) defaultContent = '';
+        if (isShape) defaultContent = '';
 
         const newEl = {
             id: Date.now().toString(),
             pageIndex: currentPage,
             type: elementType, content: defaultContent,
             x: 50, y: 50, fontSize: 14, fontFamily: 'Arial, sans-serif', fontWeight: 'normal',
-            width: elementType === 'table_grades' ? 650 : elementType === 'image' ? (isWatermark ? 400 : 100) : 200,
-            height: elementType === 'table_grades' ? 300 : elementType === 'image' ? (isWatermark ? 400 : 100) : 30,
+            width: isLine ? 400 : isShape ? 200 : (elementType === 'table_grades' ? 650 : elementType === 'image' ? (isWatermark ? 400 : 100) : 200),
+            height: isLine ? 2 : isShape ? 50 : (elementType === 'table_grades' ? 300 : elementType === 'image' ? (isWatermark ? 400 : 100) : 30),
             zIndex: isWatermark ? 0 : 1,
             opacity: isWatermark ? 0.2 : 1,
+            // line/shape specific
+            ...(isLine ? { lineColor: '#000000', lineThickness: 2 } : {}),
+            ...(isShape ? { shapeFill: '#000000', shapeRadius: 0, shapeBorder: 0, shapeBorderColor: '#000000' } : {}),
             ...(elementType === 'table_grades' ? { columns: [...defaultTableColumns], groupByCategory: false, filterClass: '' } : {})
         };
         setPast(p => [...p, elements]);
@@ -3261,6 +3269,12 @@ const LayoutBuilder = () => {
                         <button onClick={() => addElement('watermark')} className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 py-2 rounded text-sm flex items-center justify-center gap-2"><ImageIcon size={16}/> Gambar Watermark</button>
                         <button onClick={() => addElement('table_grades')} className="w-full bg-orange-50 hover:bg-orange-100 text-orange-700 py-2 rounded text-sm flex items-center justify-center gap-2"><Columns size={16}/> Tabel Nilai Dinamis</button>
                         
+                        <p className="text-xs font-semibold text-gray-500 uppercase mt-4 mb-1">Shape &amp; Garis</p>
+                        <div className="grid grid-cols-2 gap-1">
+                            <button onClick={() => addElement('line')} className="bg-gray-100 hover:bg-gray-200 text-gray-700 py-1.5 rounded text-sm flex items-center justify-center gap-2"><Minus size={14}/> Garis</button>
+                            <button onClick={() => addElement('shape')} className="bg-gray-100 hover:bg-gray-200 text-gray-700 py-1.5 rounded text-sm flex items-center justify-center gap-2"><Square size={14}/> Kotak/Shape</button>
+                        </div>
+                        
                         <p className="text-xs font-semibold text-gray-500 uppercase mt-4 mb-1">Variabel Santri & Wali</p>
                         <div className="grid grid-cols-2 gap-1">
                             <button onClick={() => addElement('nama_santri')} className="bg-blue-50 hover:bg-blue-100 text-blue-700 py-1.5 rounded text-xs flex justify-center gap-1"><User size={14}/> Nama</button>
@@ -3396,6 +3410,39 @@ const LayoutBuilder = () => {
                                 <textarea className="w-full p-2 border rounded text-sm focus:ring-2 outline-none min-h-[60px]" value={activeEl.content} onChange={e => updateElement(selectedElementId, { content: e.target.value })} />
                             )}
 
+                            {activeEl.type === 'line' && (
+                                <div className="space-y-2">
+                                    <div className="flex gap-2 items-center">
+                                        <label className="text-xs text-gray-500 w-20">Warna Garis</label>
+                                        <input type="color" value={activeEl.lineColor || '#000000'} onChange={e => updateElement(activeEl.id, { lineColor: e.target.value }, false)} onBlur={e => updateElement(activeEl.id, { lineColor: e.target.value })} className="w-10 h-7 cursor-pointer rounded border" />
+                                        <span className="text-xs font-mono">{activeEl.lineColor || '#000000'}</span>
+                                    </div>
+                                    <div className="flex gap-2 items-center">
+                                        <label className="text-xs text-gray-500 w-20">Ketebalan (px)</label>
+                                        <input type="number" min="1" max="20" value={activeEl.lineThickness || 2} onChange={e => updateElement(activeEl.id, { lineThickness: Number(e.target.value) })} className="w-16 p-1 border rounded text-xs" />
+                                    </div>
+                                </div>
+                            )}
+                            {activeEl.type === 'shape' && (
+                                <div className="space-y-2">
+                                    <div className="flex gap-2 items-center">
+                                        <label className="text-xs text-gray-500 w-20">Warna Fill</label>
+                                        <input type="color" value={activeEl.shapeFill || '#000000'} onChange={e => updateElement(activeEl.id, { shapeFill: e.target.value }, false)} onBlur={e => updateElement(activeEl.id, { shapeFill: e.target.value })} className="w-10 h-7 cursor-pointer rounded border" />
+                                    </div>
+                                    <div className="flex gap-2 items-center">
+                                        <label className="text-xs text-gray-500 w-20">Warna Border</label>
+                                        <input type="color" value={activeEl.shapeBorderColor || '#000000'} onChange={e => updateElement(activeEl.id, { shapeBorderColor: e.target.value }, false)} onBlur={e => updateElement(activeEl.id, { shapeBorderColor: e.target.value })} className="w-10 h-7 cursor-pointer rounded border" />
+                                    </div>
+                                    <div className="flex gap-2 items-center">
+                                        <label className="text-xs text-gray-500 w-20">Tebal Border</label>
+                                        <input type="number" min="0" max="20" value={activeEl.shapeBorder || 0} onChange={e => updateElement(activeEl.id, { shapeBorder: Number(e.target.value) })} className="w-16 p-1 border rounded text-xs" />
+                                    </div>
+                                    <div className="flex gap-2 items-center">
+                                        <label className="text-xs text-gray-500 w-20">Radius (px)</label>
+                                        <input type="number" min="0" max="200" value={activeEl.shapeRadius || 0} onChange={e => updateElement(activeEl.id, { shapeRadius: Number(e.target.value) })} className="w-16 p-1 border rounded text-xs" />
+                                    </div>
+                                </div>
+                            )}
                             {activeEl.type === 'image' && (
                                 <div className="bg-white p-2 rounded border space-y-2">
                                     <label className="block text-xs font-semibold text-gray-700">Upload Ulang Gambar:</label>
@@ -3823,16 +3870,22 @@ const LayoutBuilder = () => {
                                                     position: 'absolute', left: `${child.x}px`, top: `${child.y}px`, fontSize: `${child.fontSize}px`, fontFamily: child.fontFamily || 'Arial, sans-serif', fontWeight: child.fontWeight,
                                                     width: child.width ? `${child.width}px` : 'auto', height: child.type === 'image' ? `${child.height}px` : 'auto',
                                                     padding: (child.type === 'image' || child.type === 'table_grades') ? '0' : '2px',
+                                                    width: child.width ? `${child.width}px` : 'auto', height: (child.type === 'image' || child.type === 'shape') ? `${child.height}px` : 'auto',
+                                                    padding: (child.type === 'image' || child.type === 'table_grades' || child.type === 'shape' || child.type === 'line') ? '0' : '2px',
                                                     zIndex: child.zIndex ?? 1, opacity: child.opacity ?? 1
                                                 }}>
                                                     {child.type === 'table_grades' ? renderDynamicTable(child, data, mockStudentGrades, mockClassAverages, false, 'raport', classesData) 
                                                     : child.type === 'image' ? <img src={child.content} style={{ width: '100%', height: '100%', objectFit: child.objectFit || 'contain', objectPosition: `${child.objectPositionX ?? 50}% ${child.objectPositionY ?? 50}%`, pointerEvents: 'none' }} alt="elemen" />
+                                                    : child.type === 'line' ? <div style={{ width: '100%', height: `${child.lineThickness || 2}px`, backgroundColor: child.lineColor || '#000000', pointerEvents: 'none' }} />
+                                                    : child.type === 'shape' ? <div style={{ width: '100%', height: '100%', backgroundColor: child.shapeFill || '#000000', borderRadius: `${child.shapeRadius || 0}px`, border: child.shapeBorder ? `${child.shapeBorder}px solid ${child.shapeBorderColor || '#000000'}` : 'none', pointerEvents: 'none' }} />
                                                     : <div style={{ whiteSpace: 'pre-wrap', width: '100%', height: '100%', textAlign: child.textAlign || 'left', direction: child.isRtl ? 'rtl' : 'ltr' }}>{child.content}</div>}
                                                 </div>
                                             ))}
                                         </div>
                                     ) : el.type === 'table_grades' ? renderDynamicTable(el, data, mockStudentGrades, mockClassAverages, false, 'raport', classesData) 
                                     : el.type === 'image' ? <img src={el.content} style={{ width: '100%', height: '100%', objectFit: el.objectFit || 'contain', objectPosition: `${el.objectPositionX ?? 50}% ${el.objectPositionY ?? 50}%`, pointerEvents: 'none' }} alt="elemen" />
+                                    : el.type === 'line' ? <div style={{ width: '100%', height: `${el.lineThickness || 2}px`, backgroundColor: el.lineColor || '#000000', pointerEvents: 'none' }} />
+                                    : el.type === 'shape' ? <div style={{ width: '100%', height: '100%', backgroundColor: el.shapeFill || '#000000', borderRadius: `${el.shapeRadius || 0}px`, border: el.shapeBorder ? `${el.shapeBorder}px solid ${el.shapeBorderColor || '#000000'}` : 'none', pointerEvents: 'none' }} />
                                     : <div style={{ whiteSpace: 'pre-wrap', width: '100%', height: '100%', textAlign: el.textAlign || 'left', direction: el.isRtl ? 'rtl' : 'ltr' }}>{el.content}</div>}
                                     
                                     {isSelected && !el.locked && selectedIds.length === 1 && (
@@ -4518,10 +4571,22 @@ const CetakDokumen = ({ mode = 'raport' }) => {
     const studentData = activeStudents.find(s => s.id === selectedStudent);
     
     const [selectedLayout, setSelectedLayout] = useState(() => {
-        // Prioritize layout with id matching mode (raport/ijazah), else use first available
-        const matched = data.layouts.find(l => l.id === mode);
-        return matched ? matched.id : (data.layouts[0]?.id || '');
+        // Filter layouts based on mode: ijazah gets 'ijazah' layouts, raport gets non-ijazah layouts
+        const available = data.layouts.filter(l =>
+            mode === 'ijazah'
+                ? (l.name || l.id).toLowerCase().includes('ijazah')
+                : !(l.name || l.id).toLowerCase().includes('ijazah')
+        );
+        const matched = available.find(l => l.id === mode);
+        return matched ? matched.id : (available[0]?.id || data.layouts[0]?.id || '');
     });
+    
+    // Available layouts filtered by mode
+    const availableLayouts = data.layouts.filter(l =>
+        mode === 'ijazah'
+            ? (l.name || l.id).toLowerCase().includes('ijazah')
+            : !(l.name || l.id).toLowerCase().includes('ijazah')
+    );
     
     const layoutSettings = data.layouts.find(l => l.id === selectedLayout) || {};
     const activeLayout = layoutSettings.elements || [];
@@ -4789,15 +4854,23 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                             zIndex: child.zIndex ?? 1,
                             opacity: child.opacity ?? 1,
                             width: child.width ? `${child.width}px` : 'auto',
-                            height: (child.type === 'image' || child.type === 'table_grades') ? (child.height ? `${child.height}px` : 'auto') : 'auto',
-                            padding: (child.type === 'image' || child.type === 'table_grades') ? 0 : '2px',
+                            height: (child.type === 'image' || child.type === 'table_grades' || child.type === 'shape') ? (child.height ? `${child.height}px` : 'auto') : child.type === 'line' ? `${child.lineThickness || 2}px` : 'auto',
+                            padding: (child.type === 'image' || child.type === 'table_grades' || child.type === 'shape' || child.type === 'line') ? 0 : '2px',
                         };
                         if (child.type === 'table_grades') return <div key={child.id} style={{...childStyle, background: child.isTransparent ? 'transparent' : 'white', overflow:'hidden'}}>{renderDynamicTable(child, data, sGrades, classAverages, useKatrol, mode, classesData)}</div>;
                         if (child.type === 'image') return <img key={child.id} src={child.content} style={{...childStyle, objectFit: child.objectFit||'contain', objectPosition:`${child.objectPositionX??50}% ${child.objectPositionY??50}%`}} alt="c" />;
+                        if (child.type === 'line') return <div key={child.id} style={{...childStyle, backgroundColor: child.lineColor || '#000000'}} />;
+                        if (child.type === 'shape') return <div key={child.id} style={{...childStyle, backgroundColor: child.shapeFill || '#000000', borderRadius: `${child.shapeRadius || 0}px`, border: child.shapeBorder ? `${child.shapeBorder}px solid ${child.shapeBorderColor || '#000000'}` : 'none'}} />;
                         return <div key={child.id} style={{...childStyle, whiteSpace:'pre-wrap', direction: child.isRtl ? 'rtl' : 'ltr'}}>{replaceVariables(child.content)}</div>;
                     })}
                 </div>
             );
+        }
+        if (el.type === 'line') {
+            return <div style={{ ...baseStyle, width: `${el.width}px`, height: `${el.lineThickness || 2}px`, backgroundColor: el.lineColor || '#000000' }} />;
+        }
+        if (el.type === 'shape') {
+            return <div style={{ ...baseStyle, width: `${el.width}px`, height: `${el.height}px`, backgroundColor: el.shapeFill || '#000000', borderRadius: `${el.shapeRadius || 0}px`, border: el.shapeBorder ? `${el.shapeBorder}px solid ${el.shapeBorderColor || '#000000'}` : 'none' }} />;
         }
         // text / default
         return (
@@ -4824,7 +4897,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                     <div className="pt-2 border-t">
                         <p className="text-xs font-bold text-gray-700 mb-1">Layout yang Digunakan</p>
                         <select className="w-full p-2 border rounded-lg bg-white text-sm font-semibold text-emerald-800" value={selectedLayout} onChange={e => setSelectedLayout(e.target.value)}>
-                            {data.layouts.map(l => <option key={l.id} value={l.id}>{l.name || l.id}</option>)}
+                            {availableLayouts.map(l => <option key={l.id} value={l.id}>{l.name || l.id}</option>)}
                         </select>
                         {activeLayout.length === 0 && <p className="text-xs text-red-500 mt-1">⚠ Layout yang dipilih belum memiliki elemen. Silakan desain di Layout Builder terlebih dahulu.</p>}
                     </div>
