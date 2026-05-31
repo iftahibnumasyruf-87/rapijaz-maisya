@@ -4501,6 +4501,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
     const [isBatchMode, setIsBatchMode] = useState(false);
     const [printMargins, setPrintMargins] = useState({ top: 0, bottom: 0, left: 0, right: 0 });
     const [printScale, setPrintScale] = useState(0.9);
+    const [previewZoom, setPreviewZoom] = useState(0.7);
     
     const activeSetting = data.settings.find(s => s.isActive) || {};
     const activeStudents = getStudentsForYear(data.studentSnapshots, activeSetting, data.students);
@@ -4640,11 +4641,78 @@ const CetakDokumen = ({ mode = 'raport' }) => {
         let content = el.content;
         const sGrades = classGradesDoc[stdData.id] || {};
         
+        const baseStyle = {
+            position: 'absolute',
+            left: `${el.x}px`,
+            top: `${el.y}px`,
+            fontSize: `${el.fontSize}px`,
+            fontFamily: el.fontFamily || 'Arial, sans-serif',
+            fontWeight: el.fontWeight,
+            color: 'black',
+            zIndex: el.zIndex ?? 1,
+            opacity: el.opacity ?? 1,
+            textAlign: el.textAlign || 'left',
+        };
 
-
-        if (el.type === 'table_grades') return <div style={{...getStyles(el), width: `${el.width}px`}}>{renderDynamicTable(el, data, sGrades, classAverages, useKatrol, mode, classesData)}</div>;
-        if (el.type === 'image') return <img src={el.content} style={{...getStyles(el), width: `${el.width}px`, height: `${el.height}px`, objectFit: 'contain'}} alt="C" />;
-        return <div style={{...getStyles(el), whiteSpace: 'pre-wrap'}}>{content}</div>;
+        if (el.type === 'table_grades') {
+            return (
+                <div style={{
+                    ...baseStyle,
+                    width: el.width ? `${el.width}px` : 'auto',
+                    height: el.height ? `${el.height}px` : 'auto',
+                    padding: 0,
+                    background: el.isTransparent ? 'transparent' : 'white',
+                    overflow: 'hidden',
+                }}>
+                    {renderDynamicTable(el, data, sGrades, classAverages, useKatrol, mode, classesData)}
+                </div>
+            );
+        }
+        if (el.type === 'image') {
+            return (
+                <img
+                    src={el.content}
+                    style={{
+                        ...baseStyle,
+                        width: `${el.width}px`,
+                        height: `${el.height}px`,
+                        objectFit: el.objectFit || 'contain',
+                        objectPosition: `${el.objectPositionX ?? 50}% ${el.objectPositionY ?? 50}%`,
+                    }}
+                    alt="elemen"
+                />
+            );
+        }
+        if (el.type === 'group') {
+            return (
+                <div style={{ ...baseStyle, width: `${el.width}px`, height: `${el.height}px` }}>
+                    {(el.children || []).map(child => {
+                        const childStyle = {
+                            position: 'absolute',
+                            left: `${child.x}px`, top: `${child.y}px`,
+                            fontSize: `${child.fontSize}px`,
+                            fontFamily: child.fontFamily || 'Arial, sans-serif',
+                            fontWeight: child.fontWeight,
+                            color: 'black',
+                            zIndex: child.zIndex ?? 1,
+                            opacity: child.opacity ?? 1,
+                            width: child.width ? `${child.width}px` : 'auto',
+                            height: (child.type === 'image' || child.type === 'table_grades') ? (child.height ? `${child.height}px` : 'auto') : 'auto',
+                            padding: (child.type === 'image' || child.type === 'table_grades') ? 0 : '2px',
+                        };
+                        if (child.type === 'table_grades') return <div key={child.id} style={{...childStyle, background: child.isTransparent ? 'transparent' : 'white', overflow:'hidden'}}>{renderDynamicTable(child, data, sGrades, classAverages, useKatrol, mode, classesData)}</div>;
+                        if (child.type === 'image') return <img key={child.id} src={child.content} style={{...childStyle, objectFit: child.objectFit||'contain', objectPosition:`${child.objectPositionX??50}% ${child.objectPositionY??50}%`}} alt="c" />;
+                        return <div key={child.id} style={{...childStyle, whiteSpace:'pre-wrap', direction: child.isRtl ? 'rtl' : 'ltr'}}>{child.content}</div>;
+                    })}
+                </div>
+            );
+        }
+        // text / default
+        return (
+            <div style={{ ...baseStyle, whiteSpace: 'pre-wrap', width: el.width ? `${el.width}px` : 'auto', direction: el.isRtl ? 'rtl' : 'ltr' }}>
+                {content}
+            </div>
+        );
     };
 
     const cssPageSize = layoutPageSize === 'F4' ? `215.9mm 330.2mm ${layoutOrientation}` : `A4 ${layoutOrientation}`;
@@ -4701,16 +4769,26 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                     </div>
                 </div>
             </div>
-            <div className="flex-1 bg-gray-200 p-8 rounded-xl overflow-auto flex flex-col items-center gap-8 border border-gray-300 print:bg-white print:p-0 print:border-none print:overflow-visible print:gap-0 relative print:static">
+            <div className="flex-1 bg-gray-200 rounded-xl overflow-auto border border-gray-300 print:bg-white print:p-0 print:border-none print:overflow-visible relative print:static flex flex-col">
+                {/* Zoom Controls Bar */}
+                <div className="print:hidden sticky top-0 z-20 bg-white/90 backdrop-blur border-b border-gray-200 px-4 py-2 flex items-center gap-3 shrink-0">
+                    <span className="text-xs font-bold text-gray-600">Zoom Preview:</span>
+                    <button onClick={() => setPreviewZoom(z => Math.max(0.3, +(z - 0.1).toFixed(1)))} className="bg-gray-100 hover:bg-gray-200 rounded px-2 py-1 text-sm font-bold">−</button>
+                    <span className="text-xs font-mono w-10 text-center">{Math.round(previewZoom * 100)}%</span>
+                    <button onClick={() => setPreviewZoom(z => Math.min(1.5, +(z + 0.1).toFixed(1)))} className="bg-gray-100 hover:bg-gray-200 rounded px-2 py-1 text-sm font-bold">+</button>
+                    <button onClick={() => setPreviewZoom(0.7)} className="text-xs text-blue-600 hover:underline ml-1">Reset</button>
+                    <button onClick={() => setPreviewZoom(1.0)} className="text-xs text-gray-500 hover:underline">100%</button>
+                </div>
+                <div className="flex-1 overflow-auto p-8 flex flex-col items-center gap-8 print:p-0 print:gap-0 print:block">
                 {studentsToRender.length > 0 ? (
-                    <div className="print-wrapper w-full flex flex-col items-center gap-8 print:gap-0 print:block">
+                    <div className="print-wrapper flex flex-col items-center gap-8 print:gap-0 print:block" style={{ transformOrigin: 'top center', transform: `scale(${previewZoom})`, marginBottom: `${(previewZoom - 1) * canvasHeight * pages.length}px` }}>
                         {studentsToRender.map((std, stdIndex) => (
                             <React.Fragment key={std.id}>
                                 {pages.map((pageElements, index) => {
                                     const isLastPageOfLastStudent = stdIndex === studentsToRender.length - 1 && index === pages.length - 1;
                                     return (
-                                        <div key={`${std.id}-${index}`} className="print-container bg-white shadow-xl relative print:shadow-none print:!m-0" style={{ width: `${canvasWidth}px`, height: `${canvasHeight}px`, pageBreakAfter: isLastPageOfLastStudent ? 'auto' : 'always', marginTop: `${printMargins.top}mm`, marginLeft: `${printMargins.left}mm` }}>
-                                            {pageElements.length > 0 ? pageElements.map(el => <React.Fragment key={el.id}>{renderElementForStudent(el, std)}</React.Fragment>) : (activeLayout.length === 0 && index === 0 ? <div className="absolute inset-0 flex items-center justify-center text-gray-400 print:hidden">Layout belum disetting oleh Admin.</div> : <div className="absolute inset-0 flex items-center justify-center text-gray-400 print:hidden">Halaman {index + 1} kosong.</div>)}
+                                        <div key={`${std.id}-${index}`} className="print-container bg-white shadow-xl relative print:shadow-none print:!m-0" style={{ width: `${canvasWidth}px`, height: `${canvasHeight}px`, pageBreakAfter: isLastPageOfLastStudent ? 'auto' : 'always', marginTop: index === 0 && stdIndex === 0 ? 0 : '32px', flexShrink: 0 }}>
+                                            {pageElements.length > 0 ? pageElements.map(el => <React.Fragment key={el.id}>{renderElementForStudent(el, std)}</React.Fragment>) : (activeLayout.length === 0 && index === 0 ? <div className="absolute inset-0 flex items-center justify-center text-gray-400 print:hidden">Layout belum disetting oleh Admin.<br/>Pilih layout di panel kiri.</div> : <div className="absolute inset-0 flex items-center justify-center text-gray-400 print:hidden">Halaman {index + 1} kosong.</div>)}
                                         </div>
                                     );
                                 })}
@@ -4718,6 +4796,8 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                         ))}
                     </div>
                 ) : <div className="flex items-center justify-center h-full text-gray-400 print:hidden">Pilih santri untuk melihat preview {mode}.</div>}
+                </div>
+            </div>
             </div>
             <style>{`
             @import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&display=swap');
