@@ -4779,8 +4779,8 @@ const CetakDokumen = ({ mode = 'raport' }) => {
     const pages = Array.from({length: maxPage + 1}, (_, i) => activeLayout.filter(el => (el.pageIndex || 0) === i));
 
     return (
-        <div className="flex flex-col md:flex-row gap-6">
-            <div className="w-full md:w-80 bg-white p-6 rounded-xl shadow-sm border border-gray-100 print:hidden shrink-0 h-fit">
+        <div className="flex flex-col md:flex-row gap-6 flex-1 h-full min-h-0">
+            <div className="w-full md:w-80 bg-white p-6 rounded-xl shadow-sm border border-gray-100 print:hidden shrink-0 h-full overflow-y-auto">
                 <h3 className="text-xl font-bold mb-4 capitalize">Cetak {mode}</h3>
                 {!activeSetting.tahun && <div className="bg-yellow-50 text-yellow-800 p-3 rounded-lg text-sm mb-4 border border-yellow-200">Pastikan Admin mengaktifkan Tahun Ajaran di Master Data terlebih dahulu.</div>}
                 <div className="space-y-4">
