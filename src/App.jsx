@@ -1569,6 +1569,9 @@ const MasterData = ({ activeTab }) => {
     const [bulkProgressCurrent, setBulkProgressCurrent] = useState(0);
     const [bulkProgressTotal, setBulkProgressTotal] = useState(0);
 
+    const [isNumberSortMode, setIsNumberSortMode] = useState(false);
+    const [tempSubjectOrders, setTempSubjectOrders] = useState({});
+
   // Default pengurutan tabel berdasarkan menu (alfabetis secara bawaan)
   const getDefaultSortKey = (tab) => {
       switch(tab) {
@@ -1686,6 +1689,31 @@ const MasterData = ({ activeTab }) => {
           });
       });
       showNotification('Mata pelajaran berhasil diurutkan sesuai abjad.');
+  };
+
+  const handleSaveSubjectOrders = async () => {
+      setIsBulkProcessing(true);
+      setBulkProgressText('Menyimpan urutan angka...');
+      
+      try {
+          const subjectsToUpdate = Object.entries(tempSubjectOrders);
+          for (let i = 0; i < subjectsToUpdate.length; i++) {
+              const [id, orderVal] = subjectsToUpdate[i];
+              const sub = data.subjects.find(s => s.id === id);
+              if (sub && String(sub.order) !== String(orderVal)) {
+                  await saveToDb('subjects', id, { ...sub, order: Number(orderVal) }, true);
+              }
+          }
+          showNotification('Urutan berhasil disimpan!');
+          setIsNumberSortMode(false);
+          setTempSubjectOrders({});
+      } catch (e) {
+          console.error(e);
+          showNotification('Gagal menyimpan urutan', 'error');
+      } finally {
+          setIsBulkProcessing(false);
+          setBulkProgressText('');
+      }
   };
 
   const groupedSubjects = useMemo(() => {
@@ -2003,10 +2031,26 @@ const MasterData = ({ activeTab }) => {
       case 'subjects':
         return (
           <div>
-            <div className="flex justify-end items-center mb-3 pb-3 border-b">
-              <button onClick={handleSortAlphabetically} className="bg-blue-100 hover:bg-blue-200 text-blue-800 px-3 py-1.5 rounded-lg text-sm font-semibold transition flex items-center gap-2">
-                  Urutkan Abjad
-              </button>
+            <div className="flex justify-end items-center mb-3 pb-3 border-b gap-2">
+              {isNumberSortMode ? (
+                  <>
+                      <button onClick={handleSaveSubjectOrders} className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-sm font-semibold transition flex items-center gap-2">
+                          <CheckSquare size={16}/> Simpan Urutan
+                      </button>
+                      <button onClick={() => { setIsNumberSortMode(false); setTempSubjectOrders({}); }} className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-1.5 rounded-lg text-sm font-semibold transition flex items-center gap-2">
+                          Batal
+                      </button>
+                  </>
+              ) : (
+                  <>
+                      <button onClick={() => setIsNumberSortMode(true)} className="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 px-3 py-1.5 rounded-lg text-sm font-semibold transition flex items-center gap-2">
+                          <Layers size={16}/> Urutkan dg Angka
+                      </button>
+                      <button onClick={handleSortAlphabetically} className="bg-blue-100 hover:bg-blue-200 text-blue-800 px-3 py-1.5 rounded-lg text-sm font-semibold transition flex items-center gap-2">
+                          Urutkan Abjad
+                      </button>
+                  </>
+              )}
             </div>
             <table className="w-full text-left border-collapse">
               <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm">
@@ -2029,7 +2073,18 @@ const MasterData = ({ activeTab }) => {
                   const sub = row.subject;
                   return (
                       <tr key={sub.id} className="border-b hover:bg-gray-50">
-                          <td className="p-3 text-center font-semibold text-gray-700">{row.number}</td>
+                          <td className="p-3 text-center font-semibold text-gray-700">
+                              {isNumberSortMode ? (
+                                  <input 
+                                      type="number" 
+                                      className="w-16 p-1 border rounded text-center mx-auto" 
+                                      value={tempSubjectOrders[sub.id] !== undefined ? tempSubjectOrders[sub.id] : (typeof sub.order === 'number' ? sub.order : row.number)}
+                                      onChange={(e) => setTempSubjectOrders({...tempSubjectOrders, [sub.id]: e.target.value})}
+                                  />
+                              ) : (
+                                  row.number
+                              )}
+                          </td>
                           <td className="p-3 text-center font-semibold text-gray-800">{getSubjectClassLabel(sub, allData?.classes || data.classes) || 'Semua'}</td>
                           <td className="p-3"><div className="text-xs text-emerald-700 font-bold">{sub.kategori || '-'}</div></td>
                           <td className="p-3 font-semibold">{sub.nameId}</td>
