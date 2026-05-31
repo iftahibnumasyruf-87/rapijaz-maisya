@@ -4508,7 +4508,13 @@ const CetakDokumen = ({ mode = 'raport' }) => {
     const studentsInClass = getStudentsInClass(activeStudents, classesData, selectedClass);
     const studentData = activeStudents.find(s => s.id === selectedStudent);
     
-    const layoutSettings = data.layouts.find(l => l.id === mode) || {};
+    const [selectedLayout, setSelectedLayout] = useState(() => {
+        // Prioritize layout with id matching mode (raport/ijazah), else use first available
+        const matched = data.layouts.find(l => l.id === mode);
+        return matched ? matched.id : (data.layouts[0]?.id || '');
+    });
+    
+    const layoutSettings = data.layouts.find(l => l.id === selectedLayout) || {};
     const activeLayout = layoutSettings.elements || [];
     const layoutPageSize = layoutSettings.pageSize || 'A4';
     const layoutOrientation = layoutSettings.orientation || 'portrait';
@@ -4653,6 +4659,15 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                 <div className="space-y-4">
                     <select className="w-full p-2 border rounded-lg" value={selectedClass} onChange={e => {setSelectedClass(e.target.value); setSelectedStudent('');}}><option value="">-- Kelas --</option>{data.classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
                     <select className="w-full p-2 border rounded-lg" value={selectedStudent} onChange={e => setSelectedStudent(e.target.value)} disabled={!selectedClass}><option value="">-- Santri --</option>{studentsInClass.map(s => <option key={s.id} value={s.id}>{s.nama}</option>)}</select>
+                    
+                    {/* Pilihan Layout */}
+                    <div className="pt-2 border-t">
+                        <p className="text-xs font-bold text-gray-700 mb-1">Layout yang Digunakan</p>
+                        <select className="w-full p-2 border rounded-lg bg-white text-sm font-semibold text-emerald-800" value={selectedLayout} onChange={e => setSelectedLayout(e.target.value)}>
+                            {data.layouts.map(l => <option key={l.id} value={l.id}>{l.name || l.id}</option>)}
+                        </select>
+                        {activeLayout.length === 0 && <p className="text-xs text-red-500 mt-1">⚠ Layout yang dipilih belum memiliki elemen. Silakan desain di Layout Builder terlebih dahulu.</p>}
+                    </div>
                     <div className="pt-4 border-t"><label className="flex items-center gap-2 bg-yellow-50 p-3 rounded-lg border border-yellow-200 cursor-pointer"><input type="checkbox" className="w-5 h-5 text-yellow-600" checked={useKatrol} onChange={e => setUseKatrol(e.target.checked)} /><div><p className="font-bold text-yellow-800 text-sm">Gunakan Nilai Katrol</p><p className="text-xs text-yellow-700">Nilai merah otomatis menjadi KKM</p></div></label></div>
                     <div className="pt-4 border-t">
                         <p className="text-sm font-bold text-gray-700 mb-2">Penyesuaian Margin Printer (mm)</p>
