@@ -1622,11 +1622,17 @@ const MasterData = ({ activeTab }) => {
               if (typeof aValue === 'string' && typeof bValue === 'string') {
                   let comparison = aValue.localeCompare(bValue, undefined, { numeric: true, sensitivity: 'base' });
                   
-                  // Secondary sort untuk halaman Plotting Pelajaran (berdasarkan Kategori) jika kelasnya sama
+                  // Secondary sort untuk halaman Plotting Pelajaran (berdasarkan Kategori lalu Order)
                   if (comparison === 0 && activeTab === 'subjects' && sortConfig.key === 'kelas') {
                       const catA = a.kategori || '';
                       const catB = b.kategori || '';
                       comparison = catA.localeCompare(catB, undefined, { numeric: true, sensitivity: 'base' });
+                      
+                      if (comparison === 0) {
+                          const orderA = typeof a.order === 'number' ? a.order : 999999;
+                          const orderB = typeof b.order === 'number' ? b.order : 999999;
+                          comparison = orderA - orderB;
+                      }
                   }
 
                   return sortConfig.direction === 'ascending' ? comparison : -comparison;
@@ -1639,6 +1645,48 @@ const MasterData = ({ activeTab }) => {
       }
       return sortableItems;
   }, [data, activeTab, sortConfig]);
+
+  const handleMoveSubject = (subject, direction) => {
+      const allClassSubjects = data.subjects.filter(s => getSubjectClassLabel(s, allData?.classes || data.classes) === getSubjectClassLabel(subject, allData?.classes || data.classes) && (s.kategori || '') === (subject.kategori || ''));
+      
+      allClassSubjects.sort((a, b) => {
+          const orderA = typeof a.order === 'number' ? a.order : 999999;
+          const orderB = typeof b.order === 'number' ? b.order : 999999;
+          return orderA - orderB;
+      });
+      
+      const currentIndex = allClassSubjects.findIndex(s => s.id === subject.id);
+      if (currentIndex === -1) return;
+      
+      const targetIndex = currentIndex + direction;
+      if (targetIndex >= 0 && targetIndex < allClassSubjects.length) {
+          const targetSubject = allClassSubjects[targetIndex];
+          const currentOrder = typeof subject.order === 'number' ? subject.order : currentIndex;
+          const targetOrder = typeof targetSubject.order === 'number' ? targetSubject.order : targetIndex;
+          
+          saveToDb('subjects', subject.id, { ...subject, order: targetOrder }, true);
+          saveToDb('subjects', targetSubject.id, { ...targetSubject, order: currentOrder }, true);
+      }
+  };
+
+  const handleSortAlphabetically = () => {
+      if (!confirm('Urutkan seluruh mata pelajaran sesuai abjad?')) return;
+      
+      const grouped = {};
+      data.subjects.forEach(s => {
+          const key = `${getSubjectClassLabel(s, allData?.classes || data.classes)}-${s.kategori || ''}`;
+          if (!grouped[key]) grouped[key] = [];
+          grouped[key].push(s);
+      });
+      
+      Object.values(grouped).forEach(group => {
+          group.sort((a, b) => (a.nameId || '').localeCompare(b.nameId || '', undefined, { numeric: true, sensitivity: 'base' }));
+          group.forEach((s, idx) => {
+              saveToDb('subjects', s.id, { ...s, order: idx }, true);
+          });
+      });
+      showNotification('Mata pelajaran berhasil diurutkan sesuai abjad.');
+  };
 
   const groupedSubjects = useMemo(() => {
       if (activeTab !== 'subjects') return sortedData;
@@ -1877,8 +1925,17 @@ const MasterData = ({ activeTab }) => {
         const filteredSettings = hideInactive ? sortedData.filter(s => s.isActive) : sortedData;
         return (
           <div>
-            <div className="flex items-center gap-2 mb-3 pb-3 border-b">
+            <div className="flex justify-between items-center mb-3 pb-3 border-b">
               <label className="flex items-center gap-2 text-sm cursor-pointer select-none bg-gray-50 hover:bg-gray-100 px-3 py-1.5 rounded-lg border">
+                  <input type="checkbox" checked={compactMode} onChange={e => setCompactMode(e.target.checked)} className="rounded text-emerald-600 focus:ring-emerald-500" />
+                  Mode Ringkas
+              </label>
+              {activeTab === 'subjects' && (
+                  <button onClick={handleSortAlphabetically} className="bg-blue-100 hover:bg-blue-200 text-blue-800 px-3 py-1.5 rounded-lg text-sm font-semibold transition flex items-center gap-2">
+                      Urutkan Abjad
+                  </button>
+              )}
+            </div>
                 <input type="checkbox" checked={hideInactive} onChange={e => setHideInactive(e.target.checked)} className="w-4 h-4 text-emerald-600 rounded" />
                 Sembunyikan semester nonaktif
               </label>
@@ -1981,7 +2038,12 @@ const MasterData = ({ activeTab }) => {
                           <td className="p-3 font-semibold">{sub.nameId}</td>
                           <td className="p-3 text-right font-arabic" dir="rtl">{sub.nameAr}</td>
                           <td className="p-3 text-center"><div className="font-bold text-yellow-600">{sub.kkm}</div><div className="text-[11px] text-gray-500 mt-1">{sub.guru || '-'}</div></td>
-                          <td className="p-3 text-center"><button onClick={() => handleOpenModal(sub)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('subjects', sub.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td>
+                          <td className="p-3 text-center whitespace-nowrap">
+                              <button onClick={() => handleMoveSubject(sub, -1)} className="text-gray-400 hover:text-emerald-600 p-1" title="Geser ke atas"><ChevronUp size={16}/></button>
+                              <button onClick={() => handleMoveSubject(sub, 1)} className="text-gray-400 hover:text-emerald-600 p-1" title="Geser ke bawah"><ChevronDown size={16}/></button>
+                              <button onClick={() => handleOpenModal(sub)} className="text-blue-500 p-1 ml-2"><Edit2 size={16}/></button>
+                              <button onClick={() => deleteFromDb('subjects', sub.id)} className="text-red-500 p-1"><Trash2 size={16}/></button>
+                          </td>
                       </tr>
                   );
               })}</tbody>
@@ -2415,7 +2477,7 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
                         return <th key={idx} style={{width: `${col.width}%`, height: col.height ? `${col.height}px` : 'auto', border: 'none', background: 'transparent'}}>{col.header === 'Kolom Baru' ? '' : col.header}</th>;
                     }
                     return (
-                        <th key={idx} className="bg-gray-100 border border-black p-1 text-center font-bold" style={{width: `${col.width}%`, height: col.height ? `${col.height}px` : 'auto'}}>
+                        <th key={idx} className="bg-gray-100 border border-black p-1 text-center font-bold" style={{width: `${col.width}%`, height: col.height ? `${col.height}px` : 'auto', verticalAlign: 'middle'}}>
                             {toArabic(col.header)}
                         </th>
                     );
@@ -2427,7 +2489,7 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
     const renderRowCells = (sub, idx) => {
         return columns.map((col, cIdx) => {
             let content = '-';
-            let style = {};
+            let style = { verticalAlign: 'middle' };
             
             let gradeObj = studentGrades[sub.id];
             let rawGrade = 0;
@@ -2441,58 +2503,59 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
             let isRed = !isKatrol && rawGrade > 0 && rawGrade < Number(sub.kkm || 0);
 
             switch(col.type) {
-                case 'NO': content = toArabic(idx + 1); style={textAlign: 'center'}; break;
-                case 'NO_AR': content = toArabicNumbers(idx + 1); style={textAlign: 'center', fontFamily: '"Amiri", "Scheherazade New", serif'}; break;
+                case 'NO': content = toArabic(idx + 1); style={textAlign: 'center', verticalAlign: 'middle'}; break;
+                case 'NO_AR': content = toArabicNumbers(idx + 1); style={textAlign: 'center', verticalAlign: 'middle', fontFamily: '"Amiri", "Scheherazade New", serif'}; break;
                 
-                case 'MAPEL_ID': content = toArabic(sub.nameId || sub.name); break;
-                case 'MAPEL_AR': content = sub.nameAr || '-'; style={textAlign: 'right', fontFamily: '"Amiri", "Scheherazade New", serif'}; break;
+                case 'MAPEL_ID': content = toArabic(sub.nameId || sub.name); style={verticalAlign: 'middle'}; break;
+                case 'MAPEL_AR': content = sub.nameAr || '-'; style={textAlign: 'right', verticalAlign: 'middle', fontFamily: '"Amiri", "Scheherazade New", serif'}; break;
                 
-                case 'KKM': content = toArabic(sub.kkm); style={textAlign: 'center'}; break;
-                case 'KKM_AR': content = sub.kkm ? toArabicNumbers(sub.kkm) : '-'; style={textAlign: 'center', fontFamily: '"Amiri", "Scheherazade New", serif'}; break;
+                case 'KKM': content = toArabic(sub.kkm); style={textAlign: 'center', verticalAlign: 'middle'}; break;
+                case 'KKM_AR': content = sub.kkm ? toArabicNumbers(sub.kkm) : '-'; style={textAlign: 'center', verticalAlign: 'middle', fontFamily: '"Amiri", "Scheherazade New", serif'}; break;
                 
                 case 'NILAI': 
                     content = finalGrade ? toArabic(finalGrade) : '-'; 
-                    style={textAlign: 'center', fontWeight: 'bold', color: isRed ? 'red' : 'inherit'}; 
+                    style={textAlign: 'center', verticalAlign: 'middle', fontWeight: 'bold', color: isRed ? 'red' : 'inherit'}; 
                     break;
                 case 'NILAI_AR': 
                     content = finalGrade ? toArabicNumbers(finalGrade) : '-'; 
-                    style={textAlign: 'center', fontWeight: 'bold', color: isRed ? 'red' : 'inherit', fontFamily: '"Amiri", "Scheherazade New", serif'}; 
+                    style={textAlign: 'center', verticalAlign: 'middle', fontWeight: 'bold', color: isRed ? 'red' : 'inherit', fontFamily: '"Amiri", "Scheherazade New", serif'}; 
                     break;
                     
                 case 'RATA_KELAS': 
                     content = classAverages[sub.id] ? toArabic(classAverages[sub.id]) : '-'; 
-                    style={textAlign: 'center'}; 
+                    style={textAlign: 'center', verticalAlign: 'middle'}; 
                     break;
                 case 'RATA_KELAS_AR': 
                     content = classAverages[sub.id] ? toArabicNumbers(classAverages[sub.id]) : '-'; 
-                    style={textAlign: 'center', fontFamily: '"Amiri", "Scheherazade New", serif'}; 
+                    style={textAlign: 'center', verticalAlign: 'middle', fontFamily: '"Amiri", "Scheherazade New", serif'}; 
                     break;
                     
                 case 'KATEGORI':
                     const catName = el.isRtl ? (data.subjectCategories?.find(c => normalizeValue(c.name) === normalizeValue(sub.kategori))?.nameAr || sub.kategori) : sub.kategori;
                     content = toArabic(catName);
-                    style = el.isRtl ? { textAlign: 'right', fontFamily: '"Amiri", "Scheherazade New", serif' } : { textAlign: 'left' };
+                    style = el.isRtl ? { textAlign: 'right', verticalAlign: 'middle', fontFamily: '"Amiri", "Scheherazade New", serif' } : { textAlign: 'left', verticalAlign: 'middle' };
                     break;
                 case 'KATEGORI_AR':
                     const catNameAr = data.subjectCategories?.find(c => normalizeValue(c.name) === normalizeValue(sub.kategori))?.nameAr || sub.kategori;
                     content = catNameAr;
-                    style = { textAlign: 'right', fontFamily: '"Amiri", "Scheherazade New", serif' };
+                    style = { textAlign: 'right', verticalAlign: 'middle', fontFamily: '"Amiri", "Scheherazade New", serif' };
                     break;
                 default: 
                     if(col.type.startsWith('PRESENCE_')) {
                         const pId = col.type.replace('PRESENCE_', '');
                         content = studentGrades[pId] ? toArabic(studentGrades[pId]) : '-';
-                        style={textAlign: 'center'};
+                        style={textAlign: 'center', verticalAlign: 'middle'};
                     } else if(col.type.startsWith('SIKAP_')) {
                         const sId = col.type.replace('SIKAP_', '');
                         content = studentGrades[sId] ? toArabic(studentGrades[sId]) : '-';
-                        style={textAlign: 'center'};
+                        style={textAlign: 'center', verticalAlign: 'middle'};
                     } else if(col.type.startsWith('EKSKUL_')) {
                         const eId = col.type.replace('EKSKUL_', '');
                         content = studentGrades[eId] ? toArabic(studentGrades[eId]) : '-';
-                        style={textAlign: 'center'};
+                        style={textAlign: 'center', verticalAlign: 'middle'};
                     } else if(col.type === 'SPASI_KOSONG') {
                         content = '';
+                        style={verticalAlign: 'middle'};
                     }
             }
             if (col.height) style.height = `${col.height}px`;
@@ -3463,7 +3526,7 @@ const LayoutBuilder = () => {
                                 <div className="w-1/2"><label className="text-[10px] text-gray-500 font-bold uppercase" title="0 = transparan penuh, 1 = tidak transparan">Transparansi (0-1)</label><input type="number" step="0.1" min="0" max="1" className="w-full p-1.5 border rounded text-sm" value={activeEl.opacity ?? 1} onChange={e => updateElement(selectedElementId, { opacity: Number(e.target.value) })}/></div>
                             </div>
 
-                            {activeEl.type !== 'table_grades' && activeEl.type !== 'image' && activeEl.type !== 'group' && (
+                            {activeEl.type !== 'image' && activeEl.type !== 'group' && activeEl.type !== 'line' && activeEl.type !== 'shape' && (
                                 <>
                                     <div>
                                         <label className="text-[10px] text-gray-500 font-bold uppercase">Jenis Font</label>
