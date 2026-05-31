@@ -2407,11 +2407,16 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
     const renderHeaders = () => (
         <thead>
             <tr className="bg-gray-100">
-                {columns.map((col, idx) => (
-                    <th key={idx} className="border border-black p-1 text-center font-bold" style={{width: `${col.width}%`, height: col.height ? `${col.height}px` : 'auto'}}>
-                        {toArabic(col.header)}
-                    </th>
-                ))}
+                {columns.map((col, idx) => {
+                    if (col.type === 'SPASI_KOSONG') {
+                        return <th key={idx} style={{width: `${col.width}%`, height: col.height ? `${col.height}px` : 'auto', border: 'none', background: 'transparent'}}>{col.header === 'Kolom Baru' ? '' : col.header}</th>;
+                    }
+                    return (
+                        <th key={idx} className="border border-black p-1 text-center font-bold" style={{width: `${col.width}%`, height: col.height ? `${col.height}px` : 'auto'}}>
+                            {toArabic(col.header)}
+                        </th>
+                    );
+                })}
             </tr>
         </thead>
     );
@@ -2456,9 +2461,15 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
                         const eId = col.type.replace('EKSKUL_', '');
                         content = studentGrades[eId] ? toArabic(studentGrades[eId]) : '-';
                         style={textAlign: 'center'};
+                    } else if(col.type === 'SPASI_KOSONG') {
+                        content = '';
                     }
             }
             if (col.height) style.height = `${col.height}px`;
+            
+            if (col.type === 'SPASI_KOSONG') {
+                return <td key={cIdx} style={{...style, border: 'none', background: 'transparent', padding: 0}}></td>;
+            }
             return <td key={cIdx} className="border border-black p-1" style={style}>{content}</td>
         });
     };
@@ -3516,6 +3527,7 @@ const LayoutBuilder = () => {
                                                             <option value="KKM">Nilai KKM</option>
                                                             <option value="NILAI">Nilai Angka Santri</option>
                                                             <option value="RATA_KELAS">Rata-rata Kelas</option>
+                                                            <option value="SPASI_KOSONG">Spasi Pemisah (Tanpa Border)</option>
                                                         </optgroup>
                                                         {data.presences.length > 0 && (
                                                             <optgroup label="Aspek Presensi">
