@@ -2535,7 +2535,7 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
                         return <th key={idx} style={{width: `${col.width}%`, height: col.height ? `${col.height}px` : 'auto', border: 'none', background: 'transparent'}}>{col.header === 'Kolom Baru' ? '' : col.header}</th>;
                     }
                     return (
-                        <th key={idx} className="bg-gray-100 border border-black p-1 text-center font-bold" style={{width: `${col.width}%`, height: col.height ? `${col.height}px` : 'auto', fontSize: col.fontSize ? `${col.fontSize}px` : 'inherit', verticalAlign: 'middle'}}>
+                        <th key={idx} className="bg-gray-100 border border-black p-1 font-bold" style={{width: `${col.width}%`, height: col.height ? `${col.height}px` : 'auto', fontSize: col.fontSize ? `${col.fontSize}px` : 'inherit', fontFamily: col.fontFamily || 'inherit', fontWeight: col.fontWeight || 'bold', textAlign: col.textAlign || 'center', verticalAlign: 'middle'}}>
                             {toArabic(col.header)}
                         </th>
                     );
@@ -2618,6 +2618,9 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
             }
             if (col.height) style.height = `${col.height}px`;
             if (col.fontSize) style.fontSize = `${col.fontSize}px`;
+            if (col.fontFamily) style.fontFamily = col.fontFamily;
+            if (col.fontWeight) style.fontWeight = col.fontWeight;
+            if (col.textAlign) style.textAlign = col.textAlign;
             
             if (col.type === 'SPASI_KOSONG') {
                 return <td key={cIdx} style={{...style, border: 'none', background: 'transparent', padding: 0}}></td>;
@@ -3802,6 +3805,66 @@ const LayoutBuilder = () => {
                                                             }} title="Ukuran Font (px)" placeholder="F"/>
                                                             <span className="absolute right-0.5 top-1 text-[9px] text-gray-400 pointer-events-none">px</span>
                                                         </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex gap-1 mt-1 bg-gray-50 p-1 rounded border border-gray-100">
+                                                    <div className="w-[45%] relative">
+                                                        <select className="w-full text-[9px] p-1 border rounded bg-white font-medium outline-none" value={col.fontFamily || ''} onChange={e => {
+                                                            const newCols = [...activeEl.columns]; newCols[idx].fontFamily = e.target.value;
+                                                            updateElement(selectedElementId, { columns: newCols });
+                                                        }} title="Jenis Font Kolom">
+                                                            <option value="">Font Tabel</option>
+                                                            {allFonts.map((f, fIdx) => (
+                                                                <option key={fIdx} value={f.value}>{f.name}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                    <div className="w-[55%] flex gap-0.5">
+                                                        <button 
+                                                            onClick={() => {
+                                                                const newCols = [...activeEl.columns]; 
+                                                                newCols[idx].fontWeight = col.fontWeight === 'bold' ? 'normal' : 'bold';
+                                                                updateElement(selectedElementId, { columns: newCols });
+                                                            }} 
+                                                            className={`text-[9px] px-1.5 py-0.5 border rounded font-bold transition flex-1 text-center ${col.fontWeight === 'bold' ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'}`} 
+                                                            title="Tebal (Bold)"
+                                                        >
+                                                            B
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => {
+                                                                const newCols = [...activeEl.columns]; 
+                                                                newCols[idx].textAlign = 'left';
+                                                                updateElement(selectedElementId, { columns: newCols });
+                                                            }} 
+                                                            className={`text-[9px] p-0.5 border rounded transition flex-1 flex justify-center items-center font-semibold ${col.textAlign === 'left' ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'}`} 
+                                                            title="Rata Kiri"
+                                                        >
+                                                            L
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => {
+                                                                const newCols = [...activeEl.columns]; 
+                                                                newCols[idx].textAlign = 'center';
+                                                                updateElement(selectedElementId, { columns: newCols });
+                                                            }} 
+                                                            className={`text-[9px] p-0.5 border rounded transition flex-1 flex justify-center items-center font-semibold ${col.textAlign === 'center' ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'}`} 
+                                                            title="Rata Tengah"
+                                                        >
+                                                            C
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => {
+                                                                const newCols = [...activeEl.columns]; 
+                                                                newCols[idx].textAlign = 'right';
+                                                                updateElement(selectedElementId, { columns: newCols });
+                                                            }} 
+                                                            className={`text-[9px] p-0.5 border rounded transition flex-1 flex justify-center items-center font-semibold ${col.textAlign === 'right' ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'}`} 
+                                                            title="Rata Kanan"
+                                                        >
+                                                            R
+                                                        </button>
                                                     </div>
                                                 </div>
                                             </div>
