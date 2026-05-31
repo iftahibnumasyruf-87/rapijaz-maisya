@@ -2406,13 +2406,13 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
 
     const renderHeaders = () => (
         <thead>
-            <tr className="bg-gray-100">
+            <tr>
                 {columns.map((col, idx) => {
                     if (col.type === 'SPASI_KOSONG') {
                         return <th key={idx} style={{width: `${col.width}%`, height: col.height ? `${col.height}px` : 'auto', border: 'none', background: 'transparent'}}>{col.header === 'Kolom Baru' ? '' : col.header}</th>;
                     }
                     return (
-                        <th key={idx} className="border border-black p-1 text-center font-bold" style={{width: `${col.width}%`, height: col.height ? `${col.height}px` : 'auto'}}>
+                        <th key={idx} className="bg-gray-100 border border-black p-1 text-center font-bold" style={{width: `${col.width}%`, height: col.height ? `${col.height}px` : 'auto'}}>
                             {toArabic(col.header)}
                         </th>
                     );
@@ -2503,7 +2503,7 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
         const grouped = groupBy(subjectsToRender, 'kategori');
         let globalIndex = 0;
         return (
-            <table className="w-full border-collapse border border-black text-sm" dir={el.isRtl ? 'rtl' : 'ltr'} style={{ width: '100%', height: el.height ? `${el.height}px` : 'auto', fontSize: `${el.fontSize}px`, fontFamily: el.fontFamily }}>
+            <table className="w-full border-collapse text-sm" dir={el.isRtl ? 'rtl' : 'ltr'} style={{ width: '100%', height: el.height ? `${el.height}px` : 'auto', fontSize: `${el.fontSize}px`, fontFamily: el.fontFamily }}>
                 {renderHeaders()}
                 <tbody>
                     {Object.entries(grouped).sort(([a],[b]) => a.localeCompare(b)).map(([cat, subs]) => {
@@ -2526,7 +2526,7 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
         );
     } else {
         return (
-            <table className="w-full border-collapse border border-black text-sm" dir={el.isRtl ? 'rtl' : 'ltr'} style={{ width: '100%', height: el.height ? `${el.height}px` : 'auto', fontSize: `${el.fontSize}px`, fontFamily: el.fontFamily }}>
+            <table className="w-full border-collapse text-sm" dir={el.isRtl ? 'rtl' : 'ltr'} style={{ width: '100%', height: el.height ? `${el.height}px` : 'auto', fontSize: `${el.fontSize}px`, fontFamily: el.fontFamily }}>
                 {renderHeaders()}
                 <tbody>
                     {subjectsToRender.map((sub, idx) => (
