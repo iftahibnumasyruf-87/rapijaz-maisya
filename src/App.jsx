@@ -2530,7 +2530,7 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
                         return <th key={idx} style={{width: `${col.width}%`, height: col.height ? `${col.height}px` : 'auto', border: 'none', background: 'transparent'}}>{col.header === 'Kolom Baru' ? '' : col.header}</th>;
                     }
                     return (
-                        <th key={idx} className="bg-gray-100 border border-black p-1 text-center font-bold" style={{width: `${col.width}%`, height: col.height ? `${col.height}px` : 'auto', verticalAlign: 'middle'}}>
+                        <th key={idx} className="bg-gray-100 border border-black p-1 text-center font-bold" style={{width: `${col.width}%`, height: col.height ? `${col.height}px` : 'auto', fontSize: col.fontSize ? `${col.fontSize}px` : 'inherit', verticalAlign: 'middle'}}>
                             {toArabic(col.header)}
                         </th>
                     );
@@ -2612,6 +2612,7 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
                     }
             }
             if (col.height) style.height = `${col.height}px`;
+            if (col.fontSize) style.fontSize = `${col.fontSize}px`;
             
             if (col.type === 'SPASI_KOSONG') {
                 return <td key={cIdx} style={{...style, border: 'none', background: 'transparent', padding: 0}}></td>;
@@ -3722,7 +3723,7 @@ const LayoutBuilder = () => {
                                                 }} placeholder="Judul Header"/>
                                                 
                                                 <div className="flex gap-1 mt-1">
-                                                    <select className="w-2/3 text-[10px] p-1 border rounded bg-gray-50" value={col.type} onChange={e => {
+                                                    <select className="w-1/2 text-[10px] p-1 border rounded bg-gray-50" value={col.type} onChange={e => {
                                                         const newCols = [...activeEl.columns]; newCols[idx].type = e.target.value;
                                                         updateElement(selectedElementId, { columns: newCols });
                                                     }}>
@@ -3759,20 +3760,27 @@ const LayoutBuilder = () => {
                                                             </optgroup>
                                                         )}
                                                     </select>
-                                                    <div className="flex w-1/3 gap-1">
-                                                        <div className="w-1/2 relative">
-                                                            <input type="number" className="w-full text-[10px] p-1 border rounded pr-4" value={col.width} onChange={e => {
+                                                    <div className="flex w-1/2 gap-1">
+                                                        <div className="w-1/3 relative">
+                                                            <input type="number" className="w-full text-[10px] p-1 border rounded pr-3" value={col.width} onChange={e => {
                                                                 const newCols = [...activeEl.columns]; newCols[idx].width = Number(e.target.value);
                                                                 updateElement(selectedElementId, { columns: newCols });
                                                             }} title="Lebar (%)"/>
-                                                            <span className="absolute right-1 top-1 text-[10px] text-gray-400 pointer-events-none">%</span>
+                                                            <span className="absolute right-0.5 top-1 text-[9px] text-gray-400 pointer-events-none">%</span>
                                                         </div>
-                                                        <div className="w-1/2 relative">
-                                                            <input type="number" className="w-full text-[10px] p-1 border rounded pr-4" value={col.height || ''} onChange={e => {
+                                                        <div className="w-1/3 relative">
+                                                            <input type="number" className="w-full text-[10px] p-1 border rounded pr-3" value={col.height || ''} onChange={e => {
                                                                 const newCols = [...activeEl.columns]; newCols[idx].height = Number(e.target.value);
                                                                 updateElement(selectedElementId, { columns: newCols });
-                                                            }} title="Tinggi Kolom (px)" placeholder="Tinggi"/>
-                                                            <span className="absolute right-1 top-1 text-[10px] text-gray-400 pointer-events-none">px</span>
+                                                            }} title="Tinggi Kolom (px)" placeholder="H"/>
+                                                            <span className="absolute right-0.5 top-1 text-[9px] text-gray-400 pointer-events-none">px</span>
+                                                        </div>
+                                                        <div className="w-1/3 relative">
+                                                            <input type="number" className="w-full text-[10px] p-1 border rounded pr-3" value={col.fontSize || ''} onChange={e => {
+                                                                const newCols = [...activeEl.columns]; newCols[idx].fontSize = Number(e.target.value);
+                                                                updateElement(selectedElementId, { columns: newCols });
+                                                            }} title="Ukuran Font (px)" placeholder="F"/>
+                                                            <span className="absolute right-0.5 top-1 text-[9px] text-gray-400 pointer-events-none">px</span>
                                                         </div>
                                                     </div>
                                                 </div>
