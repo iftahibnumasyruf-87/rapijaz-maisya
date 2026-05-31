@@ -13,7 +13,8 @@ import {
 import { createClient } from '@supabase/supabase-js';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, AreaChart, Area } from 'recharts';
 import * as XLSX from 'xlsx';
-import html2pdf from 'html2pdf.js';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 
 // ==========================================
 // 1. SUPABASE SETUP (Koneksi Database Anda)
@@ -4580,12 +4581,11 @@ const CetakDokumen = ({ mode = 'raport' }) => {
         window.print(); 
     };
 
-    const handleSavePDF = () => {
+    const handleSavePDF = async () => {
         if(!studentData) return;
         const ts = activeSetting.tahun ? activeSetting.tahun.replace(/\//g, '-') : 'tahun';
         const ss = activeSetting.semester || '1';
         const ns = studentData.nama.replace(/\s+/g, '_');
-        const ks = getClassNameFromValue(classesData, selectedClass).replace(/\s+/g, '_');
         
         const filename = mode === 'raport' 
             ? `raport_${ns}_${ts}_${ss}.pdf` 
@@ -4597,27 +4597,48 @@ const CetakDokumen = ({ mode = 'raport' }) => {
         setPreviewZoom(1.0);
         setIsExporting(true);
         
-        setTimeout(() => {
-            const element = document.querySelector('.print-wrapper');
-            if(!element) {
-                setPreviewZoom(oldZoom);
-                setIsExporting(false);
-                return;
-            }
-            
-            const opt = {
-                margin:       0,
-                filename:     filename,
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true, logging: false },
-                jsPDF:        { unit: 'mm', format: layoutPageSize === 'F4' ? [215.9, 330.2] : 'a4', orientation: layoutOrientation }
-            };
-            
-            html2pdf().set(opt).from(element).save().then(() => {
-                 setPreviewZoom(oldZoom);
-                 setIsExporting(false);
+        // Wait for re-render at scale 1.0 with no gaps
+        await new Promise(r => setTimeout(r, 600));
+        
+        const pageContainers = document.querySelectorAll('.print-container');
+        if (!pageContainers || pageContainers.length === 0) {
+            setPreviewZoom(oldZoom);
+            setIsExporting(false);
+            return;
+        }
+        
+        // Determine PDF page size in mm
+        const isF4 = layoutPageSize === 'F4';
+        const isLandscape = layoutOrientation === 'landscape';
+        const pdfW = isF4 ? (isLandscape ? 330.2 : 215.9) : (isLandscape ? 297 : 210);
+        const pdfH = isF4 ? (isLandscape ? 215.9 : 330.2) : (isLandscape ? 210 : 297);
+        
+        const pdf = new jsPDF({ unit: 'mm', format: [pdfW, pdfH], orientation: layoutOrientation });
+        
+        for (let i = 0; i < pageContainers.length; i++) {
+            const container = pageContainers[i];
+            const canvas = await html2canvas(container, {
+                scale: 2,
+                useCORS: true,
+                logging: false,
+                backgroundColor: '#ffffff',
+                width: container.offsetWidth,
+                height: container.offsetHeight,
+                scrollX: 0,
+                scrollY: 0,
+                x: 0,
+                y: 0,
             });
-        }, 500);
+            
+            if (i > 0) pdf.addPage([pdfW, pdfH], layoutOrientation);
+            
+            const imgData = canvas.toDataURL('image/jpeg', 0.98);
+            pdf.addImage(imgData, 'JPEG', 0, 0, pdfW, pdfH);
+        }
+        
+        pdf.save(filename);
+        setPreviewZoom(oldZoom);
+        setIsExporting(false);
     };
 
     const handleWA = () => {
