@@ -2408,7 +2408,7 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
         <thead>
             <tr className="bg-gray-100">
                 {columns.map((col, idx) => (
-                    <th key={idx} className="border border-black p-1 text-center font-bold" style={{width: `${col.width}%`}}>
+                    <th key={idx} className="border border-black p-1 text-center font-bold" style={{width: `${col.width}%`, height: col.height ? `${col.height}px` : 'auto'}}>
                         {toArabic(col.header)}
                     </th>
                 ))}
@@ -2438,6 +2438,11 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
                     content = classAverages[sub.id] ? toArabic(classAverages[sub.id]) : '-'; 
                     style={textAlign: 'center'}; 
                     break;
+                case 'KATEGORI':
+                    const catName = el.isRtl ? (data.subjectCategories?.find(c => normalizeValue(c.name) === normalizeValue(sub.kategori))?.nameAr || sub.kategori) : sub.kategori;
+                    content = toArabic(catName);
+                    style = el.isRtl ? { textAlign: 'right', fontFamily: '"Amiri", "Scheherazade New", serif' } : { textAlign: 'left' };
+                    break;
                 default: 
                     if(col.type.startsWith('PRESENCE_')) {
                         const pId = col.type.replace('PRESENCE_', '');
@@ -2453,6 +2458,7 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
                         style={textAlign: 'center'};
                     }
             }
+            if (col.height) style.height = `${col.height}px`;
             return <td key={cIdx} className="border border-black p-1" style={style}>{content}</td>
         });
     };
@@ -3478,6 +3484,11 @@ const LayoutBuilder = () => {
                                         <input type="checkbox" checked={activeEl?.isRtl || false} onChange={e => updateElement(selectedElementId, { isRtl: e.target.checked })} />
                                         Format Tabel Arab (RTL & Angka Arab)
                                     </label>
+                                    
+                                    <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 bg-white p-2 border rounded cursor-pointer mt-1">
+                                        <input type="checkbox" checked={activeEl?.isTransparent || false} onChange={e => updateElement(selectedElementId, { isTransparent: e.target.checked })} />
+                                        Latar Tabel Transparan (Tanpa Putih)
+                                    </label>
 
                                     <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar mt-2">
                                         {(activeEl.columns || []).map((col, idx) => (
@@ -3499,6 +3510,7 @@ const LayoutBuilder = () => {
                                                     }}>
                                                         <optgroup label="Standar Pelajaran">
                                                             <option value="NO">Nomor Urut</option>
+                                                            <option value="KATEGORI">Kategori Pelajaran</option>
                                                             <option value="MAPEL_ID">Nama Pelajaran (Indo)</option>
                                                             <option value="MAPEL_AR">Nama Pelajaran (Arab)</option>
                                                             <option value="KKM">Nilai KKM</option>
@@ -3521,12 +3533,21 @@ const LayoutBuilder = () => {
                                                             </optgroup>
                                                         )}
                                                     </select>
-                                                    <div className="w-1/3 relative">
-                                                        <input type="number" className="w-full text-[10px] p-1 border rounded pr-4" value={col.width} onChange={e => {
-                                                            const newCols = [...activeEl.columns]; newCols[idx].width = Number(e.target.value);
-                                                            updateElement(selectedElementId, { columns: newCols });
-                                                        }} title="Lebar (%)"/>
-                                                        <span className="absolute right-1.5 top-1 text-[10px] text-gray-400 pointer-events-none">%</span>
+                                                    <div className="flex w-1/3 gap-1">
+                                                        <div className="w-1/2 relative">
+                                                            <input type="number" className="w-full text-[10px] p-1 border rounded pr-4" value={col.width} onChange={e => {
+                                                                const newCols = [...activeEl.columns]; newCols[idx].width = Number(e.target.value);
+                                                                updateElement(selectedElementId, { columns: newCols });
+                                                            }} title="Lebar (%)"/>
+                                                            <span className="absolute right-1 top-1 text-[10px] text-gray-400 pointer-events-none">%</span>
+                                                        </div>
+                                                        <div className="w-1/2 relative">
+                                                            <input type="number" className="w-full text-[10px] p-1 border rounded pr-4" value={col.height || ''} onChange={e => {
+                                                                const newCols = [...activeEl.columns]; newCols[idx].height = Number(e.target.value);
+                                                                updateElement(selectedElementId, { columns: newCols });
+                                                            }} title="Tinggi Kolom (px)" placeholder="Tinggi"/>
+                                                            <span className="absolute right-1 top-1 text-[10px] text-gray-400 pointer-events-none">px</span>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -3730,7 +3751,7 @@ const LayoutBuilder = () => {
                                         zIndex: isSelected ? 20 : (el.zIndex ?? 1), opacity: el.opacity ?? 1,
                                         pointerEvents: el.locked ? 'none' : 'auto'
                                     }}
-                                    className={`hover:outline hover:outline-1 hover:outline-gray-400 ${el.type === 'table_grades' ? 'bg-white' : ''}`}
+                                    className={`hover:outline hover:outline-1 hover:outline-gray-400 ${el.type === 'table_grades' && !el.isTransparent ? 'bg-white' : ''}`}
                                 >
                                     {el.type === 'group' ? (
                                         <div style={{ position: 'relative', width: '100%', height: '100%' }}>
