@@ -334,6 +334,11 @@ const sortSubjectsByCategory = (subjects, subjectCategories = []) => {
         const bCatOrder = categoryOrder.has(bCategory) ? categoryOrder.get(bCategory) : Number.MAX_SAFE_INTEGER;
         if (aCatOrder !== bCatOrder) return aCatOrder - bCatOrder;
         if (aCategory !== bCategory) return aCategory.localeCompare(bCategory);
+
+        const orderA = typeof a.order === 'number' ? a.order : 999999;
+        const orderB = typeof b.order === 'number' ? b.order : 999999;
+        if (orderA !== orderB) return orderA - orderB;
+
         return normalizeValue(a.nameId || a.id).localeCompare(normalizeValue(b.nameId || b.id));
     });
 };
@@ -2622,9 +2627,24 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
     };
 
     const baseSubjects = mode === 'ijazah' ? data.subjects.filter(s => s.isIjazah) : data.subjects;
-    const subjectsToRender = el.filterClass
+    const subjectsToRenderRaw = el.filterClass
         ? filterSubjectsByClass(baseSubjects, el.filterClass, classesData.length ? classesData : data.classes || [])
         : baseSubjects;
+
+    // Urutkan mata pelajaran sesuai urutan plotting per kelas (Kategori -> Order -> Name)
+    const subjectsToRender = [...subjectsToRenderRaw].sort((a, b) => {
+        const catA = a.kategori || '';
+        const catB = b.kategori || '';
+        let comp = catA.localeCompare(catB, undefined, { numeric: true, sensitivity: 'base' });
+        if (comp !== 0) return comp;
+
+        const orderA = typeof a.order === 'number' ? a.order : 999999;
+        const orderB = typeof b.order === 'number' ? b.order : 999999;
+        comp = orderA - orderB;
+        if (comp !== 0) return comp;
+
+        return (a.nameId || a.name || '').localeCompare(b.nameId || b.name || '', undefined, { numeric: true, sensitivity: 'base' });
+    });
 
     if (el.groupByCategory) {
         const grouped = groupBy(subjectsToRender, 'kategori');
@@ -2633,7 +2653,7 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
             <table className="w-full border-collapse text-sm" dir={el.isRtl ? 'rtl' : 'ltr'} style={{ tableLayout: 'fixed', width: '100%', height: el.height ? `${el.height}px` : 'auto', fontSize: `${el.fontSize}px`, fontFamily: el.fontFamily }}>
                 {renderHeaders()}
                 <tbody>
-                    {Object.entries(grouped).sort(([a],[b]) => a.localeCompare(b)).map(([cat, subs]) => {
+                    {Object.entries(grouped).sort(([a],[b]) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })).map(([cat, subs]) => {
                         // Jika RTL aktif, tampilkan nama kategori dalam bahasa Arab
                         const catLabel = el.isRtl
                             ? (data.subjectCategories?.find(c => normalizeValue(c.name) === normalizeValue(cat))?.nameAr || cat)
