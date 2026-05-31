@@ -2657,13 +2657,72 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
                 {renderHeaders()}
                 <tbody>
                     {Object.entries(grouped).sort(([a],[b]) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })).map(([cat, subs]) => {
-                        // Jika RTL aktif, tampilkan nama kategori dalam bahasa Arab
-                        const catLabel = el.isRtl
-                            ? (data.subjectCategories?.find(c => normalizeValue(c.name) === normalizeValue(cat))?.nameAr || cat)
-                            : cat;
+                        const segments = [];
+                        let currentSegment = null;
+
+                        columns.forEach((col, colIdx) => {
+                            if (col.type === 'SPASI_KOSONG') {
+                                if (currentSegment) {
+                                    segments.push(currentSegment);
+                                    currentSegment = null;
+                                }
+                                segments.push({ type: 'spasi', index: colIdx });
+                            } else {
+                                if (!currentSegment) {
+                                    currentSegment = { type: 'data', startIndex: colIdx, count: 0 };
+                                }
+                                currentSegment.count += 1;
+                            }
+                        });
+                        if (currentSegment) {
+                            segments.push(currentSegment);
+                        }
+
                         return (
                         <React.Fragment key={cat}>
-                            {cat && <tr><td colSpan={columns.length} className="border border-black p-1 font-bold bg-gray-50" style={{ textAlign: el.isRtl ? 'right' : 'left', fontFamily: el.isRtl ? '"Amiri", "Scheherazade New", serif' : 'inherit' }}>{catLabel}</td></tr>}
+                            {cat && (
+                                <tr>
+                                    {segments.map((seg, segIdx) => {
+                                        if (seg.type === 'spasi') {
+                                            return <td key={`spasi-${segIdx}`} style={{ border: 'none', background: 'transparent', padding: 0 }}></td>;
+                                        }
+                                        
+                                        const segmentCols = columns.slice(seg.startIndex, seg.startIndex + seg.count);
+                                        const isArabicSegment = segmentCols.some(col => col.type.endsWith('_AR'));
+                                        
+                                        let segLabel = cat;
+                                        let segTextAlign = 'left';
+                                        let segFontFamily = 'inherit';
+                                        
+                                        if (isArabicSegment) {
+                                            segLabel = data.subjectCategories?.find(c => normalizeValue(c.name) === normalizeValue(cat))?.nameAr || cat;
+                                            segTextAlign = 'right';
+                                            segFontFamily = '"Amiri", "Scheherazade New", serif';
+                                        } else {
+                                            segLabel = cat;
+                                            segTextAlign = 'left';
+                                            segFontFamily = 'inherit';
+                                        }
+                                        
+                                        if (el.isRtl && !isArabicSegment && !segmentCols.some(col => col.type === 'MAPEL_ID')) {
+                                            segLabel = data.subjectCategories?.find(c => normalizeValue(c.name) === normalizeValue(cat))?.nameAr || cat;
+                                            segTextAlign = 'right';
+                                            segFontFamily = '"Amiri", "Scheherazade New", serif';
+                                        }
+                                        
+                                        return (
+                                            <td 
+                                                key={`data-${segIdx}`} 
+                                                colSpan={seg.count} 
+                                                className="border border-black p-1 font-bold bg-gray-50" 
+                                                style={{ textAlign: segTextAlign, fontFamily: segFontFamily }}
+                                            >
+                                                {segLabel}
+                                            </td>
+                                        );
+                                    })}
+                                </tr>
+                            )}
                             {subs.map(sub => {
                                 globalIndex++;
                                 return <tr key={sub.id}>{renderRowCells(sub, globalIndex - 1)}</tr>
