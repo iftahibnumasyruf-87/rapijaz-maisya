@@ -13,6 +13,7 @@ import {
 import { createClient } from '@supabase/supabase-js';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, AreaChart, Area } from 'recharts';
 import * as XLSX from 'xlsx';
+import html2pdf from 'html2pdf.js';
 
 // ==========================================
 // 1. SUPABASE SETUP (Koneksi Database Anda)
@@ -2426,7 +2427,14 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
             let content = '-';
             let style = {};
             
-            let rawGrade = Number(studentGrades[sub.id]) || 0;
+            let gradeObj = studentGrades[sub.id];
+            let rawGrade = 0;
+            if (gradeObj && typeof gradeObj === 'object') {
+                const r = computeRaportScore(gradeObj.uts, gradeObj.uas);
+                if (r !== '') rawGrade = Number(r);
+            } else if (gradeObj !== undefined && gradeObj !== '' && !isNaN(gradeObj)) {
+                rawGrade = Number(gradeObj);
+            }
             let finalGrade = isKatrol ? Math.max(rawGrade, Number(sub.kkm || 0)) : rawGrade;
             let isRed = !isKatrol && rawGrade > 0 && rawGrade < Number(sub.kkm || 0);
 
@@ -4545,7 +4553,14 @@ const CetakDokumen = ({ mode = 'raport' }) => {
         const sums = {}; const counts = {};
         Object.values(classGradesDoc).forEach(sGrades => {
             Object.entries(sGrades).forEach(([k, v]) => {
-                if(v !== '' && !isNaN(v)) { sums[k] = (sums[k]||0) + Number(v); counts[k] = (counts[k]||0) + 1; }
+                let num = null;
+                if (v && typeof v === 'object') {
+                    const r = computeRaportScore(v.uts, v.uas);
+                    if (r !== '') num = Number(r);
+                } else if (v !== undefined && v !== '' && !isNaN(v)) {
+                    num = Number(v);
+                }
+                if(num !== null) { sums[k] = (sums[k]||0) + num; counts[k] = (counts[k]||0) + 1; }
             });
         });
         const avgs = {};
@@ -4561,15 +4576,36 @@ const CetakDokumen = ({ mode = 'raport' }) => {
 
     const handleSavePDF = () => {
         if(!studentData) return;
-        const originalTitle = document.title;
         const ts = activeSetting.tahun ? activeSetting.tahun.replace(/\//g, '-') : 'tahun';
         const ss = activeSetting.semester || '1';
         const ns = studentData.nama.replace(/\s+/g, '_');
         const ks = getClassNameFromValue(classesData, selectedClass).replace(/\s+/g, '_');
-        document.title = mode === 'raport' ? `raport_${ts}_${ss}_${ns}_${ks}` : `ijazah_${ts}_${ns}_${ks}`;
+        
+        const filename = mode === 'raport' 
+            ? `raport_${ns}_${ts}_${ss}.pdf` 
+            : `ijazah_${ns}_${ts}.pdf`;
+            
         addLog(`Menyimpan ${mode} sebagai PDF untuk ${studentData.nama}`);
-        window.print();
-        setTimeout(() => { document.title = originalTitle; }, 2000);
+        
+        const oldZoom = previewZoom;
+        setPreviewZoom(1.0);
+        
+        setTimeout(() => {
+            const element = document.querySelector('.print-wrapper');
+            if(!element) return setPreviewZoom(oldZoom);
+            
+            const opt = {
+                margin:       0,
+                filename:     filename,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true },
+                jsPDF:        { unit: 'mm', format: layoutPageSize === 'F4' ? [215.9, 330.2] : 'a4', orientation: layoutOrientation }
+            };
+            
+            html2pdf().set(opt).from(element).save().then(() => {
+                 setPreviewZoom(oldZoom);
+            });
+        }, 300);
     };
 
     const handleWA = () => {
@@ -4640,6 +4676,27 @@ const CetakDokumen = ({ mode = 'raport' }) => {
     const renderElementForStudent = (el, stdData) => {
         let content = el.content;
         const sGrades = classGradesDoc[stdData.id] || {};
+        const className = getClassNameFromValue(classesData, selectedClass);
+        const classDataObj = classesData.find(c => c.id === selectedClass);
+        
+        if (typeof content === 'string') {
+            content = content.replace(/\{\{nama_santri\}\}/gi, stdData.nama || '')
+                             .replace(/\{\{nama_santri_ar\}\}/gi, stdData.nama_arab || '')
+                             .replace(/\{\{nis\}\}/gi, stdData.nis || '')
+                             .replace(/\{\{nisn\}\}/gi, stdData.nisn || '')
+                             .replace(/\{\{kelas\}\}/gi, className || '')
+                             .replace(/\{\{kelas_ar\}\}/gi, classDataObj?.name_arab || '')
+                             .replace(/\{\{tahun_ajaran\}\}/gi, activeSetting.tahun || '')
+                             .replace(/\{\{tahun_ajaran_ar\}\}/gi, activeSetting.tahun_arab || '')
+                             .replace(/\{\{semester\}\}/gi, activeSetting.semester || '')
+                             .replace(/\{\{semester_ar\}\}/gi, activeSetting.semester_arab || '');
+            
+            content = content.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
+                 if (stdData[key] !== undefined) return stdData[key];
+                 if (stdData.fields && stdData.fields[key] !== undefined) return stdData.fields[key];
+                 return match;
+            });
+        }
         
         const baseStyle = {
             position: 'absolute',
