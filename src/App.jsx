@@ -2518,7 +2518,7 @@ const groupBy = (array, key) => array.reduce((result, item) => {
     return result;
 }, {});
 
-const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatrol = false, mode = 'raport', classesData = []) => {
+const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatrol = false, mode = 'raport', classesData = [], studentsCount = 0) => {
     const activeSetting = data.settings?.find(s => s.key === 'activeSetting')?.value || {};
     const toArabicNumbers = (val) => String(val).replace(/[0-9]/g, w => ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'][w]);
 
@@ -2587,6 +2587,12 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
                     content = classAverages[sub.id] ? toArabicNumbers(classAverages[sub.id]) : '-'; 
                     style={textAlign: 'center', verticalAlign: 'middle', fontFamily: '"Amiri", "Scheherazade New", serif'}; 
                     break;
+
+                case 'TOTAL_RAPORT': case 'TOTAL_RAPORT_AR':
+                case 'RATA_RAPORT': case 'RATA_RAPORT_AR':
+                case 'JUMLAH_SANTRI': case 'JUMLAH_SANTRI_AR':
+                    // Tipe ini hanya tampil di baris footer, bukan per-baris mapel
+                    content = ''; style={textAlign: 'center', verticalAlign: 'middle'}; break;
                     
                 case 'KATEGORI':
                     const catName = el.isRtl ? (data.subjectCategories?.find(c => normalizeValue(c.name) === normalizeValue(sub.kategori))?.nameAr || sub.kategori) : sub.kategori;
@@ -2626,6 +2632,80 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
                 return <td key={cIdx} style={{...style, border: 'none', background: 'transparent', padding: 0}}></td>;
             }
             return <td key={cIdx} className="border border-black p-1" style={style}>{content}</td>
+        });
+    };
+
+    // Hitung total raport & rata-rata raport untuk baris footer
+    const footerTypes = ['TOTAL_RAPORT','TOTAL_RAPORT_AR','RATA_RAPORT','RATA_RAPORT_AR','JUMLAH_SANTRI','JUMLAH_SANTRI_AR'];
+    const hasFooterRow = columns.some(c => footerTypes.includes(c.type));
+
+    const computeFooterValues = () => {
+        const baseSubjectsAll = mode === 'ijazah' ? data.subjects.filter(s => s.isIjazah) : data.subjects;
+        const subsForCalc = el.filterClass
+            ? filterSubjectsByClass(baseSubjectsAll, el.filterClass, classesData.length ? classesData : data.classes || [])
+            : baseSubjectsAll;
+        let totalVal = 0; let countVal = 0;
+        subsForCalc.forEach(s => {
+            const gradeObj = studentGrades[s.id];
+            let num = null;
+            if (gradeObj && typeof gradeObj === 'object') {
+                const r = computeRaportScore(gradeObj.uts, gradeObj.uas);
+                if (r !== '') num = Number(r);
+            } else if (gradeObj !== undefined && gradeObj !== '' && !isNaN(gradeObj)) {
+                num = Number(gradeObj);
+            }
+            if (num !== null && num > 0) { totalVal += num; countVal++; }
+        });
+        const rataRaport = countVal > 0 ? parseFloat((totalVal / countVal).toFixed(2)) : 0;
+        return { totalRaport: totalVal, rataRaport, jumlahSantri: studentsCount };
+    };
+
+    const renderFooterCells = () => {
+        const { totalRaport, rataRaport, jumlahSantri } = computeFooterValues();
+        return columns.map((col, cIdx) => {
+            let content = '';
+            let style = { textAlign: 'center', verticalAlign: 'middle', fontWeight: 'bold' };
+            if (col.height) style.height = `${col.height}px`;
+            if (col.fontSize) style.fontSize = `${col.fontSize}px`;
+            if (col.fontFamily) style.fontFamily = col.fontFamily;
+            if (col.textAlign) style.textAlign = col.textAlign;
+
+            switch (col.type) {
+                case 'TOTAL_RAPORT':
+                    content = totalRaport > 0 ? toArabic(totalRaport) : '-';
+                    break;
+                case 'TOTAL_RAPORT_AR':
+                    content = totalRaport > 0 ? toArabicNumbers(totalRaport) : '-';
+                    style.fontFamily = '"Amiri", "Scheherazade New", serif';
+                    break;
+                case 'RATA_RAPORT':
+                    content = rataRaport > 0 ? toArabic(rataRaport) : '-';
+                    break;
+                case 'RATA_RAPORT_AR':
+                    content = rataRaport > 0 ? toArabicNumbers(rataRaport) : '-';
+                    style.fontFamily = '"Amiri", "Scheherazade New", serif';
+                    break;
+                case 'JUMLAH_SANTRI':
+                    content = jumlahSantri > 0 ? toArabic(jumlahSantri) : '-';
+                    break;
+                case 'JUMLAH_SANTRI_AR':
+                    content = jumlahSantri > 0 ? toArabicNumbers(jumlahSantri) : '-';
+                    style.fontFamily = '"Amiri", "Scheherazade New", serif';
+                    break;
+                case 'SPASI_KOSONG':
+                    return <td key={cIdx} style={{ border: 'none', background: 'transparent', padding: 0 }}></td>;
+                default:
+                    // Tampilkan header kolom sebagai label di baris footer jika bukan tipe footer
+                    if (col.type === 'MAPEL_ID' || col.type === 'MAPEL_AR' || col.type === 'KATEGORI' || col.type === 'KATEGORI_AR') {
+                        content = el.isRtl ? 'مجموع / معدل' : 'Jumlah / Rata-Rata';
+                        style.textAlign = el.isRtl ? 'right' : 'left';
+                        if (col.type === 'MAPEL_AR' || col.type === 'KATEGORI_AR') style.fontFamily = '"Amiri", "Scheherazade New", serif';
+                    } else {
+                        content = '';
+                    }
+                    break;
+            }
+            return <td key={cIdx} className="border border-black p-1" style={style}>{content}</td>;
         });
     };
 
@@ -2730,6 +2810,9 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
                         </React.Fragment>
                         );
                     })}
+                    {hasFooterRow && (
+                        <tr>{renderFooterCells()}</tr>
+                    )}
                 </tbody>
             </table>
         );
@@ -2741,6 +2824,9 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
                     {subjectsToRender.map((sub, idx) => (
                         <tr key={sub.id}>{renderRowCells(sub, idx)}</tr>
                     ))}
+                    {hasFooterRow && (
+                        <tr>{renderFooterCells()}</tr>
+                    )}
                 </tbody>
             </table>
         );
@@ -3817,6 +3903,9 @@ const LayoutBuilder = () => {
                                                             <option value="KKM">Nilai KKM</option>
                                                             <option value="NILAI">Nilai Angka Santri</option>
                                                             <option value="RATA_KELAS">Rata-rata Kelas</option>
+                                                            <option value="TOTAL_RAPORT">Total Raport (مجموع النتائج)</option>
+                                                            <option value="RATA_RAPORT">Rata-rata Raport (معدل النتائج)</option>
+                                                            <option value="JUMLAH_SANTRI">Jumlah Santri di Kelas (عدد الطلاب)</option>
                                                             <option value="SPASI_KOSONG">Spasi Pemisah (Tanpa Border)</option>
                                                         </optgroup>
                                                         <optgroup label="Pelajaran (Khusus Arab)">
@@ -3825,6 +3914,9 @@ const LayoutBuilder = () => {
                                                             <option value="KKM_AR">Nilai KKM (Arab)</option>
                                                             <option value="NILAI_AR">Nilai Angka Santri (Arab)</option>
                                                             <option value="RATA_KELAS_AR">Rata-rata Kelas (Arab)</option>
+                                                            <option value="TOTAL_RAPORT_AR">مجموع النتائج (Total Raport Arab)</option>
+                                                            <option value="RATA_RAPORT_AR">معدل النتائج (Rata-rata Raport Arab)</option>
+                                                            <option value="JUMLAH_SANTRI_AR">عدد الطلاب (Jumlah Santri Arab)</option>
                                                         </optgroup>
                                                         {data.presences.length > 0 && (
                                                             <optgroup label="Aspek Presensi">
@@ -4140,7 +4232,7 @@ const LayoutBuilder = () => {
                                                     padding: (child.type === 'image' || child.type === 'table_grades' || child.type === 'shape' || child.type === 'line') ? '0' : '2px',
                                                     zIndex: child.zIndex ?? 1, opacity: child.opacity ?? 1
                                                 }}>
-                                                    {child.type === 'table_grades' ? renderDynamicTable(child, data, mockStudentGrades, mockClassAverages, false, 'raport', classesData) 
+                                                    {child.type === 'table_grades' ? renderDynamicTable(child, data, mockStudentGrades, mockClassAverages, false, 'raport', classesData, 0) 
                                                     : child.type === 'image' ? <img src={child.content} style={{ width: '100%', height: '100%', objectFit: child.objectFit || 'contain', objectPosition: `${child.objectPositionX ?? 50}% ${child.objectPositionY ?? 50}%`, pointerEvents: 'none' }} alt="elemen" />
                                                     : child.type === 'line' ? <div style={{ width: '100%', height: `${child.lineThickness || 2}px`, backgroundColor: child.lineColor || '#000000', pointerEvents: 'none' }} />
                                                     : child.type === 'shape' ? <div style={{ width: '100%', height: '100%', backgroundColor: child.shapeFill || '#000000', borderRadius: `${child.shapeRadius || 0}px`, border: child.shapeBorder ? `${child.shapeBorder}px solid ${child.shapeBorderColor || '#000000'}` : 'none', pointerEvents: 'none' }} />
@@ -4148,7 +4240,7 @@ const LayoutBuilder = () => {
                                                 </div>
                                             ))}
                                         </div>
-                                    ) : el.type === 'table_grades' ? renderDynamicTable(el, data, mockStudentGrades, mockClassAverages, false, 'raport', classesData) 
+                                    ) : el.type === 'table_grades' ? renderDynamicTable(el, data, mockStudentGrades, mockClassAverages, false, 'raport', classesData, 0) 
                                     : el.type === 'image' ? <img src={el.content} style={{ width: '100%', height: '100%', objectFit: el.objectFit || 'contain', objectPosition: `${el.objectPositionX ?? 50}% ${el.objectPositionY ?? 50}%`, pointerEvents: 'none' }} alt="elemen" />
                                     : el.type === 'line' ? <div style={{ width: '100%', height: `${el.lineThickness || 2}px`, backgroundColor: el.lineColor || '#000000', pointerEvents: 'none' }} />
                                     : el.type === 'shape' ? <div style={{ width: '100%', height: '100%', backgroundColor: el.shapeFill || '#000000', borderRadius: `${el.shapeRadius || 0}px`, border: el.shapeBorder ? `${el.shapeBorder}px solid ${el.shapeBorderColor || '#000000'}` : 'none', pointerEvents: 'none' }} />
@@ -5087,7 +5179,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                     background: el.isTransparent ? 'transparent' : 'white',
                     overflow: 'hidden',
                 }}>
-                    {renderDynamicTable(el, data, sGrades, classAverages, useKatrol, mode, classesData)}
+                    {renderDynamicTable(el, data, sGrades, classAverages, useKatrol, mode, classesData, studentsInClass.length)}
                 </div>
             );
         }
@@ -5123,7 +5215,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                             height: (child.type === 'image' || child.type === 'table_grades' || child.type === 'shape') ? (child.height ? `${child.height}px` : 'auto') : child.type === 'line' ? `${child.lineThickness || 2}px` : 'auto',
                             padding: (child.type === 'image' || child.type === 'table_grades' || child.type === 'shape' || child.type === 'line') ? 0 : '2px',
                         };
-                        if (child.type === 'table_grades') return <div key={child.id} style={{...childStyle, background: child.isTransparent ? 'transparent' : 'white', overflow:'hidden'}}>{renderDynamicTable(child, data, sGrades, classAverages, useKatrol, mode, classesData)}</div>;
+                        if (child.type === 'table_grades') return <div key={child.id} style={{...childStyle, background: child.isTransparent ? 'transparent' : 'white', overflow:'hidden'}}>{renderDynamicTable(child, data, sGrades, classAverages, useKatrol, mode, classesData, studentsInClass.length)}</div>;
                         if (child.type === 'image') return <img key={child.id} src={child.content} style={{...childStyle, objectFit: child.objectFit||'contain', objectPosition:`${child.objectPositionX??50}% ${child.objectPositionY??50}%`}} alt="c" />;
                         if (child.type === 'line') return <div key={child.id} style={{...childStyle, backgroundColor: child.lineColor || '#000000'}} />;
                         if (child.type === 'shape') return <div key={child.id} style={{...childStyle, backgroundColor: child.shapeFill || '#000000', borderRadius: `${child.shapeRadius || 0}px`, border: child.shapeBorder ? `${child.shapeBorder}px solid ${child.shapeBorderColor || '#000000'}` : 'none'}} />;
