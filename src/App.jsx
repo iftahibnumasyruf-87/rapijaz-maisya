@@ -9,7 +9,7 @@ import {
   Columns, FileSignature, TrendingUp, UserX, Clock, Activity, ChevronDown,
   ZoomIn, ZoomOut, Maximize, Minimize, ChevronUp, Lock, Database, Copy, Undo, Redo, Eye, EyeOff,
   AlignLeft, AlignCenter, AlignRight, AlignStartVertical, AlignCenterVertical, AlignEndVertical, BarChart2, AlignJustify, Layers, Calendar,
-  Minus, Square, Grid
+  Minus, Square, Grid, Info
 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, AreaChart, Area } from 'recharts';
@@ -2956,6 +2956,34 @@ const defaultTableColumns = [
     { id: 'c4', header: 'KKM', type: 'KKM', width: 10 },
     { id: 'c5', header: 'Nilai', type: 'NILAI', width: 15 }
 ];
+const VariablesHelp = () => {
+    const [open, setOpen] = useState(false);
+    return (
+        <div className="mt-2 text-xs">
+            <button onClick={() => setOpen(!open)} className="text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1">
+                <Info size={14} /> Daftar Variabel Tersedia
+            </button>
+            {open && (
+                <div className="mt-2 p-2 bg-indigo-50 border border-indigo-100 rounded-md text-gray-700 space-y-1 h-32 overflow-y-auto text-[10px]">
+                    <p className="font-bold border-b border-indigo-200 pb-1 mb-1">Data Santri:</p>
+                    <p><code>{`{{nama_santri}}`}</code> : Nama</p>
+                    <p><code>{`{{nama_santri_ar}}`}</code> : Nama (Arab)</p>
+                    <p><code>{`{{nis}}`}</code> : NIS</p>
+                    <p><code>{`{{nisn}}`}</code> : NISN</p>
+                    <p><code>{`{{kelas}}`}</code> : Kelas</p>
+                    <p><code>{`{{kelas_ar}}`}</code> : Kelas (Arab)</p>
+                    <p className="font-bold border-b border-indigo-200 pb-1 mb-1 mt-2">Data Pengaturan:</p>
+                    <p><code>{`{{tahun_ajaran}}`}</code> : Thn Ajaran</p>
+                    <p><code>{`{{tahun_ajaran_ar}}`}</code> : Thn Ajaran (Arab)</p>
+                    <p><code>{`{{semester}}`}</code> : Semester</p>
+                    <p><code>{`{{semester_ar}}`}</code> : Semester (Arab)</p>
+                    <p className="font-bold border-b border-indigo-200 pb-1 mb-1 mt-2">Variabel Excel:</p>
+                    <p className="leading-tight text-[9px] text-gray-500">Anda juga dapat memanggil nama kolom apapun dari Excel (contoh: <code>{`{{Tempat Lahir}}`}</code>)</p>
+                </div>
+            )}
+        </div>
+    );
+};
 
 const LayoutBuilder = () => {
     const { data, allData, activeSetting, saveToDb, deleteFromDb, showNotification, setAutoSaveStatus } = useContext(AppContext);
@@ -3898,7 +3926,10 @@ const LayoutBuilder = () => {
                             ) : (
                                 <>
                             {activeEl.type === 'text' && (
-                                <textarea className="w-full p-2 border rounded text-sm focus:ring-2 outline-none min-h-[60px]" value={activeEl.content} onChange={e => updateElement(selectedElementId, { content: e.target.value })} />
+                                <>
+                                    <textarea className="w-full p-2 border rounded text-sm focus:ring-2 outline-none min-h-[60px]" value={activeEl.content} onChange={e => updateElement(selectedElementId, { content: e.target.value })} />
+                                    <VariablesHelp />
+                                </>
                             )}
 
                             {activeEl.type === 'line' && (
@@ -4309,6 +4340,7 @@ const LayoutBuilder = () => {
                                                     ctSelCells.forEach(ck => { newCells[ck] = {...(newCells[ck]||{}), content: e.target.value}; });
                                                     updateElement(selectedElementId, { cells: newCells });
                                                 }}></textarea>
+                                                <VariablesHelp />
                                                 <div className="flex gap-2 items-center">
                                                     <button onClick={() => {
                                                         const newCells = {...activeEl.cells};
