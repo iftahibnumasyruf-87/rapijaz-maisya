@@ -2518,6 +2518,59 @@ const groupBy = (array, key) => array.reduce((result, item) => {
     return result;
 }, {});
 
+// ==========================================
+// CUSTOM TABLE (table_custom) RENDERER
+// ==========================================
+const renderCustomTable = (el, replaceVars = s => s) => {
+    const rows = el.tableRows || 3;
+    const cols = el.tableCols || 3;
+    const colWidths = el.colWidths || Array.from({length: cols}, () => Math.round(100/cols));
+    const rowHeights = el.rowHeights || Array.from({length: rows}, () => 30);
+    const cells = el.cells || {};
+    const bColor = el.borderColor || '#000000';
+    const bWidth = el.borderWidth !== undefined ? el.borderWidth : 1;
+    const bStyle = bWidth > 0 ? `${bWidth}px solid ${bColor}` : 'none';
+    const tBg = el.isTransparent ? 'transparent' : 'white';
+
+    return (
+        <table style={{ borderCollapse: 'collapse', width: '100%', tableLayout: 'fixed', direction: el.isRtl ? 'rtl' : 'ltr', fontSize: `${el.fontSize || 12}px`, fontFamily: el.fontFamily || 'Arial, sans-serif', background: tBg }}>
+            <colgroup>{colWidths.map((w, i) => <col key={i} style={{width:`${w}%`}}/>)}</colgroup>
+            <tbody>
+                {Array.from({length: rows}, (_, r) => (
+                    <tr key={r} style={{height:`${rowHeights[r] || 30}px`}}>
+                        {Array.from({length: cols}, (_, c) => {
+                            const ck = `${r}_${c}`;
+                            const cell = cells[ck] || {};
+                            if (cell.isHidden) return null;
+                            const cs = cell.colspan || 1;
+                            const rs = cell.rowspan || 1;
+                            const cellBg = cell.bgcolor ? cell.bgcolor : (cell.isHeaderCell ? (el.headerBg || '#f3f4f6') : tBg);
+                            return (
+                                <td key={c} colSpan={cs} rowSpan={rs} style={{
+                                    border: bStyle,
+                                    padding: '2px 4px',
+                                    textAlign: cell.align || 'left',
+                                    verticalAlign: cell.valign || 'middle',
+                                    fontWeight: cell.bold ? 'bold' : 'normal',
+                                    fontFamily: cell.fontFamily || el.fontFamily || 'Arial, sans-serif',
+                                    fontSize: cell.fontSize ? `${cell.fontSize}px` : 'inherit',
+                                    color: cell.color || 'inherit',
+                                    backgroundColor: cellBg,
+                                    direction: cell.isRtl ? 'rtl' : (el.isRtl ? 'rtl' : 'ltr'),
+                                    overflow: 'hidden',
+                                    wordBreak: 'break-word',
+                                }}>
+                                    <span style={{whiteSpace:'pre-wrap'}}>{replaceVars(cell.content || '')}</span>
+                                </td>
+                            );
+                        })}
+                    </tr>
+                ))}
+            </tbody>
+        </table>
+    );
+};
+
 const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatrol = false, mode = 'raport', classesData = [], studentsCount = 0) => {
     const activeSetting = data.settings?.find(s => s.key === 'activeSetting')?.value || {};
     const toArabicNumbers = (val) => String(val).replace(/[0-9]/g, w => ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'][w]);
@@ -2881,6 +2934,11 @@ const LayoutBuilder = () => {
     const layoutContainerRef = useRef(null);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [showSidebar, setShowSidebar] = useState(true);
+    // Custom table editor state
+    const [ctSelCells, setCtSelCells] = useState([]); // selected cell keys e.g. ['0_0','0_1']
+    const [ctActiveCell, setCtActiveCell] = useState(null); // last clicked cell key
+    const [ctDrag, setCtDrag] = useState(null); // {type:'col'|'row', idx, startX, startY, startVals}
+    const ctDragRef = useRef(null);
 
     useEffect(() => {
         const handleFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
@@ -3041,26 +3099,36 @@ const LayoutBuilder = () => {
         const isWatermark = type === 'watermark';
         const isLine = type === 'line';
         const isShape = type === 'shape';
+        const isCustomTable = type === 'table_custom';
         const elementType = isWatermark ? 'image' : type;
 
         let defaultContent = elementType === 'text' ? 'Teks Baru' : elementType === 'image' ? 'https://via.placeholder.com/150' : `{{${elementType}}}`;
         if (customKey) defaultContent = `{{${customKey}}}`;
         if (isLine) defaultContent = '';
         if (isShape) defaultContent = '';
+        if (isCustomTable) defaultContent = '';
+
+        // Default cells for table_custom
+        const defaultCTRows = 3, defaultCTCols = 3;
+        const defaultCells = {};
+        for (let r = 0; r < defaultCTRows; r++) for (let c = 0; c < defaultCTCols; c++) {
+            defaultCells[`${r}_${c}`] = { content: r === 0 ? `Kolom ${c+1}` : '', bold: r === 0, align: 'center', isHeaderCell: r === 0 };
+        }
 
         const newEl = {
             id: Date.now().toString(),
             pageIndex: currentPage,
             type: elementType, content: defaultContent,
-            x: 50, y: 50, fontSize: 14, fontFamily: 'Arial, sans-serif', fontWeight: 'normal',
-            width: isLine ? 400 : isShape ? 200 : (elementType === 'table_grades' ? 650 : elementType === 'image' ? (isWatermark ? 400 : 100) : 200),
-            height: isLine ? 2 : isShape ? 50 : (elementType === 'table_grades' ? 300 : elementType === 'image' ? (isWatermark ? 400 : 100) : 30),
+            x: 50, y: 50, fontSize: 12, fontFamily: 'Arial, sans-serif', fontWeight: 'normal',
+            width: isLine ? 400 : isShape ? 200 : isCustomTable ? 500 : (elementType === 'table_grades' ? 650 : elementType === 'image' ? (isWatermark ? 400 : 100) : 200),
+            height: isLine ? 2 : isShape ? 50 : isCustomTable ? 120 : (elementType === 'table_grades' ? 300 : elementType === 'image' ? (isWatermark ? 400 : 100) : 30),
             zIndex: isWatermark ? 0 : 1,
             opacity: isWatermark ? 0.2 : 1,
             // line/shape specific
             ...(isLine ? { lineColor: '#000000', lineThickness: 2 } : {}),
             ...(isShape ? { shapeFill: '#000000', shapeRadius: 0, shapeBorder: 0, shapeBorderColor: '#000000' } : {}),
-            ...(elementType === 'table_grades' ? { columns: [...defaultTableColumns], groupByCategory: false, filterClass: '' } : {})
+            ...(elementType === 'table_grades' ? { columns: [...defaultTableColumns], groupByCategory: false, filterClass: '' } : {}),
+            ...(isCustomTable ? { tableRows: defaultCTRows, tableCols: defaultCTCols, colWidths: [33,33,34], rowHeights: [35,35,35], cells: defaultCells, borderColor: '#000000', borderWidth: 1, headerBg: '#e5e7eb', isRtl: false, isTransparent: false } : {})
         };
         setPast(p => [...p, elements]);
         setFuture([]);
@@ -3097,6 +3165,9 @@ const LayoutBuilder = () => {
         if (newEl.type === 'table_grades' && newEl.columns) {
             newEl.columns = JSON.parse(JSON.stringify(newEl.columns));
             newEl.columns.forEach((col, idx) => col.id = Date.now().toString() + '_' + idx);
+        }
+        if (newEl.type === 'table_custom' && newEl.cells) {
+            newEl.cells = JSON.parse(JSON.stringify(newEl.cells));
         }
         
         setPast(p => [...p, elements]);
@@ -3553,6 +3624,7 @@ const LayoutBuilder = () => {
                         <button onClick={() => addElement('image')} className="w-full bg-purple-50 hover:bg-purple-100 text-purple-700 py-2 rounded text-sm flex items-center justify-center gap-2"><ImageIcon size={16}/> Gambar (Logo/Stempel)</button>
                         <button onClick={() => addElement('watermark')} className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 py-2 rounded text-sm flex items-center justify-center gap-2"><ImageIcon size={16}/> Gambar Watermark</button>
                         <button onClick={() => addElement('table_grades')} className="w-full bg-orange-50 hover:bg-orange-100 text-orange-700 py-2 rounded text-sm flex items-center justify-center gap-2"><Columns size={16}/> Tabel Nilai Dinamis</button>
+                        <button onClick={() => addElement('table_custom')} className="w-full bg-cyan-50 hover:bg-cyan-100 text-cyan-700 py-2 rounded text-sm flex items-center justify-center gap-2"><Grid size={16}/> Tabel Kustom (Kosong)</button>
                         
                         <p className="text-xs font-semibold text-gray-500 uppercase mt-4 mb-1">Shape &amp; Garis</p>
                         <div className="grid grid-cols-2 gap-1">
@@ -3604,7 +3676,7 @@ const LayoutBuilder = () => {
                                         }} 
                                         className={`w-full text-left px-2 py-1.5 rounded text-xs flex items-center justify-between transition ${selectedIds.includes(el.id) ? 'bg-blue-100 text-blue-800 font-bold border border-blue-200' : 'hover:bg-gray-100 text-gray-700 border border-transparent'}`}
                                     >
-                                        <span className="truncate w-[80%]">{el.type === 'group' ? 'Grup Elemen' : el.type === 'image' ? (el.zIndex === 0 ? 'Gambar Watermark' : 'Gambar') : el.type === 'table_grades' ? 'Tabel Nilai' : (el.content || '').slice(0, 20) + ((el.content || '').length > 20 ? '...' : '')}</span>
+                                        <span className="truncate w-[80%]">{el.type === 'group' ? 'Grup Elemen' : el.type === 'image' ? (el.zIndex === 0 ? 'Gambar Watermark' : 'Gambar') : el.type === 'table_grades' ? 'Tabel Nilai' : el.type === 'table_custom' ? 'Tabel Kustom' : (el.content || '').slice(0, 20) + ((el.content || '').length > 20 ? '...' : '')}</span>
                                         {el.locked && <Lock size={12} className="text-yellow-600"/>}
                                     </button>
                                 ))}
@@ -3785,7 +3857,7 @@ const LayoutBuilder = () => {
                                 </>
                             )}
 
-                            {(activeEl.type === 'image' || activeEl.type === 'table_grades') && (
+                            {(activeEl.type === 'image' || activeEl.type === 'table_grades' || activeEl.type === 'table_custom') && (
                                 <div className="flex flex-col gap-2">
                                     <div className="flex gap-2">
                                         <div className="w-1/2"><label className="text-[10px] text-gray-500 font-bold uppercase">Lebar (Width)</label><input type="number" className="w-full p-1.5 border rounded text-sm" value={activeEl.width} onChange={e => updateElement(selectedElementId, { width: Number(e.target.value) })}/></div>
@@ -4024,6 +4096,174 @@ const LayoutBuilder = () => {
                                 </div>
                             )}
 
+                            {activeEl.type === 'table_custom' && (
+                                <div className="mt-4 border-t pt-3 space-y-3">
+                                    <div className="flex gap-2">
+                                        <div className="w-1/2">
+                                            <label className="text-[10px] text-gray-500 font-bold uppercase">Jml Baris</label>
+                                            <input type="number" min="1" max="20" className="w-full p-1.5 border rounded text-sm" value={activeEl.tableRows || 3} onChange={e => {
+                                                const newR = Math.max(1, Number(e.target.value));
+                                                let newH = [...(activeEl.rowHeights||[])];
+                                                if (newH.length < newR) newH = [...newH, ...Array(newR-newH.length).fill(30)];
+                                                else if (newH.length > newR) newH = newH.slice(0, newR);
+                                                updateElement(selectedElementId, { tableRows: newR, rowHeights: newH });
+                                            }}/>
+                                        </div>
+                                        <div className="w-1/2">
+                                            <label className="text-[10px] text-gray-500 font-bold uppercase">Jml Kolom</label>
+                                            <input type="number" min="1" max="20" className="w-full p-1.5 border rounded text-sm" value={activeEl.tableCols || 3} onChange={e => {
+                                                const newC = Math.max(1, Number(e.target.value));
+                                                let newW = [...(activeEl.colWidths||[])];
+                                                if (newW.length < newC) newW = [...newW, ...Array(newC-newW.length).fill(Math.round(100/newC))];
+                                                else if (newW.length > newC) newW = newW.slice(0, newC);
+                                                updateElement(selectedElementId, { tableCols: newC, colWidths: newW });
+                                            }}/>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2 items-center">
+                                        <label className="text-xs font-semibold text-gray-700 whitespace-nowrap">Warna Border</label>
+                                        <input type="color" className="w-10 h-8 p-0 border-0 rounded cursor-pointer" value={activeEl.borderColor || '#000000'} onChange={e => updateElement(selectedElementId, { borderColor: e.target.value }, false)} onBlur={e => updateElement(selectedElementId, { borderColor: e.target.value })}/>
+                                        <input type="number" min="0" max="10" className="w-16 p-1.5 border rounded text-sm ml-2" value={activeEl.borderWidth !== undefined ? activeEl.borderWidth : 1} onChange={e => updateElement(selectedElementId, { borderWidth: Number(e.target.value) })} title="Tebal Border (px)"/> px
+                                    </div>
+                                    <div className="bg-gray-100 p-2 rounded-lg mt-2">
+                                        <label className="text-[10px] text-gray-500 font-bold uppercase mb-2 block">Lebar Kolom (%)</label>
+                                        <div className="flex gap-1 overflow-x-auto pb-1">
+                                            {(activeEl.colWidths || []).map((cw, i) => (
+                                                <input key={i} type="number" className="w-12 p-1 border rounded text-xs text-center" value={cw} onChange={e => {
+                                                    const w = [...activeEl.colWidths]; w[i] = Number(e.target.value);
+                                                    updateElement(selectedElementId, { colWidths: w });
+                                                }} title={`Kolom ${i+1}`}/>
+                                            ))}
+                                        </div>
+                                        <label className="text-[10px] text-gray-500 font-bold uppercase mt-2 mb-2 block">Tinggi Baris (px)</label>
+                                        <div className="flex gap-1 overflow-x-auto pb-1">
+                                            {(activeEl.rowHeights || []).map((rh, i) => (
+                                                <input key={i} type="number" className="w-12 p-1 border rounded text-xs text-center" value={rh} onChange={e => {
+                                                    const h = [...activeEl.rowHeights]; h[i] = Number(e.target.value);
+                                                    updateElement(selectedElementId, { rowHeights: h });
+                                                }} title={`Baris ${i+1}`}/>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="mt-3 border border-indigo-200 rounded-lg overflow-hidden">
+                                        <div className="bg-indigo-50 p-2 text-xs font-bold text-indigo-800 flex justify-between items-center">
+                                            Pilih Sel untuk Diedit
+                                        </div>
+                                        <div className="p-2 overflow-auto" style={{maxHeight:'200px'}}>
+                                            <div className="grid gap-0.5 border bg-gray-300" style={{gridTemplateColumns:`repeat(${activeEl.tableCols || 3}, minmax(0, 1fr))`}}>
+                                                {Array.from({length: activeEl.tableRows || 3}).map((_, r) => Array.from({length: activeEl.tableCols || 3}).map((_, c) => {
+                                                    const ck = `${r}_${c}`;
+                                                    const isSel = ctSelCells.includes(ck);
+                                                    return <button key={ck} className={`h-8 text-[10px] font-mono border-0 flex items-center justify-center truncate ${isSel ? 'bg-indigo-600 text-white' : 'bg-white text-gray-500 hover:bg-gray-100'}`} onClick={(e) => {
+                                                        if (e.shiftKey) { setCtSelCells(prev => prev.includes(ck) ? prev.filter(k=>k!==ck) : [...prev, ck]); } 
+                                                        else { setCtSelCells([ck]); setCtActiveCell(ck); }
+                                                    }}>{r+1},{c+1}</button>
+                                                }))}
+                                            </div>
+                                        </div>
+                                        {ctSelCells.length > 0 && (
+                                            <div className="p-3 bg-white border-t border-indigo-100 space-y-2">
+                                                <textarea className="w-full p-2 border rounded text-xs focus:ring-2 focus:ring-indigo-300 outline-none" rows="2" placeholder="Teks atau {{variabel}}" value={activeEl.cells?.[ctSelCells[0]]?.content || ''} onChange={e => {
+                                                    const newCells = {...activeEl.cells};
+                                                    ctSelCells.forEach(ck => { newCells[ck] = {...(newCells[ck]||{}), content: e.target.value}; });
+                                                    updateElement(selectedElementId, { cells: newCells });
+                                                }}></textarea>
+                                                <div className="flex gap-2 items-center">
+                                                    <button onClick={() => {
+                                                        const newCells = {...activeEl.cells};
+                                                        const isBold = newCells[ctSelCells[0]]?.bold;
+                                                        ctSelCells.forEach(ck => { newCells[ck] = {...(newCells[ck]||{}), bold: !isBold}; });
+                                                        updateElement(selectedElementId, { cells: newCells });
+                                                    }} className={`p-1.5 border rounded text-xs font-bold w-8 flex justify-center ${activeEl.cells?.[ctSelCells[0]]?.bold ? 'bg-gray-800 text-white' : 'bg-white hover:bg-gray-100'}`}>B</button>
+                                                    <div className="flex border rounded overflow-hidden flex-1">
+                                                        <button onClick={() => {
+                                                            const newCells = {...activeEl.cells};
+                                                            ctSelCells.forEach(ck => { newCells[ck] = {...(newCells[ck]||{}), align: 'left'}; });
+                                                            updateElement(selectedElementId, { cells: newCells });
+                                                        }} className={`flex-1 p-1.5 flex justify-center ${activeEl.cells?.[ctSelCells[0]]?.align === 'left' ? 'bg-gray-800 text-white' : 'bg-white hover:bg-gray-100'}`}><AlignLeft size={14}/></button>
+                                                        <button onClick={() => {
+                                                            const newCells = {...activeEl.cells};
+                                                            ctSelCells.forEach(ck => { newCells[ck] = {...(newCells[ck]||{}), align: 'center'}; });
+                                                            updateElement(selectedElementId, { cells: newCells });
+                                                        }} className={`flex-1 p-1.5 flex justify-center border-l ${(!activeEl.cells?.[ctSelCells[0]]?.align || activeEl.cells?.[ctSelCells[0]]?.align === 'center') ? 'bg-gray-800 text-white' : 'bg-white hover:bg-gray-100'}`}><AlignCenter size={14}/></button>
+                                                        <button onClick={() => {
+                                                            const newCells = {...activeEl.cells};
+                                                            ctSelCells.forEach(ck => { newCells[ck] = {...(newCells[ck]||{}), align: 'right'}; });
+                                                            updateElement(selectedElementId, { cells: newCells });
+                                                        }} className={`flex-1 p-1.5 flex justify-center border-l ${activeEl.cells?.[ctSelCells[0]]?.align === 'right' ? 'bg-gray-800 text-white' : 'bg-white hover:bg-gray-100'}`}><AlignRight size={14}/></button>
+                                                    </div>
+                                                </div>
+                                                <label className="flex items-center gap-2 text-xs text-gray-700 bg-gray-50 p-2 rounded cursor-pointer border">
+                                                    <input type="checkbox" checked={activeEl.cells?.[ctSelCells[0]]?.isHeaderCell || false} onChange={e => {
+                                                        const newCells = {...activeEl.cells};
+                                                        ctSelCells.forEach(ck => { newCells[ck] = {...(newCells[ck]||{}), isHeaderCell: e.target.checked}; });
+                                                        updateElement(selectedElementId, { cells: newCells });
+                                                    }}/>
+                                                    Tandai sebagai Sel Header (Abu-abu)
+                                                </label>
+                                                <div className="flex gap-2">
+                                                    <div className="w-1/2 flex items-center justify-between border rounded px-2 py-1 bg-gray-50">
+                                                        <span className="text-[10px] text-gray-600 font-bold">Colspan (Kanan)</span>
+                                                        <div className="flex gap-1">
+                                                            <button className="bg-gray-200 hover:bg-gray-300 w-5 h-5 rounded flex justify-center items-center font-bold" onClick={() => {
+                                                                const ck = ctSelCells[0]; const [r, c] = ck.split('_').map(Number);
+                                                                const curCs = activeEl.cells?.[ck]?.colspan || 1;
+                                                                if (curCs > 1) {
+                                                                    const newCells = {...activeEl.cells};
+                                                                    newCells[ck] = {...(newCells[ck]||{}), colspan: curCs - 1};
+                                                                    for(let i=1; i<curCs-1; i++) newCells[`${r}_${c+i}`] = {...(newCells[`${r}_${c+i}`]||{}), isHidden: true};
+                                                                    newCells[`${r}_${c+curCs-1}`] = {...(newCells[`${r}_${c+curCs-1}`]||{}), isHidden: false};
+                                                                    updateElement(selectedElementId, { cells: newCells });
+                                                                }
+                                                            }}>-</button>
+                                                            <span className="text-xs w-4 text-center">{activeEl.cells?.[ctSelCells[0]]?.colspan || 1}</span>
+                                                            <button className="bg-gray-200 hover:bg-gray-300 w-5 h-5 rounded flex justify-center items-center font-bold" onClick={() => {
+                                                                const ck = ctSelCells[0]; const [r, c] = ck.split('_').map(Number);
+                                                                const curCs = activeEl.cells?.[ck]?.colspan || 1;
+                                                                if (c + curCs < (activeEl.tableCols||3)) {
+                                                                    const newCells = {...activeEl.cells};
+                                                                    newCells[ck] = {...(newCells[ck]||{}), colspan: curCs + 1};
+                                                                    newCells[`${r}_${c+curCs}`] = {...(newCells[`${r}_${c+curCs}`]||{}), isHidden: true};
+                                                                    updateElement(selectedElementId, { cells: newCells });
+                                                                }
+                                                            }}>+</button>
+                                                        </div>
+                                                    </div>
+                                                    <div className="w-1/2 flex items-center justify-between border rounded px-2 py-1 bg-gray-50">
+                                                        <span className="text-[10px] text-gray-600 font-bold">Rowspan (Bawah)</span>
+                                                        <div className="flex gap-1">
+                                                            <button className="bg-gray-200 hover:bg-gray-300 w-5 h-5 rounded flex justify-center items-center font-bold" onClick={() => {
+                                                                const ck = ctSelCells[0]; const [r, c] = ck.split('_').map(Number);
+                                                                const curRs = activeEl.cells?.[ck]?.rowspan || 1;
+                                                                if (curRs > 1) {
+                                                                    const newCells = {...activeEl.cells};
+                                                                    newCells[ck] = {...(newCells[ck]||{}), rowspan: curRs - 1};
+                                                                    for(let i=1; i<curRs-1; i++) newCells[`${r+i}_${c}`] = {...(newCells[`${r+i}_${c}`]||{}), isHidden: true};
+                                                                    newCells[`${r+curRs-1}_${c}`] = {...(newCells[`${r+curRs-1}_${c}`]||{}), isHidden: false};
+                                                                    updateElement(selectedElementId, { cells: newCells });
+                                                                }
+                                                            }}>-</button>
+                                                            <span className="text-xs w-4 text-center">{activeEl.cells?.[ctSelCells[0]]?.rowspan || 1}</span>
+                                                            <button className="bg-gray-200 hover:bg-gray-300 w-5 h-5 rounded flex justify-center items-center font-bold" onClick={() => {
+                                                                const ck = ctSelCells[0]; const [r, c] = ck.split('_').map(Number);
+                                                                const curRs = activeEl.cells?.[ck]?.rowspan || 1;
+                                                                if (r + curRs < (activeEl.tableRows||3)) {
+                                                                    const newCells = {...activeEl.cells};
+                                                                    newCells[ck] = {...(newCells[ck]||{}), rowspan: curRs + 1};
+                                                                    newCells[`${r+curRs}_${c}`] = {...(newCells[`${r+curRs}_${c}`]||{}), isHidden: true};
+                                                                    updateElement(selectedElementId, { cells: newCells });
+                                                                }
+                                                            }}>+</button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="flex gap-2 mt-4 flex-wrap">
                                 {activeEl.type === 'group' && (
                                     <button onClick={ungroupElements} className="w-full mb-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 py-2 rounded text-[11px] font-bold flex justify-center items-center gap-1 transition"><Layers size={14}/> Ungroup</button>
@@ -4214,12 +4454,12 @@ const LayoutBuilder = () => {
                                 <div key={el.id} data-element-id={el.id} onMouseDown={(e) => handleElementMouseDown(e, el)}
                                     style={{
                                         position: 'absolute', left: `${el.x}px`, top: `${el.y}px`, fontSize: `${el.fontSize}px`, fontFamily: el.fontFamily || 'Arial, sans-serif', fontWeight: el.fontWeight,
-                                        width: el.width ? `${el.width}px` : 'auto', height: (el.type === 'image' || el.type === 'table_grades') ? (el.height ? `${el.height}px` : 'auto') : 'auto',
-                                        cursor: isDraggingThis ? 'grabbing' : 'grab', outline: isSelected ? '2px dashed #059669' : 'none', padding: (el.type === 'image' || el.type === 'table_grades') ? '0' : '2px',
+                                        width: el.width ? `${el.width}px` : 'auto', height: (el.type === 'image' || el.type === 'table_grades' || el.type === 'table_custom') ? (el.height ? `${el.height}px` : 'auto') : 'auto',
+                                        cursor: isDraggingThis ? 'grabbing' : 'grab', outline: isSelected ? '2px dashed #059669' : 'none', padding: (el.type === 'image' || el.type === 'table_grades' || el.type === 'table_custom') ? '0' : '2px',
                                         zIndex: isSelected ? 20 : (el.zIndex ?? 1), opacity: el.opacity ?? 1,
                                         pointerEvents: el.locked ? 'none' : 'auto'
                                     }}
-                                    className={`hover:outline hover:outline-1 hover:outline-gray-400 ${el.type === 'table_grades' && !el.isTransparent ? 'bg-white' : ''}`}
+                                    className={`hover:outline hover:outline-1 hover:outline-gray-400 ${(el.type === 'table_grades' || el.type === 'table_custom') && !el.isTransparent ? 'bg-white' : ''}`}
                                 >
                                     {el.type === 'group' ? (
                                         <div style={{ position: 'relative', width: '100%', height: '100%' }}>
@@ -4227,12 +4467,13 @@ const LayoutBuilder = () => {
                                                 <div key={child.id} style={{
                                                     position: 'absolute', left: `${child.x}px`, top: `${child.y}px`, fontSize: `${child.fontSize}px`, fontFamily: child.fontFamily || 'Arial, sans-serif', fontWeight: child.fontWeight,
                                                     width: child.width ? `${child.width}px` : 'auto', height: child.type === 'image' ? `${child.height}px` : 'auto',
-                                                    padding: (child.type === 'image' || child.type === 'table_grades') ? '0' : '2px',
-                                                    width: child.width ? `${child.width}px` : 'auto', height: (child.type === 'image' || child.type === 'shape') ? `${child.height}px` : 'auto',
-                                                    padding: (child.type === 'image' || child.type === 'table_grades' || child.type === 'shape' || child.type === 'line') ? '0' : '2px',
+                                                    padding: (child.type === 'image' || child.type === 'table_grades' || child.type === 'table_custom') ? '0' : '2px',
+                                                    width: child.width ? `${child.width}px` : 'auto', height: (child.type === 'image' || child.type === 'shape' || child.type === 'table_custom') ? `${child.height}px` : 'auto',
+                                                    padding: (child.type === 'image' || child.type === 'table_grades' || child.type === 'table_custom' || child.type === 'shape' || child.type === 'line') ? '0' : '2px',
                                                     zIndex: child.zIndex ?? 1, opacity: child.opacity ?? 1
                                                 }}>
                                                     {child.type === 'table_grades' ? renderDynamicTable(child, data, mockStudentGrades, mockClassAverages, false, 'raport', classesData, 0) 
+                                                    : child.type === 'table_custom' ? renderCustomTable(child, s=>s)
                                                     : child.type === 'image' ? <img src={child.content} style={{ width: '100%', height: '100%', objectFit: child.objectFit || 'contain', objectPosition: `${child.objectPositionX ?? 50}% ${child.objectPositionY ?? 50}%`, pointerEvents: 'none' }} alt="elemen" />
                                                     : child.type === 'line' ? <div style={{ width: '100%', height: `${child.lineThickness || 2}px`, backgroundColor: child.lineColor || '#000000', pointerEvents: 'none' }} />
                                                     : child.type === 'shape' ? <div style={{ width: '100%', height: '100%', backgroundColor: child.shapeFill || '#000000', borderRadius: `${child.shapeRadius || 0}px`, border: child.shapeBorder ? `${child.shapeBorder}px solid ${child.shapeBorderColor || '#000000'}` : 'none', pointerEvents: 'none' }} />
@@ -4241,6 +4482,7 @@ const LayoutBuilder = () => {
                                             ))}
                                         </div>
                                     ) : el.type === 'table_grades' ? renderDynamicTable(el, data, mockStudentGrades, mockClassAverages, false, 'raport', classesData, 0) 
+                                    : el.type === 'table_custom' ? renderCustomTable(el, s=>s)
                                     : el.type === 'image' ? <img src={el.content} style={{ width: '100%', height: '100%', objectFit: el.objectFit || 'contain', objectPosition: `${el.objectPositionX ?? 50}% ${el.objectPositionY ?? 50}%`, pointerEvents: 'none' }} alt="elemen" />
                                     : el.type === 'line' ? <div style={{ width: '100%', height: `${el.lineThickness || 2}px`, backgroundColor: el.lineColor || '#000000', pointerEvents: 'none' }} />
                                     : el.type === 'shape' ? <div style={{ width: '100%', height: '100%', backgroundColor: el.shapeFill || '#000000', borderRadius: `${el.shapeRadius || 0}px`, border: el.shapeBorder ? `${el.shapeBorder}px solid ${el.shapeBorderColor || '#000000'}` : 'none', pointerEvents: 'none' }} />
@@ -5169,7 +5411,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
             textAlign: el.textAlign || 'left',
         };
 
-        if (el.type === 'table_grades') {
+        if (el.type === 'table_grades' || el.type === 'table_custom') {
             return (
                 <div style={{
                     ...baseStyle,
@@ -5179,7 +5421,10 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                     background: el.isTransparent ? 'transparent' : 'white',
                     overflow: 'hidden',
                 }}>
-                    {renderDynamicTable(el, data, sGrades, classAverages, useKatrol, mode, classesData, studentsInClass.length)}
+                    {el.type === 'table_grades' 
+                        ? renderDynamicTable(el, data, sGrades, classAverages, useKatrol, mode, classesData, studentsInClass.length)
+                        : renderCustomTable(el, replaceVariables)
+                    }
                 </div>
             );
         }
@@ -5212,10 +5457,11 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                             zIndex: child.zIndex ?? 1,
                             opacity: child.opacity ?? 1,
                             width: child.width ? `${child.width}px` : 'auto',
-                            height: (child.type === 'image' || child.type === 'table_grades' || child.type === 'shape') ? (child.height ? `${child.height}px` : 'auto') : child.type === 'line' ? `${child.lineThickness || 2}px` : 'auto',
-                            padding: (child.type === 'image' || child.type === 'table_grades' || child.type === 'shape' || child.type === 'line') ? 0 : '2px',
+                            height: (child.type === 'image' || child.type === 'table_grades' || child.type === 'table_custom' || child.type === 'shape') ? (child.height ? `${child.height}px` : 'auto') : child.type === 'line' ? `${child.lineThickness || 2}px` : 'auto',
+                            padding: (child.type === 'image' || child.type === 'table_grades' || child.type === 'table_custom' || child.type === 'shape' || child.type === 'line') ? 0 : '2px',
                         };
                         if (child.type === 'table_grades') return <div key={child.id} style={{...childStyle, background: child.isTransparent ? 'transparent' : 'white', overflow:'hidden'}}>{renderDynamicTable(child, data, sGrades, classAverages, useKatrol, mode, classesData, studentsInClass.length)}</div>;
+                        if (child.type === 'table_custom') return <div key={child.id} style={{...childStyle, background: child.isTransparent ? 'transparent' : 'white', overflow:'hidden'}}>{renderCustomTable(child, replaceVariables)}</div>;
                         if (child.type === 'image') return <img key={child.id} src={child.content} style={{...childStyle, objectFit: child.objectFit||'contain', objectPosition:`${child.objectPositionX??50}% ${child.objectPositionY??50}%`}} alt="c" />;
                         if (child.type === 'line') return <div key={child.id} style={{...childStyle, backgroundColor: child.lineColor || '#000000'}} />;
                         if (child.type === 'shape') return <div key={child.id} style={{...childStyle, backgroundColor: child.shapeFill || '#000000', borderRadius: `${child.shapeRadius || 0}px`, border: child.shapeBorder ? `${child.shapeBorder}px solid ${child.shapeBorderColor || '#000000'}` : 'none'}} />;
