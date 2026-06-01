@@ -4366,6 +4366,30 @@ const LayoutBuilder = () => {
                                                         }} className={`flex-1 p-1.5 flex justify-center border-l ${activeEl.cells?.[ctSelCells[0]]?.align === 'right' ? 'bg-gray-800 text-white' : 'bg-white hover:bg-gray-100'}`}><AlignRight size={14}/></button>
                                                     </div>
                                                 </div>
+                                                <div className="flex gap-2 items-center">
+                                                    <select className="flex-1 p-1.5 border rounded text-xs bg-white focus:outline-none focus:ring-1 focus:ring-indigo-300" value={activeEl.cells?.[ctSelCells[0]]?.fontFamily || ''} onChange={e => {
+                                                        const newCells = {...activeEl.cells};
+                                                        ctSelCells.forEach(ck => { newCells[ck] = {...(newCells[ck]||{}), fontFamily: e.target.value}; });
+                                                        updateElement(selectedElementId, { cells: newCells });
+                                                    }}>
+                                                        <option value="">Font Default Tabel</option>
+                                                        <option value="Arial, sans-serif">Arial</option>
+                                                        <option value="'Times New Roman', serif">Times New Roman</option>
+                                                        <option value="'Courier New', monospace">Courier New</option>
+                                                        <option value="Traditional Arabic, Arial">Traditional Arabic</option>
+                                                        <option value="Amiri, serif">Amiri</option>
+                                                        <option value="'Scheherazade New', serif">Scheherazade</option>
+                                                    </select>
+                                                    
+                                                    <div className="flex items-center gap-1 border rounded px-1 bg-white">
+                                                        <span className="text-[10px] text-gray-500 font-semibold">Ukuran</span>
+                                                        <input type="number" min="6" max="72" className="w-10 p-1 text-xs border-0 focus:ring-0 text-center" placeholder="Auto" value={activeEl.cells?.[ctSelCells[0]]?.fontSize || ''} onChange={e => {
+                                                            const newCells = {...activeEl.cells};
+                                                            ctSelCells.forEach(ck => { newCells[ck] = {...(newCells[ck]||{}), fontSize: e.target.value ? Number(e.target.value) : undefined}; });
+                                                            updateElement(selectedElementId, { cells: newCells });
+                                                        }}/>
+                                                    </div>
+                                                </div>
                                                 <label className="flex items-center gap-2 text-xs text-gray-700 bg-gray-50 p-2 rounded cursor-pointer border">
                                                     <input type="checkbox" checked={activeEl.cells?.[ctSelCells[0]]?.isHeaderCell || false} onChange={e => {
                                                         const newCells = {...activeEl.cells};
