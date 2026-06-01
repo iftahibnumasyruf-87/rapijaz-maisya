@@ -9,7 +9,7 @@ import {
   Columns, FileSignature, TrendingUp, UserX, Clock, Activity, ChevronDown,
   ZoomIn, ZoomOut, Maximize, Minimize, ChevronUp, Lock, Database, Copy, Undo, Redo, Eye, EyeOff,
   AlignLeft, AlignCenter, AlignRight, AlignStartVertical, AlignCenterVertical, AlignEndVertical, BarChart2, AlignJustify, Layers, Calendar,
-  Minus, Square
+  Minus, Square, Grid
 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, AreaChart, Area } from 'recharts';
@@ -2521,7 +2521,7 @@ const groupBy = (array, key) => array.reduce((result, item) => {
 // ==========================================
 // CUSTOM TABLE (table_custom) RENDERER
 // ==========================================
-const renderCustomTable = (el, replaceVars = s => s) => {
+const renderCustomTable = (el, replaceVars = s => s, options = {}) => {
     const rows = el.tableRows || 3;
     const cols = el.tableCols || 3;
     const colWidths = el.colWidths || Array.from({length: cols}, () => Math.round(100/cols));
@@ -2545,6 +2545,11 @@ const renderCustomTable = (el, replaceVars = s => s) => {
                             const cs = cell.colspan || 1;
                             const rs = cell.rowspan || 1;
                             const cellBg = cell.bgcolor ? cell.bgcolor : (cell.isHeaderCell ? (el.headerBg || '#f3f4f6') : tBg);
+                            
+                            const isEditable = options.isEditable;
+                            const targetColIdx = c + cs - 1;
+                            const targetRowIdx = r + rs - 1;
+
                             return (
                                 <td key={c} colSpan={cs} rowSpan={rs} style={{
                                     border: bStyle,
@@ -2559,8 +2564,53 @@ const renderCustomTable = (el, replaceVars = s => s) => {
                                     direction: cell.isRtl ? 'rtl' : (el.isRtl ? 'rtl' : 'ltr'),
                                     overflow: 'hidden',
                                     wordBreak: 'break-word',
+                                    position: 'relative',
                                 }}>
                                     <span style={{whiteSpace:'pre-wrap'}}>{replaceVars(cell.content || '')}</span>
+                                    
+                                    {isEditable && targetColIdx < cols - 1 && (
+                                        <div 
+                                            onMouseDown={(e) => {
+                                                e.stopPropagation();
+                                                e.preventDefault();
+                                                if (options.onColResizeStart) options.onColResizeStart(el.id, targetColIdx, e);
+                                            }}
+                                            style={{
+                                                position: 'absolute',
+                                                top: 0,
+                                                bottom: 0,
+                                                right: -3,
+                                                width: 6,
+                                                cursor: 'col-resize',
+                                                zIndex: 50,
+                                                background: 'transparent'
+                                            }}
+                                            className="hover:bg-indigo-500/30 transition-colors print:hidden"
+                                            title="Tarik untuk ubah lebar kolom"
+                                        />
+                                    )}
+                                    
+                                    {isEditable && targetRowIdx < rows && (
+                                        <div 
+                                            onMouseDown={(e) => {
+                                                e.stopPropagation();
+                                                e.preventDefault();
+                                                if (options.onRowResizeStart) options.onRowResizeStart(el.id, targetRowIdx, e);
+                                            }}
+                                            style={{
+                                                position: 'absolute',
+                                                left: 0,
+                                                right: 0,
+                                                bottom: -3,
+                                                height: 6,
+                                                cursor: 'row-resize',
+                                                zIndex: 50,
+                                                background: 'transparent'
+                                            }}
+                                            className="hover:bg-indigo-500/30 transition-colors print:hidden"
+                                            title="Tarik untuk ubah tinggi baris"
+                                        />
+                                    )}
                                 </td>
                             );
                         })}
@@ -2939,6 +2989,34 @@ const LayoutBuilder = () => {
     const [ctActiveCell, setCtActiveCell] = useState(null); // last clicked cell key
     const [ctDrag, setCtDrag] = useState(null); // {type:'col'|'row', idx, startX, startY, startVals}
     const ctDragRef = useRef(null);
+
+    const startColResize = (elId, colIdx, e) => {
+        const el = elements.find(item => item.id === elId);
+        if (!el) return;
+        setCtDrag({
+            type: 'col',
+            elId: elId,
+            idx: colIdx,
+            startX: e.clientX,
+            startY: e.clientY,
+            startColWidths: [...(el.colWidths || Array.from({length: el.tableCols || 3}, () => Math.round(100/(el.tableCols || 3))))],
+            startTableWidth: el.width || 300
+        });
+    };
+
+    const startRowResize = (elId, rowIdx, e) => {
+        const el = elements.find(item => item.id === elId);
+        if (!el) return;
+        setCtDrag({
+            type: 'row',
+            elId: elId,
+            idx: rowIdx,
+            startX: e.clientX,
+            startY: e.clientY,
+            startRowHeights: [...(el.rowHeights || Array.from({length: el.tableRows || 3}, () => 30))],
+            startTableHeight: el.height || 90
+        });
+    };
 
     useEffect(() => {
         const handleFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
@@ -3332,6 +3410,56 @@ const LayoutBuilder = () => {
     };
 
     const handleMouseMove = (e) => {
+        if (ctDrag) {
+            const dx = e.clientX - ctDrag.startX;
+            const dy = e.clientY - ctDrag.startY;
+            const scaledDx = dx / zoom;
+            const scaledDy = dy / zoom;
+            
+            if (ctDrag.type === 'col') {
+                const c = ctDrag.idx;
+                const tableWidth = ctDrag.startTableWidth || 300;
+                const percentChange = (scaledDx / tableWidth) * 100;
+                
+                const newColWidths = [...ctDrag.startColWidths];
+                const w1 = ctDrag.startColWidths[c];
+                const w2 = ctDrag.startColWidths[c + 1];
+                
+                let newW1 = w1 + percentChange;
+                let newW2 = w2 - percentChange;
+                
+                const minPercent = 2;
+                if (newW1 < minPercent) {
+                    const diff = minPercent - newW1;
+                    newW1 = minPercent;
+                    newW2 -= diff;
+                }
+                if (newW2 < minPercent) {
+                    const diff = minPercent - newW2;
+                    newW2 = minPercent;
+                    newW1 -= diff;
+                }
+                
+                newColWidths[c] = Math.round(newW1 * 10) / 10;
+                newColWidths[c + 1] = Math.round(newW2 * 10) / 10;
+                
+                updateElement(ctDrag.elId, { colWidths: newColWidths }, false);
+            } else if (ctDrag.type === 'row') {
+                const r = ctDrag.idx;
+                const newRowHeights = [...ctDrag.startRowHeights];
+                let newH = ctDrag.startRowHeights[r] + scaledDy;
+                if (newH < 10) newH = 10;
+                newRowHeights[r] = Math.round(newH);
+                
+                const totalHeight = newRowHeights.reduce((sum, h) => sum + h, 0);
+                updateElement(ctDrag.elId, { 
+                    rowHeights: newRowHeights,
+                    height: totalHeight
+                }, false);
+            }
+            return;
+        }
+
         if (!draggingType || !canvasRef.current) return;
         const canvasRect = canvasRef.current.getBoundingClientRect();
         const scaleX = canvasWidth / canvasRect.width; const scaleY = canvasHeight / canvasRect.height;
@@ -3389,6 +3517,12 @@ const LayoutBuilder = () => {
     };
 
     const handleMouseUp = () => {
+        if (ctDrag) {
+            setPast(p => [...p, elements]);
+            setFuture([]);
+            setCtDrag(null);
+            return;
+        }
         // Finalisasi rubber-band selection
         if (draggingType === 'selection' && selectionBox) {
             const minX = Math.min(selectionBox.startX, selectionBox.endX);
@@ -3606,7 +3740,7 @@ const LayoutBuilder = () => {
                             <div className="flex flex-col"><label className="text-[10px] text-indigo-600 mb-1 font-bold">Kanan</label><input type="number" value={margins.right} onChange={e=>setMargins({...margins, right: Number(e.target.value)})} className="w-full p-1.5 border border-indigo-200 rounded text-xs" /></div>
                         </div>
                     </div>
-                    <button onClick={() => { setSelectedElementId(null); setTimeout(() => { document.title = "Print_Preview_Layout"; window.print(); }, 100); }} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-lg font-bold flex justify-center items-center gap-2 transition shadow-sm"><Printer size={16}/> Print Preview</button>
+                    <button onClick={() => { setSelectedIds([]); setTimeout(() => { document.title = "Print_Preview_Layout"; window.print(); }, 100); }} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-lg font-bold flex justify-center items-center gap-2 transition shadow-sm"><Printer size={16}/> Print Preview</button>
                     {showNewLayoutForm && (
                         <div className="border-t pt-3 space-y-2">
                             <p className="text-xs font-semibold text-gray-600">Nama Layout Baru</p>
@@ -4466,14 +4600,12 @@ const LayoutBuilder = () => {
                                             {(el.children || []).map(child => (
                                                 <div key={child.id} style={{
                                                     position: 'absolute', left: `${child.x}px`, top: `${child.y}px`, fontSize: `${child.fontSize}px`, fontFamily: child.fontFamily || 'Arial, sans-serif', fontWeight: child.fontWeight,
-                                                    width: child.width ? `${child.width}px` : 'auto', height: child.type === 'image' ? `${child.height}px` : 'auto',
-                                                    padding: (child.type === 'image' || child.type === 'table_grades' || child.type === 'table_custom') ? '0' : '2px',
                                                     width: child.width ? `${child.width}px` : 'auto', height: (child.type === 'image' || child.type === 'shape' || child.type === 'table_custom') ? `${child.height}px` : 'auto',
                                                     padding: (child.type === 'image' || child.type === 'table_grades' || child.type === 'table_custom' || child.type === 'shape' || child.type === 'line') ? '0' : '2px',
                                                     zIndex: child.zIndex ?? 1, opacity: child.opacity ?? 1
                                                 }}>
                                                     {child.type === 'table_grades' ? renderDynamicTable(child, data, mockStudentGrades, mockClassAverages, false, 'raport', classesData, 0) 
-                                                    : child.type === 'table_custom' ? renderCustomTable(child, s=>s)
+                                                    : child.type === 'table_custom' ? renderCustomTable(child, s=>s, { isEditable: selectedIds.includes(child.id), onColResizeStart: startColResize, onRowResizeStart: startRowResize })
                                                     : child.type === 'image' ? <img src={child.content} style={{ width: '100%', height: '100%', objectFit: child.objectFit || 'contain', objectPosition: `${child.objectPositionX ?? 50}% ${child.objectPositionY ?? 50}%`, pointerEvents: 'none' }} alt="elemen" />
                                                     : child.type === 'line' ? <div style={{ width: '100%', height: `${child.lineThickness || 2}px`, backgroundColor: child.lineColor || '#000000', pointerEvents: 'none' }} />
                                                     : child.type === 'shape' ? <div style={{ width: '100%', height: '100%', backgroundColor: child.shapeFill || '#000000', borderRadius: `${child.shapeRadius || 0}px`, border: child.shapeBorder ? `${child.shapeBorder}px solid ${child.shapeBorderColor || '#000000'}` : 'none', pointerEvents: 'none' }} />
@@ -4482,7 +4614,7 @@ const LayoutBuilder = () => {
                                             ))}
                                         </div>
                                     ) : el.type === 'table_grades' ? renderDynamicTable(el, data, mockStudentGrades, mockClassAverages, false, 'raport', classesData, 0) 
-                                    : el.type === 'table_custom' ? renderCustomTable(el, s=>s)
+                                    : el.type === 'table_custom' ? renderCustomTable(el, s=>s, { isEditable: selectedIds.includes(el.id), onColResizeStart: startColResize, onRowResizeStart: startRowResize })
                                     : el.type === 'image' ? <img src={el.content} style={{ width: '100%', height: '100%', objectFit: el.objectFit || 'contain', objectPosition: `${el.objectPositionX ?? 50}% ${el.objectPositionY ?? 50}%`, pointerEvents: 'none' }} alt="elemen" />
                                     : el.type === 'line' ? <div style={{ width: '100%', height: `${el.lineThickness || 2}px`, backgroundColor: el.lineColor || '#000000', pointerEvents: 'none' }} />
                                     : el.type === 'shape' ? <div style={{ width: '100%', height: '100%', backgroundColor: el.shapeFill || '#000000', borderRadius: `${el.shapeRadius || 0}px`, border: el.shapeBorder ? `${el.shapeBorder}px solid ${el.shapeBorderColor || '#000000'}` : 'none', pointerEvents: 'none' }} />
