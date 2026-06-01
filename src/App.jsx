@@ -4302,10 +4302,14 @@ const LayoutBuilder = () => {
                                         <input type="color" className="w-10 h-8 p-0 border-0 rounded cursor-pointer" value={activeEl.borderColor || '#000000'} onChange={e => updateElement(selectedElementId, { borderColor: e.target.value }, false)} onBlur={e => updateElement(selectedElementId, { borderColor: e.target.value })}/>
                                         <input type="number" min="0" max="10" className="w-16 p-1.5 border rounded text-sm ml-2" value={activeEl.borderWidth !== undefined ? activeEl.borderWidth : 1} onChange={e => updateElement(selectedElementId, { borderWidth: Number(e.target.value) })} title="Tebal Border (px)"/> px
                                     </div>
-                                    <div className="flex gap-2 items-center mt-2">
-                                        <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
+                                    <div className="flex flex-col gap-1 mt-2">
+                                        <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 bg-white p-2 border rounded cursor-pointer">
                                             <input type="checkbox" checked={activeEl.noHeader || false} onChange={e => updateElement(selectedElementId, { noHeader: e.target.checked })}/>
                                             Tanpa Header (Matikan Background Abu-abu)
+                                        </label>
+                                        <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 bg-white p-2 border rounded cursor-pointer">
+                                            <input type="checkbox" checked={activeEl.isTransparent || false} onChange={e => updateElement(selectedElementId, { isTransparent: e.target.checked })}/>
+                                            Latar Tabel Transparan (Tanpa Putih)
                                         </label>
                                     </div>
                                     <div className="bg-gray-100 p-2 rounded-lg mt-2">
