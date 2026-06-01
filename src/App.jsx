@@ -2544,7 +2544,7 @@ const renderCustomTable = (el, replaceVars = s => s, options = {}) => {
                             if (cell.isHidden) return null;
                             const cs = cell.colspan || 1;
                             const rs = cell.rowspan || 1;
-                            const cellBg = cell.bgcolor ? cell.bgcolor : (cell.isHeaderCell ? (el.headerBg || '#f3f4f6') : tBg);
+                            const cellBg = cell.bgcolor ? cell.bgcolor : ((!el.noHeader && cell.isHeaderCell) ? (el.headerBg || '#f3f4f6') : tBg);
                             
                             const isEditable = options.isEditable;
                             const targetColIdx = c + cs - 1;
@@ -4258,6 +4258,12 @@ const LayoutBuilder = () => {
                                         <label className="text-xs font-semibold text-gray-700 whitespace-nowrap">Warna Border</label>
                                         <input type="color" className="w-10 h-8 p-0 border-0 rounded cursor-pointer" value={activeEl.borderColor || '#000000'} onChange={e => updateElement(selectedElementId, { borderColor: e.target.value }, false)} onBlur={e => updateElement(selectedElementId, { borderColor: e.target.value })}/>
                                         <input type="number" min="0" max="10" className="w-16 p-1.5 border rounded text-sm ml-2" value={activeEl.borderWidth !== undefined ? activeEl.borderWidth : 1} onChange={e => updateElement(selectedElementId, { borderWidth: Number(e.target.value) })} title="Tebal Border (px)"/> px
+                                    </div>
+                                    <div className="flex gap-2 items-center mt-2">
+                                        <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
+                                            <input type="checkbox" checked={activeEl.noHeader || false} onChange={e => updateElement(selectedElementId, { noHeader: e.target.checked })}/>
+                                            Tanpa Header (Matikan Background Abu-abu)
+                                        </label>
                                     </div>
                                     <div className="bg-gray-100 p-2 rounded-lg mt-2">
                                         <label className="text-[10px] text-gray-500 font-bold uppercase mb-2 block">Lebar Kolom (%)</label>
