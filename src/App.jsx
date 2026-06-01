@@ -2956,31 +2956,43 @@ const defaultTableColumns = [
     { id: 'c4', header: 'KKM', type: 'KKM', width: 10 },
     { id: 'c5', header: 'Nilai', type: 'NILAI', width: 15 }
 ];
-const VariablesHelp = () => {
-    const [open, setOpen] = useState(false);
+const VariablesHelp = ({ onInsert }) => {
     return (
-        <div className="mt-2 text-xs">
-            <button onClick={() => setOpen(!open)} className="text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1">
-                <Info size={14} /> Daftar Variabel Tersedia
-            </button>
-            {open && (
-                <div className="mt-2 p-2 bg-indigo-50 border border-indigo-100 rounded-md text-gray-700 space-y-1 h-32 overflow-y-auto text-[10px]">
-                    <p className="font-bold border-b border-indigo-200 pb-1 mb-1">Data Santri:</p>
-                    <p><code>{`{{nama_santri}}`}</code> : Nama</p>
-                    <p><code>{`{{nama_santri_ar}}`}</code> : Nama (Arab)</p>
-                    <p><code>{`{{nis}}`}</code> : NIS</p>
-                    <p><code>{`{{nisn}}`}</code> : NISN</p>
-                    <p><code>{`{{kelas}}`}</code> : Kelas</p>
-                    <p><code>{`{{kelas_ar}}`}</code> : Kelas (Arab)</p>
-                    <p className="font-bold border-b border-indigo-200 pb-1 mb-1 mt-2">Data Pengaturan:</p>
-                    <p><code>{`{{tahun_ajaran}}`}</code> : Thn Ajaran</p>
-                    <p><code>{`{{tahun_ajaran_ar}}`}</code> : Thn Ajaran (Arab)</p>
-                    <p><code>{`{{semester}}`}</code> : Semester</p>
-                    <p><code>{`{{semester_ar}}`}</code> : Semester (Arab)</p>
-                    <p className="font-bold border-b border-indigo-200 pb-1 mb-1 mt-2">Variabel Excel:</p>
-                    <p className="leading-tight text-[9px] text-gray-500">Anda juga dapat memanggil nama kolom apapun dari Excel (contoh: <code>{`{{Tempat Lahir}}`}</code>)</p>
-                </div>
-            )}
+        <div className="mt-2 text-xs flex gap-2 items-center bg-gray-50 p-2 rounded border">
+            <span className="text-[10px] text-gray-600 font-bold whitespace-nowrap">Sisipkan:</span>
+            <select className="flex-1 p-1 border rounded bg-white text-[10px] outline-none" onChange={(e) => {
+                if(e.target.value && onInsert) {
+                    onInsert(e.target.value);
+                    e.target.value = "";
+                }
+            }}>
+                <option value="">-- Pilih Variabel --</option>
+                <optgroup label="Data Santri">
+                    <option value="{{nama_santri}}">Nama Santri</option>
+                    <option value="{{nama_santri_ar}}">Nama Santri (Arab)</option>
+                    <option value="{{nis}}">NIS</option>
+                    <option value="{{nisn}}">NISN</option>
+                    <option value="{{kelas}}">Kelas</option>
+                    <option value="{{kelas_ar}}">Kelas (Arab)</option>
+                </optgroup>
+                <optgroup label="Statistik Raport & Kelas">
+                    <option value="{{total_raport}}">Total Raport (مجموع النتائج)</option>
+                    <option value="{{total_raport_ar}}">Total Raport Arab (مجموع النتائج)</option>
+                    <option value="{{rata_rata_raport}}">Rata-rata Raport (معدل النتائج)</option>
+                    <option value="{{rata_rata_raport_ar}}">Rata-rata Raport Arab (معدل النتائج)</option>
+                    <option value="{{jumlah_santri}}">Jumlah Santri di Kelas (عدد الطلاب)</option>
+                    <option value="{{jumlah_santri_ar}}">Jumlah Santri Arab (عدد الطلاب)</option>
+                </optgroup>
+                <optgroup label="Pengaturan">
+                    <option value="{{tahun_ajaran}}">Tahun Ajaran</option>
+                    <option value="{{tahun_ajaran_ar}}">Tahun Ajaran (Arab)</option>
+                    <option value="{{semester}}">Semester</option>
+                    <option value="{{semester_ar}}">Semester (Arab)</option>
+                </optgroup>
+                <optgroup label="Variabel Excel">
+                    <option value="" disabled>Ketik manual: {'{{Nama Kolom}}'}</option>
+                </optgroup>
+            </select>
         </div>
     );
 };
@@ -3928,7 +3940,7 @@ const LayoutBuilder = () => {
                             {activeEl.type === 'text' && (
                                 <>
                                     <textarea className="w-full p-2 border rounded text-sm focus:ring-2 outline-none min-h-[60px]" value={activeEl.content} onChange={e => updateElement(selectedElementId, { content: e.target.value })} />
-                                    <VariablesHelp />
+                                    <VariablesHelp onInsert={(val) => updateElement(selectedElementId, { content: (activeEl.content || '') + val })} />
                                 </>
                             )}
 
@@ -4340,7 +4352,14 @@ const LayoutBuilder = () => {
                                                     ctSelCells.forEach(ck => { newCells[ck] = {...(newCells[ck]||{}), content: e.target.value}; });
                                                     updateElement(selectedElementId, { cells: newCells });
                                                 }}></textarea>
-                                                <VariablesHelp />
+                                                <VariablesHelp onInsert={(val) => {
+                                                    const newCells = {...activeEl.cells};
+                                                    ctSelCells.forEach(ck => { 
+                                                        const currentVal = newCells[ck]?.content || '';
+                                                        newCells[ck] = {...(newCells[ck]||{}), content: currentVal + val}; 
+                                                    });
+                                                    updateElement(selectedElementId, { cells: newCells });
+                                                }} />
                                                 <div className="flex gap-2 items-center">
                                                     <button onClick={() => {
                                                         const newCells = {...activeEl.cells};
@@ -5572,6 +5591,30 @@ const CetakDokumen = ({ mode = 'raport' }) => {
         
         const replaceVariables = (str) => {
             if (typeof str !== 'string') return str;
+            
+            // Hitung Total Raport & Rata-rata
+            const relevantSubjects = data.subjects?.filter(s => isSubjectVisibleInClass(s, selectedClass, classesData)) || [];
+            let totalVal = 0; let countVal = 0;
+            relevantSubjects.forEach(s => {
+                const gradeObj = sGrades[s.id];
+                let num = null;
+                if (gradeObj && typeof gradeObj === 'object') {
+                    const r = computeRaportScore(gradeObj.uts, gradeObj.uas);
+                    num = r !== '' ? Number(r) : null;
+                } else if (gradeObj !== undefined && gradeObj !== '' && !isNaN(gradeObj)) {
+                    num = Number(gradeObj);
+                }
+                if (num !== null && !isNaN(num)) { totalVal += num; countVal++; }
+            });
+            const rataRata = countVal > 0 ? (totalVal / countVal).toFixed(2) : '';
+            const totalRaport = countVal > 0 ? totalVal : '';
+            const jumlahSantri = studentsInClass?.length || 0;
+            const toArabicNumbers = (val) => String(val).replace(/[0-9]/g, w => ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'][w]);
+
+            const totalRaportAr = totalRaport !== '' ? toArabicNumbers(totalRaport) : '';
+            const rataRataAr = rataRata !== '' ? toArabicNumbers(rataRata) : '';
+            const jumlahSantriAr = toArabicNumbers(jumlahSantri);
+
             let replaced = str.replace(/\{\{nama_santri\}\}/gi, stdData.nama || '')
                              .replace(/\{\{nama_santri_ar\}\}/gi, stdData.nama_arab || '')
                              .replace(/\{\{nis\}\}/gi, stdData.nis || '')
@@ -5581,7 +5624,13 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                              .replace(/\{\{tahun_ajaran\}\}/gi, activeSetting.tahun || '')
                              .replace(/\{\{tahun_ajaran_ar\}\}/gi, activeSetting.tahun_arab || '')
                              .replace(/\{\{semester\}\}/gi, activeSetting.semester || '')
-                             .replace(/\{\{semester_ar\}\}/gi, activeSetting.semester_arab || '');
+                             .replace(/\{\{semester_ar\}\}/gi, activeSetting.semester_arab || '')
+                             .replace(/\{\{total_raport\}\}/gi, totalRaport)
+                             .replace(/\{\{total_raport_ar\}\}/gi, totalRaportAr)
+                             .replace(/\{\{rata_rata_raport\}\}/gi, rataRata)
+                             .replace(/\{\{rata_rata_raport_ar\}\}/gi, rataRataAr)
+                             .replace(/\{\{jumlah_santri\}\}/gi, jumlahSantri)
+                             .replace(/\{\{jumlah_santri_ar\}\}/gi, jumlahSantriAr);
             
             return replaced.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
                  if (stdData[key] !== undefined) return stdData[key];
