@@ -1305,6 +1305,7 @@ const BackupRestorePanel = () => {
                     
                     if (filteredData.length === 0) continue;
 
+                    const EXCEL_MAX_CELL_LEN = 32767;
                     const flatData = filteredData.map(item => {
                         let newItem = {};
                         for (const key in item) {
@@ -1315,7 +1316,13 @@ const BackupRestorePanel = () => {
                                     newItem[key] = getClassNameFromValue(freshData.classes, item[key]) || item[key];
                                 }
                             } else if (typeof item[key] === 'object' && item[key] !== null) {
-                                newItem[key] = JSON.stringify(item[key]);
+                                const jsonStr = JSON.stringify(item[key]);
+                                // Truncate jika melebihi batas Excel (32767 karakter per cell)
+                                newItem[key] = jsonStr.length > EXCEL_MAX_CELL_LEN
+                                    ? jsonStr.substring(0, EXCEL_MAX_CELL_LEN - 3) + '...'
+                                    : jsonStr;
+                            } else if (typeof item[key] === 'string' && item[key].length > EXCEL_MAX_CELL_LEN) {
+                                newItem[key] = item[key].substring(0, EXCEL_MAX_CELL_LEN - 3) + '...';
                             } else {
                                 newItem[key] = item[key];
                             }

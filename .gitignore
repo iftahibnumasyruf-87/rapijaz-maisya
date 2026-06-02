@@ -24,3 +24,10 @@ dist-ssr
 *.sw?
 
 .vercel
+
+# File dokumen besar (tidak perlu di-commit ke git)
+*.xlsx
+*.xlsm
+*.xls
+*.pdf
+~$*
