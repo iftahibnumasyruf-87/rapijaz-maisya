@@ -480,7 +480,7 @@ const AppProvider = ({ children }) => {
   };
 
   const fetchLazyCollections = async (currentData) => {
-    const lazyCollections = ['subjectCategories', 'masterSubjects', 'subjects', 'students', 'grades', 'fonts', 'studentFields', 'presences', 'extracurriculars', 'characterTraits', 'logs', 'teachers'];
+    const lazyCollections = ['subjectCategories', 'masterSubjects', 'subjects', 'students', 'grades', 'fonts', 'studentFields', 'presences', 'extracurriculars', 'characterTraits', 'logs', 'teachers', 'studentSnapshots'];
     let newData = { ...currentData };
 
     for (const colName of lazyCollections) {
@@ -489,6 +489,7 @@ const AppProvider = ({ children }) => {
         if (!error && items) {
           newData[colName] = sortDataItems(items.map(item => ({ ...item.payload, id: item.id })));
         }
+        // Jika error (misalnya tabel belum dibuat), biarkan sebagai array kosong
       }
     }
 
@@ -1111,6 +1112,98 @@ const HomeDashboard = () => {
     );
 };
 
+// ==========================================
+// Komponen Diagnostik: Panduan Tabel studentSnapshots
+// ==========================================
+const SnapshotTableGuide = () => {
+    const [status, setStatus] = useState('checking'); // 'checking' | 'ok' | 'missing' | 'error'
+    const [errMsg, setErrMsg] = useState('');
+    const [showSql, setShowSql] = useState(false);
+
+    useEffect(() => {
+        const check = async () => {
+            try {
+                const { error } = await supabase.from('studentSnapshots').select('id').limit(1);
+                if (!error) {
+                    setStatus('ok');
+                } else {
+                    const msg = error.message || error.code || '';
+                    const isMissing = error.code === 'PGRST205' || error.code === '42P01' || msg.toLowerCase().includes('does not exist') || msg.toLowerCase().includes('relation');
+                    setStatus(isMissing ? 'missing' : 'error');
+                    setErrMsg(msg);
+                }
+            } catch (e) {
+                setStatus('error');
+                setErrMsg(e?.message || 'Tidak diketahui');
+            }
+        };
+        check();
+    }, []);
+
+    const sqlCode = `-- Jalankan SQL ini di Supabase Dashboard > SQL Editor
+CREATE TABLE IF NOT EXISTS "studentSnapshots" (
+  id text PRIMARY KEY,
+  payload jsonb
+);
+
+-- Aktifkan Row Level Security (opsional tapi disarankan)
+ALTER TABLE "studentSnapshots" ENABLE ROW LEVEL SECURITY;
+
+-- Buat policy agar dapat diakses oleh anon key
+CREATE POLICY "Allow all" ON "studentSnapshots"
+  FOR ALL USING (true) WITH CHECK (true);`;
+
+    if (status === 'checking') return null;
+    if (status === 'ok') return null;
+
+    return (
+        <div className={`border p-5 rounded-xl ${status === 'missing' ? 'bg-red-50 border-red-200' : 'bg-yellow-50 border-yellow-200'}`}>
+            <h4 className={`font-bold text-lg mb-2 flex items-center gap-2 ${status === 'missing' ? 'text-red-900' : 'text-yellow-900'}`}>
+                <AlertCircle size={20}/>
+                {status === 'missing' ? '⚠️ Tabel "studentSnapshots" Belum Dibuat' : '⚠️ Peringatan Tabel "studentSnapshots"'}
+            </h4>
+            <p className={`text-sm mb-3 ${status === 'missing' ? 'text-red-800' : 'text-yellow-800'}`}>
+                {status === 'missing'
+                    ? 'Fitur Kunci Data Santri (Snapshot) tidak dapat digunakan karena tabel ini belum ada di database Supabase Anda.'
+                    : `Terjadi masalah saat mengakses tabel: ${errMsg}`
+                }
+            </p>
+            {status === 'missing' && (
+                <>
+                    <p className="text-sm text-red-700 font-semibold mb-2">📋 Cara membuat tabel:</p>
+                    <ol className="text-sm text-red-800 list-decimal ml-5 space-y-1 mb-3">
+                        <li>Buka <a href="https://supabase.com/dashboard" target="_blank" rel="noreferrer" className="underline font-bold">dashboard.supabase.com</a></li>
+                        <li>Pilih project Anda</li>
+                        <li>Buka menu <b>SQL Editor</b> di sidebar kiri</li>
+                        <li>Klik <b>New query</b>, lalu paste SQL di bawah ini</li>
+                        <li>Klik <b>Run</b>, kemudian refresh halaman ini</li>
+                    </ol>
+                    <button
+                        onClick={() => setShowSql(v => !v)}
+                        className="text-sm bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-bold transition mb-3 flex items-center gap-2"
+                    >
+                        {showSql ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}
+                        {showSql ? 'Sembunyikan SQL' : 'Tampilkan Kode SQL →'}
+                    </button>
+                    {showSql && (
+                        <div className="relative">
+                            <pre className="bg-gray-900 text-green-300 text-xs p-4 rounded-lg overflow-x-auto whitespace-pre-wrap font-mono leading-relaxed">
+                                {sqlCode}
+                            </pre>
+                            <button
+                                onClick={() => { navigator.clipboard.writeText(sqlCode); }}
+                                className="absolute top-2 right-2 bg-gray-700 hover:bg-gray-600 text-white text-xs px-3 py-1 rounded font-bold transition"
+                            >
+                                Copy
+                            </button>
+                        </div>
+                    )}
+                </>
+            )}
+        </div>
+    );
+};
+
 const BackupRestorePanel = () => {
     const { data, allData, activeSetting, SEMESTER_SPECIFIC_COLS, saveToDb, showNotification } = useContext(AppContext);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -1133,10 +1226,18 @@ const BackupRestorePanel = () => {
         setProgressText('Mengecek database...');
         try {
             const { error: checkErr } = await supabase.from('studentSnapshots').select('id').limit(1);
-            if (checkErr && checkErr.code === 'PGRST205') {
-                 alert('GAGAL: Tabel "studentSnapshots" belum dibuat di database Supabase Anda.\n\nSilakan buka dashboard Supabase, buat tabel baru bernama "studentSnapshots", lalu tambahkan kolom: "id" (text/varchar, jadikan Primary Key) dan "payload" (jsonb).');
-                 setIsProcessing(false);
-                 return;
+            if (checkErr) {
+                // Tabel belum ada atau ada masalah akses
+                const errMsg = checkErr.message || checkErr.code || '';
+                const isTableMissing = checkErr.code === 'PGRST205' || checkErr.code === '42P01' || errMsg.toLowerCase().includes('does not exist') || errMsg.toLowerCase().includes('relation') || errMsg.toLowerCase().includes('pgrst205');
+                if (isTableMissing) {
+                    alert('GAGAL: Tabel "studentSnapshots" belum dibuat di database Supabase Anda.\n\nSilakan buka dashboard Supabase, buat tabel baru bernama "studentSnapshots", lalu tambahkan kolom: "id" (text/varchar, jadikan Primary Key) dan "payload" (jsonb).\n\nDetail error: ' + errMsg);
+                    setIsProcessing(false);
+                    setProgressText('');
+                    return;
+                }
+                // Error lain (koneksi, RLS, dll) - lanjutkan tapi tampilkan peringatan
+                console.warn('Peringatan cek tabel studentSnapshots:', checkErr);
             }
 
             setProgressText('Menyimpan Snapshot...');
@@ -1150,7 +1251,7 @@ const BackupRestorePanel = () => {
             showNotification('Snapshot berhasil disimpan!');
         } catch (e) {
             console.error(e);
-            showNotification('Gagal menyimpan snapshot', 'error');
+            showNotification('Gagal menyimpan snapshot: ' + (e?.message || ''), 'error');
         }
         setIsProcessing(false);
         setProgressText('');
@@ -1171,14 +1272,35 @@ const BackupRestorePanel = () => {
             const wb = XLSX.utils.book_new();
             const collections = ['settings', 'users', 'subjectCategories', 'masterSubjects', 'subjects', 'classes', 'students', 'teachers', 'grades', 'layouts', 'fonts', 'studentFields', 'presences', 'extracurriculars', 'characterTraits', 'studentSnapshots'];
             
+            // Fetch fresh data langsung dari Supabase untuk semua koleksi agar memastikan data terbaru
+            let freshData = {};
             for (const col of collections) {
-                setProgressText(`Menyiapkan data: ${col}...`);
-                await new Promise(r => setTimeout(r, 10)); 
+                setProgressText(`Mengambil data: ${col}...`);
+                await new Promise(r => setTimeout(r, 10));
+                try {
+                    const { data: items, error } = await supabase.from(col).select('*');
+                    if (!error && items) {
+                        freshData[col] = items.map(item => ({ ...item.payload, id: item.id }));
+                    } else {
+                        // Fallback ke data lokal jika ada error (misal tabel belum ada)
+                        freshData[col] = data[col] || [];
+                        if (error) console.warn(`Peringatan backup koleksi ${col}:`, error.message);
+                    }
+                } catch (fetchErr) {
+                    freshData[col] = data[col] || [];
+                    console.warn(`Peringatan backup koleksi ${col}:`, fetchErr);
+                }
+            }
 
-                if (data[col] && data[col].length > 0) {
-                    let filteredData = data[col];
+            for (const col of collections) {
+                setProgressText(`Menyiapkan sheet: ${col}...`);
+                await new Promise(r => setTimeout(r, 10));
+
+                const colData = freshData[col] || [];
+                if (colData.length > 0) {
+                    let filteredData = colData;
                     if (['settings', 'grades', 'studentSnapshots'].includes(col)) {
-                        filteredData = data[col].filter(item => item.tahun === activeSetting.tahun);
+                        filteredData = colData.filter(item => item.tahun === activeSetting.tahun);
                     }
                     
                     if (filteredData.length === 0) continue;
@@ -1186,11 +1308,11 @@ const BackupRestorePanel = () => {
                     const flatData = filteredData.map(item => {
                         let newItem = {};
                         for (const key in item) {
-                            if (key === 'kelas' && data.classes && (col === 'students' || col === 'subjects')) {
+                            if (key === 'kelas' && freshData.classes && (col === 'students' || col === 'subjects')) {
                                 if (Array.isArray(item[key])) {
-                                    newItem[key] = item[key].map(k => getClassNameFromValue(data.classes, k) || k).join(', ');
+                                    newItem[key] = item[key].map(k => getClassNameFromValue(freshData.classes, k) || k).join(', ');
                                 } else {
-                                    newItem[key] = getClassNameFromValue(data.classes, item[key]) || item[key];
+                                    newItem[key] = getClassNameFromValue(freshData.classes, item[key]) || item[key];
                                 }
                             } else if (typeof item[key] === 'object' && item[key] !== null) {
                                 newItem[key] = JSON.stringify(item[key]);
@@ -1208,6 +1330,11 @@ const BackupRestorePanel = () => {
             setProgressText('Membuat file Excel...');
             await new Promise(r => setTimeout(r, 50));
 
+            // Pastikan workbook memiliki setidaknya satu sheet
+            if (wb.SheetNames.length === 0) {
+                throw new Error('Tidak ada data untuk di-backup pada tahun ajaran ini.');
+            }
+
             const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
             const blob = new Blob([wbout], { type: 'application/octet-stream' });
             const url = URL.createObjectURL(blob);
@@ -1222,9 +1349,9 @@ const BackupRestorePanel = () => {
             showNotification('Proses Backup Selesai!', 'success');
             alert('Proses Backup Berhasil!\n\nFile Excel telah diunduh ke perangkat Anda.');
         } catch (e) {
-            console.error(e);
-            showNotification('Gagal membuat file Excel', 'error');
-            alert('Proses Backup Gagal!\n\nPastikan data Anda tidak ada yang korup.');
+            console.error('Backup error:', e);
+            showNotification('Gagal membuat file Excel: ' + (e?.message || ''), 'error');
+            alert('Proses Backup Gagal!\n\nError: ' + (e?.message || 'Tidak diketahui') + '\n\nCek console browser untuk detail lebih lanjut.');
         } finally {
             setIsProcessing(false);
             setProgressText('');
@@ -1527,7 +1654,7 @@ const BackupRestorePanel = () => {
                     Gunakan fitur ini untuk mencadangkan (backup) seluruh data sistem dalam format Excel (.xlsx), mengeditnya secara manual, lalu memulihkannya (restore).
                 </p>
                 <div className="flex gap-4">
-                    <button onClick={handleBackupExcel} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition shadow-sm">
+                    <button onClick={handleBackupExcel} disabled={isProcessing} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition shadow-sm disabled:opacity-50">
                         <Download size={20}/> Download Backup (.xlsx)
                     </button>
                     
@@ -1545,6 +1672,9 @@ const BackupRestorePanel = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Panel Panduan Tabel studentSnapshots */}
+            <SnapshotTableGuide />
 
             {/* OVERLAY LOADING */}
             {isProcessing && (
