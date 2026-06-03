@@ -3043,7 +3043,7 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
                                                     textAlign: segTextAlign, 
                                                     fontFamily: segFontFamily, 
                                                     fontSize: segFontSize,
-                                                    backgroundColor: el.isTransparent ? 'transparent' : (el.catBgColor || '#f9fafb')
+                                                    backgroundColor: el.isTransparent ? 'transparent' : (el.catBgEnabled ? (el.catBgColor || '#e5e7eb') : 'transparent')
                                                 }}
                                             >
                                                 {segLabel}
@@ -4372,28 +4372,36 @@ const LayoutBuilder = () => {
                                             </div>
 
                                             <div>
-                                                <label className="text-[10px] text-gray-500 font-bold uppercase mb-1 block">Warna Latar Baris Kategori</label>
-                                                <div className="flex gap-2 items-center">
-                                                    <input
-                                                        type="color"
-                                                        className="w-9 h-8 p-0.5 border rounded cursor-pointer bg-white"
-                                                        value={activeEl.catBgColor || '#f9fafb'}
-                                                        onChange={e => updateElement(selectedElementId, { catBgColor: e.target.value })}
+                                                <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 cursor-pointer">
+                                                    <input 
+                                                        type="checkbox" 
+                                                        checked={activeEl.catBgEnabled || false} 
+                                                        onChange={e => updateElement(selectedElementId, { catBgEnabled: e.target.checked })} 
                                                     />
-                                                    <input
-                                                        type="text"
-                                                        className="flex-1 p-1.5 border rounded text-xs outline-none bg-white font-mono"
-                                                        value={activeEl.catBgColor || '#f9fafb'}
-                                                        onChange={e => updateElement(selectedElementId, { catBgColor: e.target.value })}
-                                                        placeholder="#f9fafb"
-                                                    />
-                                                    <button
-                                                        className="text-[10px] px-2 py-1 bg-gray-100 border rounded hover:bg-gray-200 text-gray-600"
-                                                        onClick={() => updateElement(selectedElementId, { catBgColor: undefined })}
-                                                        title="Reset ke default (abu-abu terang)"
-                                                    >Reset</button>
-                                                </div>
-                                                <p className="text-[9px] text-gray-400 mt-0.5">Default: abu-abu terang (#f9fafb)</p>
+                                                    Aktifkan Warna Latar Baris Kategori
+                                                </label>
+                                                {activeEl.catBgEnabled && (
+                                                    <div className="flex gap-2 items-center mt-2">
+                                                        <input
+                                                            type="color"
+                                                            className="w-9 h-8 p-0.5 border rounded cursor-pointer bg-white"
+                                                            value={activeEl.catBgColor || '#e5e7eb'}
+                                                            onChange={e => updateElement(selectedElementId, { catBgColor: e.target.value })}
+                                                        />
+                                                        <input
+                                                            type="text"
+                                                            className="flex-1 p-1.5 border rounded text-xs outline-none bg-white font-mono"
+                                                            value={activeEl.catBgColor || '#e5e7eb'}
+                                                            onChange={e => updateElement(selectedElementId, { catBgColor: e.target.value })}
+                                                            placeholder="#e5e7eb"
+                                                        />
+                                                        <button
+                                                            className="text-[10px] px-2 py-1 bg-gray-100 border rounded hover:bg-gray-200 text-gray-600 shrink-0"
+                                                            onClick={() => updateElement(selectedElementId, { catBgColor: '#e5e7eb' })}
+                                                            title="Reset ke abu-abu"
+                                                        >Reset</button>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     )}
