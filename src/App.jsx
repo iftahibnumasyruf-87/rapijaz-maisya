@@ -3537,6 +3537,25 @@ const LayoutBuilder = () => {
         showNotification(`Layout "${newName}" berhasil dibuat!`, 'success');
     };
 
+    const renameLayout = () => {
+        const layout = data.layouts.find(l => l.id === activeLayout);
+        if (!layout) return;
+        
+        const newName = window.prompt('Masukkan nama baru untuk layout ini:', layout.name || activeLayout);
+        if (newName && newName.trim() !== '' && newName.trim() !== (layout.name || activeLayout)) {
+            const finalName = newName.trim();
+            saveToDb('layouts', activeLayout, {
+                name: finalName,
+                elements,
+                pageSize,
+                orientation,
+                guides,
+                margins
+            }, false, `Mengubah nama layout menjadi "${finalName}"`);
+            showNotification(`Nama layout berhasil diubah menjadi "${finalName}"`, 'success');
+        }
+    };
+
     // Drag Logic
     const [draggingType, setDraggingType] = useState(null);
     const [dragIndex, setDragIndex] = useState(null);
@@ -3926,13 +3945,14 @@ const LayoutBuilder = () => {
                 </div>
                 
                 <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
-                    <div className="flex gap-2">
-                        <select className="flex-1 p-2 border rounded-lg bg-white text-sm font-bold text-emerald-800" value={activeLayout} onChange={e => setActiveLayout(e.target.value)}>
+                    <div className="flex gap-1">
+                        <select className="flex-1 p-2 border rounded-lg bg-white text-sm font-bold text-emerald-800 truncate" value={activeLayout} onChange={e => setActiveLayout(e.target.value)}>
                             {data.layouts && data.layouts.map(l => <option key={l.id} value={l.id}>{l.name || l.id}</option>)}
                         </select>
-                        <button onClick={() => setShowNewLayoutForm(!showNewLayoutForm)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 rounded-lg text-sm font-bold transition" title="Tambah layout baru"><Plus size={16}/></button>
-                        <button onClick={duplicateLayout} className="bg-blue-500 hover:bg-blue-600 text-white px-3 rounded-lg text-sm font-bold transition" title="Duplikat layout ini"><Copy size={16}/></button>
-                        {data.layouts && data.layouts.length > 1 && <button onClick={() => deleteLayout(activeLayout)} className="bg-red-500 hover:bg-red-600 text-white px-3 rounded-lg text-sm font-bold transition" title="Hapus layout"><Trash2 size={16}/></button>}
+                        <button onClick={() => setShowNewLayoutForm(!showNewLayoutForm)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-2 rounded-lg text-sm font-bold transition shrink-0" title="Tambah layout baru"><Plus size={16}/></button>
+                        <button onClick={renameLayout} className="bg-yellow-500 hover:bg-yellow-600 text-white px-2 rounded-lg text-sm font-bold transition shrink-0" title="Ubah nama layout ini"><Edit2 size={16}/></button>
+                        <button onClick={duplicateLayout} className="bg-blue-500 hover:bg-blue-600 text-white px-2 rounded-lg text-sm font-bold transition shrink-0" title="Duplikat layout ini"><Copy size={16}/></button>
+                        {data.layouts && data.layouts.length > 1 && <button onClick={() => deleteLayout(activeLayout)} className="bg-red-500 hover:bg-red-600 text-white px-2 rounded-lg text-sm font-bold transition shrink-0" title="Hapus layout"><Trash2 size={16}/></button>}
                     </div>
                     <div className="flex gap-2">
                         <select className="w-1/2 p-2 border rounded-lg bg-white text-sm font-bold text-blue-800" value={pageSize} onChange={e => changePageSize(e.target.value)}>
