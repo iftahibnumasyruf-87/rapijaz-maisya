@@ -3014,20 +3014,24 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
                                         let segTextAlign = 'left';
                                         let segFontFamily = 'inherit';
                                         
+                                        let segFontSize = undefined;
                                         if (isArabicSegment) {
                                             segLabel = data.subjectCategories?.find(c => normalizeValue(c.name) === normalizeValue(cat))?.nameAr || cat;
                                             segTextAlign = 'right';
-                                            segFontFamily = '"Amiri", "Scheherazade New", serif';
+                                            segFontFamily = el.catArFontFamily || '"Amiri", "Scheherazade New", serif';
+                                            if (el.catArFontSize) segFontSize = `${el.catArFontSize}px`;
                                         } else {
                                             segLabel = cat;
                                             segTextAlign = 'left';
-                                            segFontFamily = 'inherit';
+                                            segFontFamily = el.catFontFamily || 'inherit';
+                                            if (el.catFontSize) segFontSize = `${el.catFontSize}px`;
                                         }
                                         
                                         if (el.isRtl && !isArabicSegment && !segmentCols.some(col => col.type === 'MAPEL_ID')) {
                                             segLabel = data.subjectCategories?.find(c => normalizeValue(c.name) === normalizeValue(cat))?.nameAr || cat;
                                             segTextAlign = 'right';
-                                            segFontFamily = '"Amiri", "Scheherazade New", serif';
+                                            segFontFamily = el.catArFontFamily || '"Amiri", "Scheherazade New", serif';
+                                            if (el.catArFontSize) segFontSize = `${el.catArFontSize}px`;
                                         }
                                         
                                         return (
@@ -3035,7 +3039,7 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
                                                 key={`data-${segIdx}`} 
                                                 colSpan={seg.count} 
                                                 className={`border border-black p-1 font-bold ${el.isTransparent ? 'bg-transparent' : 'bg-gray-50'}`} 
-                                                style={{ textAlign: segTextAlign, fontFamily: segFontFamily }}
+                                                style={{ textAlign: segTextAlign, fontFamily: segFontFamily, fontSize: segFontSize }}
                                             >
                                                 {segLabel}
                                             </td>
@@ -3940,37 +3944,13 @@ const LayoutBuilder = () => {
     return (
         <div ref={layoutContainerRef} className={`flex flex-col md:flex-row gap-6 print:h-auto print:block ${isFullscreen ? 'h-screen w-screen bg-gray-50 p-4' : 'h-[80vh]'}`}>
             {showSidebar && (
-            <div 
-                className="bg-white rounded-xl shadow-sm flex flex-col border border-gray-100 shrink-0 overflow-hidden print:hidden relative transition-[width] duration-75"
-                style={{ width: `${sidebarWidth}px`, maxWidth: '100%', minWidth: '300px' }}
-            >
-                {/* Drag Handle */}
-                <div 
-                    className="absolute right-0 top-0 w-2 h-full cursor-col-resize hover:bg-emerald-500/20 active:bg-emerald-500/40 z-50 flex items-center justify-center transition-colors group"
-                    onMouseDown={(e) => {
-                        e.preventDefault();
-                        const startX = e.clientX;
-                        const startWidth = sidebarWidth;
-                        const handleMouseMove = (moveEvent) => {
-                            const newWidth = Math.max(300, Math.min(800, startWidth + (moveEvent.clientX - startX)));
-                            setSidebarWidth(newWidth);
-                        };
-                        const handleMouseUp = () => {
-                            document.removeEventListener('mousemove', handleMouseMove);
-                            document.removeEventListener('mouseup', handleMouseUp);
-                        };
-                        document.addEventListener('mousemove', handleMouseMove);
-                        document.addEventListener('mouseup', handleMouseUp);
-                    }}
-                >
-                    <div className="w-1 h-16 bg-gray-300 group-hover:bg-emerald-500 rounded-full" />
-                </div>
-
-                <div className="p-4 border-b bg-gray-50 flex items-center justify-between z-10 shrink-0">
-                    <h3 className="font-bold text-gray-800 text-lg">Layout Builder</h3>
-                </div>
-                
-                <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+            <div className="relative flex shrink-0 print:hidden" style={{ width: `${sidebarWidth}px`, maxWidth: '100%', minWidth: '300px' }}>
+                <div className="bg-white rounded-xl shadow-sm flex flex-col border border-gray-100 overflow-hidden w-full h-full">
+                    <div className="p-4 border-b bg-gray-50 flex items-center justify-between z-10 shrink-0">
+                        <h3 className="font-bold text-gray-800 text-lg">Layout Builder</h3>
+                    </div>
+                    
+                    <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
                     <div className="flex gap-1">
                         <select className="flex-1 p-2 border rounded-lg bg-white text-sm font-bold text-emerald-800 truncate" value={activeLayout} onChange={e => setActiveLayout(e.target.value)}>
                             {data.layouts && data.layouts.map(l => <option key={l.id} value={l.id}>{l.name || l.id}</option>)}
@@ -4314,10 +4294,62 @@ const LayoutBuilder = () => {
                                         >+ Kolom</button>
                                     </div>
                                     
-                                    <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 bg-white p-2 border rounded cursor-pointer">
+                                    <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 bg-white p-2 border rounded cursor-pointer mt-3">
                                         <input type="checkbox" checked={activeEl?.groupByCategory || false} onChange={e => updateElement(selectedElementId, { groupByCategory: e.target.checked })} />
                                         Kelompokkan per Kategori Pelajaran
                                     </label>
+                                    
+                                    {activeEl?.groupByCategory && (
+                                        <div className="space-y-3 mt-2 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                                            <div>
+                                                <label className="text-[10px] text-gray-500 font-bold uppercase mb-1 block">Font Kategori (Latin)</label>
+                                                <div className="flex gap-2">
+                                                    <div className="w-2/3">
+                                                        <input 
+                                                            list="font-options" 
+                                                            className="w-full p-1.5 border rounded text-xs outline-none bg-white" 
+                                                            value={activeEl.catFontFamily || ''} 
+                                                            onChange={e => updateElement(selectedElementId, { catFontFamily: e.target.value })}
+                                                            placeholder="Default (Tabel)"
+                                                        />
+                                                    </div>
+                                                    <div className="w-1/3">
+                                                        <input 
+                                                            type="number" 
+                                                            className="w-full p-1.5 border rounded text-xs outline-none bg-white" 
+                                                            value={activeEl.catFontSize || ''} 
+                                                            placeholder="Ukuran"
+                                                            onChange={e => updateElement(selectedElementId, { catFontSize: e.target.value ? Number(e.target.value) : undefined })}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div>
+                                                <label className="text-[10px] text-gray-500 font-bold uppercase mb-1 block">Font Kategori (Arab)</label>
+                                                <div className="flex gap-2">
+                                                    <div className="w-2/3">
+                                                        <input 
+                                                            list="font-options" 
+                                                            className="w-full p-1.5 border rounded text-xs outline-none bg-white" 
+                                                            value={activeEl.catArFontFamily || ''} 
+                                                            onChange={e => updateElement(selectedElementId, { catArFontFamily: e.target.value })}
+                                                            placeholder="Amiri / Scheherazade"
+                                                        />
+                                                    </div>
+                                                    <div className="w-1/3">
+                                                        <input 
+                                                            type="number" 
+                                                            className="w-full p-1.5 border rounded text-xs outline-none bg-white" 
+                                                            value={activeEl.catArFontSize || ''} 
+                                                            placeholder="Ukuran"
+                                                            onChange={e => updateElement(selectedElementId, { catArFontSize: e.target.value ? Number(e.target.value) : undefined })}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                     
                                     <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 bg-white p-2 border rounded cursor-pointer mt-1">
                                         <input type="checkbox" checked={activeEl?.isRtl || false} onChange={e => updateElement(selectedElementId, { isRtl: e.target.checked })} />
@@ -4745,6 +4777,28 @@ const LayoutBuilder = () => {
                             </button>
                         </div>
                     )}
+                </div>
+                </div>
+                {/* Drag Handle */}
+                <div 
+                    className="absolute -right-3 top-0 w-6 h-full cursor-col-resize z-50 flex items-center justify-center group"
+                    onMouseDown={(e) => {
+                        e.preventDefault();
+                        const startX = e.clientX;
+                        const startWidth = sidebarWidth;
+                        const handleMouseMove = (moveEvent) => {
+                            const newWidth = Math.max(300, Math.min(800, startWidth + (moveEvent.clientX - startX)));
+                            setSidebarWidth(newWidth);
+                        };
+                        const handleMouseUp = () => {
+                            document.removeEventListener('mousemove', handleMouseMove);
+                            document.removeEventListener('mouseup', handleMouseUp);
+                        };
+                        document.addEventListener('mousemove', handleMouseMove);
+                        document.addEventListener('mouseup', handleMouseUp);
+                    }}
+                >
+                    <div className="w-1.5 h-16 bg-gray-300 group-hover:bg-emerald-500 rounded-full shadow-sm" />
                 </div>
             </div>
             )}
