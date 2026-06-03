@@ -3045,9 +3045,9 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
                                                     fontSize: segFontSize,
                                                     backgroundColor: el.isTransparent 
                                                         ? 'transparent' 
-                                                        : (el.catBgColor 
-                                                            ? el.catBgColor 
-                                                            : '#f3f4f6')
+                                                        : (el.disableCatBg 
+                                                            ? 'transparent' 
+                                                            : (el.catBgColor || '#e5e7eb'))
                                                 }}
                                             >
                                                 {segLabel}
@@ -4379,12 +4379,12 @@ const LayoutBuilder = () => {
                                                 <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 cursor-pointer">
                                                     <input 
                                                         type="checkbox" 
-                                                        checked={!!activeEl.catBgColor} 
-                                                        onChange={e => updateElement(selectedElementId, { catBgColor: e.target.checked ? '#e5e7eb' : null })} 
+                                                        checked={activeEl.disableCatBg || false} 
+                                                        onChange={e => updateElement(selectedElementId, { disableCatBg: e.target.checked })} 
                                                     />
-                                                    Aktifkan Warna Latar Baris Kategori
+                                                    Tanpa Header (Matikan Background Abu-abu)
                                                 </label>
-                                                {activeEl.catBgColor && (
+                                                {!activeEl.disableCatBg && (
                                                     <div className="flex gap-2 items-center mt-2">
                                                         <input
                                                             type="color"
