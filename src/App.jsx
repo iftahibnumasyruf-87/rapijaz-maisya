@@ -3272,10 +3272,45 @@ const LayoutBuilder = () => {
 
     useEffect(() => {
         const handleKeyDown = (e) => {
-            if (selectedIds.length === 0) return;
-            
-            // Jangan jalankan panah jika pengguna sedang mengetik di input/textarea
+            // Jangan jalankan shortcut jika pengguna sedang mengetik di input/textarea
             if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
+                return;
+            }
+
+            // Undo (Ctrl+Z) dan Redo (Ctrl+Y atau Ctrl+Shift+Z)
+            if (e.ctrlKey || e.metaKey) {
+                if (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z')) {
+                    e.preventDefault();
+                    if (future.length > 0) {
+                        const next = future[0];
+                        setFuture(f => f.slice(1));
+                        setPast(p => [...p, elements]);
+                        setElements(next);
+                        setSelectedIds([]);
+                    }
+                    return;
+                } else if (e.key.toLowerCase() === 'z') {
+                    e.preventDefault();
+                    if (past.length > 0) {
+                        const previous = past[past.length - 1];
+                        setPast(p => p.slice(0, p.length - 1));
+                        setFuture(f => [elements, ...f]);
+                        setElements(previous);
+                        setSelectedIds([]);
+                    }
+                    return;
+                }
+            }
+
+            if (selectedIds.length === 0) return;
+
+            // Delete selected elements
+            if (e.key === 'Delete') {
+                e.preventDefault();
+                setPast(p => [...p, elements]);
+                setFuture([]);
+                setElements(prev => prev.filter(el => !selectedIds.includes(el.id)));
+                setSelectedIds([]);
                 return;
             }
 
@@ -3297,7 +3332,7 @@ const LayoutBuilder = () => {
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [selectedIds, elements]);
+    }, [selectedIds, elements, past, future]);
 
     const prevLayoutRef = useRef(null);
 
