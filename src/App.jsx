@@ -3157,6 +3157,7 @@ const LayoutBuilder = () => {
     const [showGuideBars, setShowGuideBars] = useState(true);
     const [showGrid, setShowGrid] = useState(true);
     const [isBottomMenuExpanded, setIsBottomMenuExpanded] = useState(true);
+    const [sidebarWidth, setSidebarWidth] = useState(320);
     const canvasRef = useRef(null);
     const layoutContainerRef = useRef(null);
     const [isFullscreen, setIsFullscreen] = useState(false);
@@ -3939,7 +3940,32 @@ const LayoutBuilder = () => {
     return (
         <div ref={layoutContainerRef} className={`flex flex-col md:flex-row gap-6 print:h-auto print:block ${isFullscreen ? 'h-screen w-screen bg-gray-50 p-4' : 'h-[80vh]'}`}>
             {showSidebar && (
-            <div className="w-full md:w-[320px] bg-white rounded-xl shadow-sm flex flex-col border border-gray-100 shrink-0 overflow-hidden print:hidden">
+            <div 
+                className="bg-white rounded-xl shadow-sm flex flex-col border border-gray-100 shrink-0 overflow-hidden print:hidden relative transition-[width] duration-75"
+                style={{ width: `${sidebarWidth}px`, maxWidth: '100%', minWidth: '300px' }}
+            >
+                {/* Drag Handle */}
+                <div 
+                    className="absolute right-0 top-0 w-2 h-full cursor-col-resize hover:bg-emerald-500/20 active:bg-emerald-500/40 z-50 flex items-center justify-center transition-colors group"
+                    onMouseDown={(e) => {
+                        e.preventDefault();
+                        const startX = e.clientX;
+                        const startWidth = sidebarWidth;
+                        const handleMouseMove = (moveEvent) => {
+                            const newWidth = Math.max(300, Math.min(800, startWidth + (moveEvent.clientX - startX)));
+                            setSidebarWidth(newWidth);
+                        };
+                        const handleMouseUp = () => {
+                            document.removeEventListener('mousemove', handleMouseMove);
+                            document.removeEventListener('mouseup', handleMouseUp);
+                        };
+                        document.addEventListener('mousemove', handleMouseMove);
+                        document.addEventListener('mouseup', handleMouseUp);
+                    }}
+                >
+                    <div className="w-1 h-16 bg-gray-300 group-hover:bg-emerald-500 rounded-full" />
+                </div>
+
                 <div className="p-4 border-b bg-gray-50 flex items-center justify-between z-10 shrink-0">
                     <h3 className="font-bold text-gray-800 text-lg">Layout Builder</h3>
                 </div>
