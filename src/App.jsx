@@ -2775,7 +2775,7 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
                         return <th key={idx} style={{width: `${col.width}%`, height: col.height ? `${col.height}px` : 'auto', border: 'none', background: 'transparent'}}>{col.header === 'Kolom Baru' ? '' : col.header}</th>;
                     }
                     return (
-                        <th key={idx} className="bg-gray-100 border border-black p-1 font-bold" style={{width: `${col.width}%`, height: col.height ? `${col.height}px` : 'auto', fontSize: col.fontSize ? `${col.fontSize}px` : 'inherit', fontFamily: col.fontFamily || 'inherit', fontWeight: col.fontWeight || 'bold', textAlign: col.textAlign || 'center', verticalAlign: 'middle'}}>
+                        <th key={idx} className="bg-gray-100 border border-black p-1 font-bold" style={{width: `${col.width}%`, height: el.headerRowHeight ? `${el.headerRowHeight}px` : (col.height ? `${col.height}px` : 'auto'), fontSize: col.fontSize ? `${col.fontSize}px` : 'inherit', fontFamily: col.fontFamily || 'inherit', fontWeight: col.fontWeight || 'bold', textAlign: col.textAlign || 'center', verticalAlign: 'middle'}}>
                             {toArabic(col.header)}
                         </th>
                     );
@@ -3422,7 +3422,7 @@ const LayoutBuilder = () => {
             // line/shape specific
             ...(isLine ? { lineColor: '#000000', lineThickness: 2 } : {}),
             ...(isShape ? { shapeFill: '#000000', shapeRadius: 0, shapeBorder: 0, shapeBorderColor: '#000000' } : {}),
-            ...(elementType === 'table_grades' ? { columns: [...defaultTableColumns], groupByCategory: false, filterClass: '' } : {}),
+            ...(elementType === 'table_grades' ? { columns: [...defaultTableColumns], groupByCategory: false, filterClass: '', headerRowHeight: undefined, dataRowHeight: undefined, catRowHeight: undefined } : {}),
             ...(isCustomTable ? { tableRows: defaultCTRows, tableCols: defaultCTCols, colWidths: [33,33,34], rowHeights: [35,35,35], cells: defaultCells, borderColor: '#000000', borderWidth: 1, headerBg: '#e5e7eb', isRtl: false, isTransparent: false } : {})
         };
         setPast(p => [...p, elements]);
