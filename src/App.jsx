@@ -3038,12 +3038,16 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
                                             <td 
                                                 key={`data-${segIdx}`} 
                                                 colSpan={seg.count} 
-                                                className={`border border-black p-1 font-bold`} 
+                                                className="border border-black p-1 font-bold" 
                                                 style={{ 
                                                     textAlign: segTextAlign, 
                                                     fontFamily: segFontFamily, 
                                                     fontSize: segFontSize,
-                                                    backgroundColor: el.isTransparent ? 'transparent' : (el.catBgEnabled ? (el.catBgColor || '#e5e7eb') : 'transparent')
+                                                    backgroundColor: el.isTransparent 
+                                                        ? 'transparent' 
+                                                        : (el.catBgColor 
+                                                            ? el.catBgColor 
+                                                            : '#f3f4f6')
                                                 }}
                                             >
                                                 {segLabel}
@@ -4375,30 +4379,29 @@ const LayoutBuilder = () => {
                                                 <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 cursor-pointer">
                                                     <input 
                                                         type="checkbox" 
-                                                        checked={activeEl.catBgEnabled || false} 
-                                                        onChange={e => updateElement(selectedElementId, { catBgEnabled: e.target.checked })} 
+                                                        checked={!!activeEl.catBgColor} 
+                                                        onChange={e => updateElement(selectedElementId, { catBgColor: e.target.checked ? '#e5e7eb' : null })} 
                                                     />
                                                     Aktifkan Warna Latar Baris Kategori
                                                 </label>
-                                                {activeEl.catBgEnabled && (
+                                                {activeEl.catBgColor && (
                                                     <div className="flex gap-2 items-center mt-2">
                                                         <input
                                                             type="color"
                                                             className="w-9 h-8 p-0.5 border rounded cursor-pointer bg-white"
-                                                            value={activeEl.catBgColor || '#e5e7eb'}
+                                                            value={activeEl.catBgColor}
                                                             onChange={e => updateElement(selectedElementId, { catBgColor: e.target.value })}
                                                         />
                                                         <input
                                                             type="text"
                                                             className="flex-1 p-1.5 border rounded text-xs outline-none bg-white font-mono"
-                                                            value={activeEl.catBgColor || '#e5e7eb'}
+                                                            value={activeEl.catBgColor}
                                                             onChange={e => updateElement(selectedElementId, { catBgColor: e.target.value })}
                                                             placeholder="#e5e7eb"
                                                         />
                                                         <button
-                                                            className="text-[10px] px-2 py-1 bg-gray-100 border rounded hover:bg-gray-200 text-gray-600 shrink-0"
+                                                            className="text-[10px] px-2 py-1 bg-gray-200 border rounded hover:bg-gray-300 text-gray-700 shrink-0 font-bold"
                                                             onClick={() => updateElement(selectedElementId, { catBgColor: '#e5e7eb' })}
-                                                            title="Reset ke abu-abu"
                                                         >Reset</button>
                                                     </div>
                                                 )}
