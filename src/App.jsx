@@ -2769,7 +2769,7 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
 
     const renderHeaders = () => (
         <thead>
-            <tr>
+            <tr style={{ height: el.headerRowHeight ? `${el.headerRowHeight}px` : 'auto' }}>
                 {columns.map((col, idx) => {
                     if (col.type === 'SPASI_KOSONG') {
                         return <th key={idx} style={{width: `${col.width}%`, height: col.height ? `${col.height}px` : 'auto', border: 'none', background: 'transparent'}}>{col.header === 'Kolom Baru' ? '' : col.header}</th>;
@@ -3001,7 +3001,7 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
                         return (
                         <React.Fragment key={cat}>
                             {cat && (
-                                <tr>
+                                <tr style={{ height: el.catRowHeight ? `${el.catRowHeight}px` : 'auto' }}>
                                     {segments.map((seg, segIdx) => {
                                         if (seg.type === 'spasi') {
                                             return <td key={`spasi-${segIdx}`} style={{ border: 'none', background: 'transparent', padding: 0 }}></td>;
@@ -3049,7 +3049,7 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
                             )}
                             {subs.map(sub => {
                                 globalIndex++;
-                                return <tr key={sub.id}>{renderRowCells(sub, globalIndex - 1)}</tr>
+                                return <tr key={sub.id} style={{ height: el.dataRowHeight ? `${el.dataRowHeight}px` : 'auto' }}>{renderRowCells(sub, globalIndex - 1)}</tr>
                             })}
                         </React.Fragment>
                         );
@@ -3066,7 +3066,7 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
                 {renderHeaders()}
                 <tbody>
                     {subjectsToRender.map((sub, idx) => (
-                        <tr key={sub.id}>{renderRowCells(sub, idx)}</tr>
+                        <tr key={sub.id} style={{ height: el.dataRowHeight ? `${el.dataRowHeight}px` : 'auto' }}>{renderRowCells(sub, idx)}</tr>
                     ))}
                     {hasFooterRow && (
                         <tr>{renderFooterCells()}</tr>
@@ -4267,6 +4267,23 @@ const LayoutBuilder = () => {
 
                             {activeEl.type === 'table_grades' && (
                                 <div className="mt-4 border-t pt-3 space-y-3">
+                                    <div className="bg-gray-50 border border-gray-200 p-2 rounded-lg space-y-2">
+                                        <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">Tinggi Baris (Row Height)</p>
+                                        <div className="flex gap-2">
+                                            <div className="w-1/3">
+                                                <label className="text-[9px] text-gray-400 block mb-1">Header (px)</label>
+                                                <input type="number" placeholder="Auto" className="w-full p-1 border rounded text-xs outline-none bg-white" value={activeEl.headerRowHeight || ''} onChange={e => updateElement(selectedElementId, { headerRowHeight: e.target.value ? Number(e.target.value) : undefined })} />
+                                            </div>
+                                            <div className="w-1/3">
+                                                <label className="text-[9px] text-gray-400 block mb-1">Pelajaran (px)</label>
+                                                <input type="number" placeholder="Auto" className="w-full p-1 border rounded text-xs outline-none bg-white" value={activeEl.dataRowHeight || ''} onChange={e => updateElement(selectedElementId, { dataRowHeight: e.target.value ? Number(e.target.value) : undefined })} />
+                                            </div>
+                                            <div className="w-1/3">
+                                                <label className="text-[9px] text-gray-400 block mb-1">Kategori (px)</label>
+                                                <input type="number" placeholder="Auto" className="w-full p-1 border rounded text-xs outline-none bg-white" value={activeEl.catRowHeight || ''} onChange={e => updateElement(selectedElementId, { catRowHeight: e.target.value ? Number(e.target.value) : undefined })} disabled={!activeEl.groupByCategory} title={!activeEl.groupByCategory ? "Aktifkan 'Kelompokkan per Kategori Pelajaran' terlebih dahulu" : ""} />
+                                            </div>
+                                        </div>
+                                    </div>
                                     <div>
                                         <label className="text-[10px] text-gray-500 font-bold uppercase">Filter Kelas</label>
                                         <select
