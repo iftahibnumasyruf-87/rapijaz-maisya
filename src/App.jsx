@@ -3279,7 +3279,7 @@ const defaultTableColumns = [
     { id: 'c4', header: 'KKM', type: 'KKM', width: 10 },
     { id: 'c5', header: 'Nilai', type: 'NILAI', width: 15 }
 ];
-const VariablesHelp = ({ onInsert }) => {
+const VariablesHelp = ({ onInsert, masterSubjects = [] }) => {
     return (
         <div className="mt-2 text-xs flex gap-2 items-center bg-gray-50 p-2 rounded border">
             <span className="text-[10px] text-gray-600 font-bold whitespace-nowrap">Sisipkan:</span>
@@ -3312,6 +3312,13 @@ const VariablesHelp = ({ onInsert }) => {
                     <option value="{{semester}}">Semester</option>
                     <option value="{{semester_ar}}">Semester (Arab)</option>
                 </optgroup>
+                {masterSubjects.length > 0 && (
+                    <optgroup label="Daftar Pelajaran (Master)">
+                        {masterSubjects.map(m => (
+                            <option key={m.id} value={`{{nilai_${m.nameId}}}`}>Nilai {m.nameId}</option>
+                        ))}
+                    </optgroup>
+                )}
                 <optgroup label="Variabel Excel">
                     <option value="" disabled>Ketik manual: {'{{Nama Kolom}}'}</option>
                 </optgroup>
@@ -4369,7 +4376,7 @@ const LayoutBuilder = () => {
                             {activeEl.type === 'text' && (
                                 <>
                                     <textarea className="w-full p-2 border rounded text-sm focus:ring-2 outline-none min-h-[60px]" value={activeEl.content} onChange={e => updateElement(selectedElementId, { content: e.target.value })} />
-                                    <VariablesHelp onInsert={(val) => updateElement(selectedElementId, { content: (activeEl.content || '') + val })} />
+                                    <VariablesHelp onInsert={(val) => updateElement(selectedElementId, { content: (activeEl.content || '') + val })} masterSubjects={allData?.masterSubjects || data.masterSubjects || []} />
                                 </>
                             )}
 
@@ -4947,7 +4954,7 @@ const LayoutBuilder = () => {
                                                         newCells[ck] = {...(newCells[ck]||{}), content: currentVal + val}; 
                                                     });
                                                     updateElement(selectedElementId, { cells: newCells });
-                                                }} />
+                                                }} masterSubjects={allData?.masterSubjects || data.masterSubjects || []} />
                                                 <div className="flex gap-2 items-center">
                                                     <button onClick={() => {
                                                         const newCells = {...activeEl.cells};
@@ -6450,6 +6457,30 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                              .replace(/\{\{rata_rata_raport_ar\}\}/gi, rataRataAr)
                              .replace(/\{\{jumlah_santri\}\}/gi, jumlahSantri)
                              .replace(/\{\{jumlah_santri_ar\}\}/gi, jumlahSantriAr);
+            
+            // Replace dynamic variables for Master Subjects (e.g. {{nilai_Al-Qur'an}})
+            relevantSubjects.forEach(s => {
+                if (!s.mapel) return;
+                const gradeObj = sGrades[s.id];
+                let gradeStr = '-';
+                if (gradeObj && typeof gradeObj === 'object') {
+                    const r = computeRaportScore(gradeObj.uts, gradeObj.uas);
+                    if (r !== '') gradeStr = r;
+                } else if (gradeObj !== undefined && gradeObj !== '') {
+                    gradeStr = gradeObj;
+                }
+                
+                const safeMapel = s.mapel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const mapelAr = data.masterSubjects?.find(m => m.nameId === s.mapel)?.nameAr || s.mapel;
+                
+                replaced = replaced
+                    .replace(new RegExp(`\\{\\{nilai_${safeMapel}\\}\\}`, 'gi'), gradeStr)
+                    .replace(new RegExp(`\\{\\{nilai_${safeMapel}_ar\\}\\}`, 'gi'), gradeStr !== '-' ? toArabicNumbers(gradeStr) : '-')
+                    .replace(new RegExp(`\\{\\{mapel_${safeMapel}_id\\}\\}`, 'gi'), s.mapel)
+                    .replace(new RegExp(`\\{\\{mapel_${safeMapel}_ar\\}\\}`, 'gi'), mapelAr)
+                    .replace(new RegExp(`\\{\\{kkm_${safeMapel}\\}\\}`, 'gi'), s.kkm || '')
+                    .replace(new RegExp(`\\{\\{guru_${safeMapel}\\}\\}`, 'gi'), s.guru || '');
+            });
             
             return replaced.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
                  if (stdData[key] !== undefined) return stdData[key];
