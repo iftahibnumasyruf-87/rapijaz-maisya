@@ -18,6 +18,50 @@ import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 
 // ==========================================
+// ERROR BOUNDARY
+// ==========================================
+class ErrorBoundary extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = { hasError: false, error: null };
+    }
+    static getDerivedStateFromError(error) {
+        return { hasError: true, error };
+    }
+    componentDidCatch(error, info) {
+        console.error('ErrorBoundary caught:', error, info);
+    }
+    render() {
+        if (this.state.hasError) {
+            return (
+                <div className="flex items-center justify-center min-h-screen bg-gray-50">
+                    <div className="bg-white rounded-xl shadow-lg p-8 max-w-lg w-full border border-red-200">
+                        <div className="flex items-center gap-3 mb-4">
+                            <span className="text-3xl">⚠️</span>
+                            <h2 className="text-xl font-bold text-red-700">Terjadi Error</h2>
+                        </div>
+                        <p className="text-gray-600 mb-4">Ada kesalahan saat menampilkan halaman ini. Silakan refresh atau hubungi admin.</p>
+                        <details className="text-xs bg-red-50 p-3 rounded border border-red-100 text-red-800 mb-4">
+                            <summary className="cursor-pointer font-semibold">Detail Error (klik untuk lihat)</summary>
+                            <pre className="mt-2 whitespace-pre-wrap break-all">{String(this.state.error)}</pre>
+                        </details>
+                        <button
+                            onClick={() => { this.setState({ hasError: false, error: null }); }}
+                            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-bold text-sm mr-2 transition"
+                        >Coba Lagi</button>
+                        <button
+                            onClick={() => window.location.reload()}
+                            className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-bold text-sm transition"
+                        >Refresh Halaman</button>
+                    </div>
+                </div>
+            );
+        }
+        return this.props.children;
+    }
+}
+
+// ==========================================
 // 1. SUPABASE SETUP (Koneksi Database Anda)
 // ==========================================
 const supabaseUrl = 'https://ikoqsyrvspfjyyjujfhc.supabase.co';
@@ -6666,13 +6710,15 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                 };
 
                 data.masterSubjects.forEach(m => {
+                    if (!m || !m.nameId) return; // guard: skip jika nameId undefined/null
                     const mapelAr = m.nameAr || m.nameId;
                     const shortVar = m.shortCode || getAutoKey3(m.nameId);
 
                     // Escape for use in RegExp
-                    const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    const escapeRe = (s) => (s != null ? String(s) : '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
                     // 1) Replace short/custom key  {{alq}} → nameId, {{alq_arb}} → nameAr
+                    if (!shortVar) return; // skip jika shortVar kosong
                     const safeShort = escapeRe(shortVar);
                     replaced = replaced
                         .replace(new RegExp(`\\{\\{${safeShort}\\}\\}`, 'gi'), m.nameId)
@@ -6681,6 +6727,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                     // 2) Replace full nameId key (backward compat) {{Al-Qur'an}} → nameId
                     if (shortVar !== m.nameId) {
                         const safeNameId = escapeRe(m.nameId);
+                        if (!safeNameId) return; // skip jika safeNameId kosong
                         replaced = replaced
                             .replace(new RegExp(`\\{\\{${safeNameId}\\}\\}`, 'gi'), m.nameId)
                             .replace(new RegExp(`\\{\\{${safeNameId}_arb\\}\\}`, 'gi'), mapelAr)
@@ -7310,8 +7357,8 @@ const Dashboard = () => {
     switch (activeMenu) {
       case 'dashboard': return <HomeDashboard />;
       case 'layout_builder': return <LayoutBuilder />;
-      case 'cetak_raport': return <CetakDokumen key="raport" mode="raport" />;
-      case 'cetak_ijazah': return <CetakDokumen key="ijazah" mode="ijazah" />;
+      case 'cetak_raport': return <ErrorBoundary key="eb-raport"><CetakDokumen key="raport" mode="raport" /></ErrorBoundary>;
+      case 'cetak_ijazah': return <ErrorBoundary key="eb-ijazah"><CetakDokumen key="ijazah" mode="ijazah" /></ErrorBoundary>;
       case 'legger': return <LeggerKelas />;
       default: return <div className="p-8 text-center text-gray-500">Menu tidak ditemukan</div>;
     }
