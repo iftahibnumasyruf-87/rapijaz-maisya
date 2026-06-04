@@ -2855,7 +2855,7 @@ const renderCustomTable = (el, replaceVars = s => s, options = {}) => {
                                     wordBreak: 'break-word',
                                     position: 'relative',
                                 }}>
-                                    <span style={{whiteSpace:'pre-wrap'}}>{replaceVars(cell.content || '')}</span>
+                                    <span style={{whiteSpace:'pre-wrap'}} dangerouslySetInnerHTML={{ __html: replaceVars(cell.content || '').replace(/\n/g, '<br/>') }}></span>
                                     
                                     {isEditable && targetColIdx < cols - 1 && (
                                         <div 
@@ -4831,7 +4831,48 @@ const LayoutBuilder = () => {
                                         </div>
                                         {ctSelCells.length > 0 && (
                                             <div className="p-3 bg-white border-t border-indigo-100 space-y-2">
-                                                <textarea className="w-full p-2 border rounded text-xs focus:ring-2 focus:ring-indigo-300 outline-none" rows="2" placeholder="Teks atau {{variabel}}" value={activeEl.cells?.[ctSelCells[0]]?.content || ''} onChange={e => {
+                                                <div className="flex gap-1 mb-1">
+                                                    <button onClick={() => {
+                                                        const ta = document.getElementById('custom-table-textarea');
+                                                        if (!ta) return;
+                                                        const start = ta.selectionStart;
+                                                        const end = ta.selectionEnd;
+                                                        const val = ta.value;
+                                                        const selected = val.substring(start, end);
+                                                        const newText = val.substring(0, start) + `<b>${selected}</b>` + val.substring(end);
+                                                        const newCells = {...activeEl.cells};
+                                                        ctSelCells.forEach(ck => { newCells[ck] = {...(newCells[ck]||{}), content: newText}; });
+                                                        updateElement(selectedElementId, { cells: newCells });
+                                                        setTimeout(() => { ta.focus(); ta.setSelectionRange(start + 3, end + 3); }, 0);
+                                                    }} className="p-1 px-2 border rounded text-xs font-bold bg-gray-50 hover:bg-gray-200 text-gray-700" title="Tebalkan Teks Terpilih (Bold)">B</button>
+                                                    <button onClick={() => {
+                                                        const ta = document.getElementById('custom-table-textarea');
+                                                        if (!ta) return;
+                                                        const start = ta.selectionStart;
+                                                        const end = ta.selectionEnd;
+                                                        const val = ta.value;
+                                                        const selected = val.substring(start, end);
+                                                        const newText = val.substring(0, start) + `<i>${selected}</i>` + val.substring(end);
+                                                        const newCells = {...activeEl.cells};
+                                                        ctSelCells.forEach(ck => { newCells[ck] = {...(newCells[ck]||{}), content: newText}; });
+                                                        updateElement(selectedElementId, { cells: newCells });
+                                                        setTimeout(() => { ta.focus(); ta.setSelectionRange(start + 3, end + 3); }, 0);
+                                                    }} className="p-1 px-2 border rounded text-xs italic font-serif bg-gray-50 hover:bg-gray-200 text-gray-700" title="Miringkan Teks Terpilih (Italic)">I</button>
+                                                    <button onClick={() => {
+                                                        const ta = document.getElementById('custom-table-textarea');
+                                                        if (!ta) return;
+                                                        const start = ta.selectionStart;
+                                                        const end = ta.selectionEnd;
+                                                        const val = ta.value;
+                                                        const selected = val.substring(start, end);
+                                                        const newText = val.substring(0, start) + `<u>${selected}</u>` + val.substring(end);
+                                                        const newCells = {...activeEl.cells};
+                                                        ctSelCells.forEach(ck => { newCells[ck] = {...(newCells[ck]||{}), content: newText}; });
+                                                        updateElement(selectedElementId, { cells: newCells });
+                                                        setTimeout(() => { ta.focus(); ta.setSelectionRange(start + 3, end + 3); }, 0);
+                                                    }} className="p-1 px-2 border rounded text-xs underline bg-gray-50 hover:bg-gray-200 text-gray-700" title="Garis Bawah Teks Terpilih (Underline)">U</button>
+                                                </div>
+                                                <textarea id="custom-table-textarea" className="w-full p-2 border rounded text-xs focus:ring-2 focus:ring-indigo-300 outline-none" rows="2" placeholder="Teks atau {{variabel}}" value={activeEl.cells?.[ctSelCells[0]]?.content || ''} onChange={e => {
                                                     const newCells = {...activeEl.cells};
                                                     ctSelCells.forEach(ck => { newCells[ck] = {...(newCells[ck]||{}), content: e.target.value}; });
                                                     updateElement(selectedElementId, { cells: newCells });
