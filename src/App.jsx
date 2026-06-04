@@ -3378,6 +3378,11 @@ const LayoutBuilder = () => {
     }, [selectedIds, elements, past, future]);
 
     const prevLayoutRef = useRef(null);
+    const latestLayoutsRef = useRef(data.layouts);
+
+    useEffect(() => {
+        latestLayoutsRef.current = data.layouts;
+    }, [data.layouts]);
 
     useEffect(() => {
         if (prevLayoutRef.current === activeLayout) return;
@@ -3413,8 +3418,12 @@ const LayoutBuilder = () => {
         setAutoSaveStatus('saving');
 
         const timer = setTimeout(async () => {
+            const currentLayouts = latestLayoutsRef.current;
+            const stillExists = currentLayouts && currentLayouts.some(l => l.id === activeLayout);
+            if (!stillExists && currentLayouts?.length > 0) return; // Batal simpan jika layout baru saja dihapus
+
             await saveToDb('layouts', activeLayout, {
-                name: data.layouts?.find(l => l.id === activeLayout)?.name || activeLayout,
+                name: currentLayouts?.find(l => l.id === activeLayout)?.name || activeLayout,
                 elements,
                 pageSize,
                 orientation,
