@@ -9,7 +9,7 @@ import {
   Columns, FileSignature, TrendingUp, UserX, Clock, Activity, ChevronDown,
   ZoomIn, ZoomOut, Maximize, Minimize, ChevronUp, Lock, Database, Copy, Undo, Redo, Eye, EyeOff,
   AlignLeft, AlignCenter, AlignRight, AlignStartVertical, AlignCenterVertical, AlignEndVertical, BarChart2, AlignJustify, Layers, Calendar,
-  Minus, Square, Grid, Info
+  Minus, Square, Grid, Info, RefreshCw
 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, AreaChart, Area } from 'recharts';
@@ -664,9 +664,30 @@ const AppProvider = ({ children }) => {
     }
   };
 
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const refreshCollections = async (collectionNames) => {
+    setIsRefreshing(true);
+    try {
+      const updates = {};
+      await Promise.all(collectionNames.map(async (colName) => {
+        const { data: items, error } = await supabase.from(colName).select('*');
+        if (!error && items) {
+          updates[colName] = sortDataItems(items.map(item => ({ ...item.payload, id: item.id })));
+        }
+      }));
+      setAllData(prev => ({ ...prev, ...updates }));
+      showNotification('Data berhasil diperbarui!');
+    } catch (err) {
+      showNotification('Gagal memperbarui data.', 'error');
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
 
   return (
-    <AppContext.Provider value={{ data, allData, activeSetting, SEMESTER_SPECIFIC_COLS, currentUser, setCurrentUser, saveToDb, deleteFromDb, showNotification, addLog, autoSaveStatus, setAutoSaveStatus }}>
+    <AppContext.Provider value={{ data, allData, activeSetting, SEMESTER_SPECIFIC_COLS, currentUser, setCurrentUser, saveToDb, deleteFromDb, showNotification, addLog, autoSaveStatus, setAutoSaveStatus, refreshCollections, isRefreshing }}>
       {loading ? <div className="flex h-screen items-center justify-center bg-gray-50"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div></div> : children}
       {notification && (
         <div className={`fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-lg text-white font-medium flex items-center gap-2 z-50 transition-all ${notification.type === 'error' ? 'bg-red-500' : 'bg-emerald-600'}`}>
@@ -753,6 +774,57 @@ const AutoSaveIndicator = () => {
                 </>
             )}
         </div>
+    );
+};
+
+// Per-page collection map: which Supabase tables each page depends on
+const PAGE_COLLECTIONS = {
+    // Master Data sub-pages
+    settings:           ['settings'],
+    classes:            ['classes'],
+    teachers:           ['teachers'],
+    subjectCategories:  ['subjectCategories'],
+    masterSubjects:     ['masterSubjects'],
+    subjects:           ['subjects'],
+    presences:          ['presences'],
+    characterTraits:    ['characterTraits'],
+    extracurriculars:   ['extracurriculars'],
+    studentFields:      ['studentFields'],
+    students:           ['students', 'studentSnapshots'],
+    fonts:              ['fonts'],
+    users:              ['users'],
+    backup_restore:     ['settings', 'users', 'classes', 'subjects', 'students', 'grades', 'layouts'],
+    // Input Nilai sub-pages
+    pelajaran:          ['grades', 'subjects', 'students', 'classes'],
+    presensi:           ['grades', 'presences', 'students', 'classes'],
+    sikap:              ['grades', 'characterTraits', 'students', 'classes'],
+    ekskul:             ['grades', 'extracurriculars', 'students', 'classes'],
+    catatan:            ['grades', 'students', 'classes'],
+    // Main pages
+    dashboard:          ['settings', 'grades', 'students', 'classes', 'subjects'],
+    layout_builder:     ['layouts', 'fonts', 'subjects', 'presences', 'characterTraits', 'extracurriculars'],
+    legger:             ['grades', 'students', 'subjects', 'classes'],
+    cetak_raport:       ['grades', 'students', 'subjects', 'classes', 'layouts'],
+    cetak_ijazah:       ['grades', 'students', 'subjects', 'classes', 'layouts'],
+};
+
+const PageRefreshButton = ({ activeMenu }) => {
+    const { refreshCollections, isRefreshing } = useContext(AppContext);
+    const collections = PAGE_COLLECTIONS[activeMenu];
+    if (!collections) return null;
+
+    return (
+        <button
+            onClick={() => refreshCollections(collections)}
+            disabled={isRefreshing}
+            title={`Refresh data halaman ini`}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold border transition-all
+                       bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 hover:border-blue-400
+                       disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+            <RefreshCw size={15} className={isRefreshing ? 'animate-spin' : ''} />
+            {isRefreshing ? 'Memuat...' : 'Refresh'}
+        </button>
     );
 };
 
@@ -6821,6 +6893,7 @@ const Dashboard = () => {
           
           <div className="hidden sm:flex items-center gap-4">
               <AutoSaveIndicator />
+              <PageRefreshButton activeMenu={activeMenu} />
               {isTahunSet ? (
                 <div className="bg-emerald-100 text-emerald-800 px-3 py-1.5 rounded-lg text-sm font-bold border border-emerald-200 flex items-center gap-2">
                     <CheckCircle size={16} /> TA: {activeSetting.tahun} ({activeSetting.semester})
