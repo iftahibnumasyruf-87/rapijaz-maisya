@@ -2838,10 +2838,17 @@ const renderCustomTable = (el, replaceVars = s => s, options = {}) => {
                             const isEditable = options.isEditable;
                             const targetColIdx = c + cs - 1;
                             const targetRowIdx = r + rs - 1;
+                            const isCellSelected = options.selectedCells && options.selectedCells.includes(ck);
 
                             return (
-                                <td key={c} colSpan={cs} rowSpan={rs} style={{
+                                <td key={c} colSpan={cs} rowSpan={rs} 
+                                    onMouseDown={(e) => {
+                                        if (options.onCellClick) options.onCellClick(e, ck);
+                                    }}
+                                    style={{
                                     border: bStyle,
+                                    outline: isCellSelected ? '2px solid #4f46e5' : 'none',
+                                    outlineOffset: -2,
                                     padding: '2px 4px',
                                     textAlign: cell.align || 'left',
                                     verticalAlign: cell.valign || 'middle',
@@ -5252,7 +5259,7 @@ const LayoutBuilder = () => {
                                                     zIndex: child.zIndex ?? 1, opacity: child.opacity ?? 1
                                                 }}>
                                                     {child.type === 'table_grades' ? renderDynamicTable(child, data, mockStudentGrades, mockClassAverages, false, 'raport', classesData, 0) 
-                                                    : child.type === 'table_custom' ? renderCustomTable(child, s=>s, { isEditable: selectedIds.includes(child.id), onColResizeStart: startColResize, onRowResizeStart: startRowResize })
+                                                    : child.type === 'table_custom' ? renderCustomTable(child, s=>s, { isEditable: selectedIds.includes(child.id), selectedCells: selectedIds.includes(child.id) ? ctSelCells : [], onColResizeStart: startColResize, onRowResizeStart: startRowResize, onCellClick: (e, ck) => { if (e.shiftKey) { setCtSelCells(prev => prev.includes(ck) ? prev.filter(k=>k!==ck) : [...prev, ck]); } else { setCtSelCells([ck]); setCtActiveCell(ck); } } })
                                                     : child.type === 'image' ? <img src={child.content} style={{ width: '100%', height: '100%', objectFit: child.objectFit || 'contain', objectPosition: `${child.objectPositionX ?? 50}% ${child.objectPositionY ?? 50}%`, pointerEvents: 'none' }} alt="elemen" />
                                                     : child.type === 'line' ? <div style={{ width: '100%', height: `${child.lineThickness || 2}px`, backgroundColor: child.lineColor || '#000000', pointerEvents: 'none' }} />
                                                     : child.type === 'shape' ? <div style={{ width: '100%', height: '100%', backgroundColor: child.shapeFill || '#000000', borderRadius: `${child.shapeRadius || 0}px`, border: child.shapeBorder ? `${child.shapeBorder}px solid ${child.shapeBorderColor || '#000000'}` : 'none', pointerEvents: 'none' }} />
@@ -5261,7 +5268,7 @@ const LayoutBuilder = () => {
                                             ))}
                                         </div>
                                     ) : el.type === 'table_grades' ? renderDynamicTable(el, data, mockStudentGrades, mockClassAverages, false, 'raport', classesData, 0) 
-                                    : el.type === 'table_custom' ? renderCustomTable(el, s=>s, { isEditable: selectedIds.includes(el.id), onColResizeStart: startColResize, onRowResizeStart: startRowResize })
+                                    : el.type === 'table_custom' ? renderCustomTable(el, s=>s, { isEditable: selectedIds.includes(el.id), selectedCells: selectedIds.includes(el.id) ? ctSelCells : [], onColResizeStart: startColResize, onRowResizeStart: startRowResize, onCellClick: (e, ck) => { if (e.shiftKey) { setCtSelCells(prev => prev.includes(ck) ? prev.filter(k=>k!==ck) : [...prev, ck]); } else { setCtSelCells([ck]); setCtActiveCell(ck); } } })
                                     : el.type === 'image' ? <img src={el.content} style={{ width: '100%', height: '100%', objectFit: el.objectFit || 'contain', objectPosition: `${el.objectPositionX ?? 50}% ${el.objectPositionY ?? 50}%`, pointerEvents: 'none' }} alt="elemen" />
                                     : el.type === 'line' ? <div style={{ width: '100%', height: `${el.lineThickness || 2}px`, backgroundColor: el.lineColor || '#000000', pointerEvents: 'none' }} />
                                     : el.type === 'shape' ? <div style={{ width: '100%', height: '100%', backgroundColor: el.shapeFill || '#000000', borderRadius: `${el.shapeRadius || 0}px`, border: el.shapeBorder ? `${el.shapeBorder}px solid ${el.shapeBorderColor || '#000000'}` : 'none', pointerEvents: 'none' }} />
@@ -6388,7 +6395,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                     height: el.height ? `${el.height}px` : 'auto',
                     padding: 0,
                     background: el.isTransparent ? 'transparent' : 'white',
-                    overflow: 'hidden',
+                    overflow: 'visible',
                 }}>
                     {el.type === 'table_grades' 
                         ? renderDynamicTable(el, data, sGrades, classAverages, useKatrol, mode, classesData, studentsInClass.length)
@@ -6429,8 +6436,8 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                             height: (child.type === 'image' || child.type === 'table_grades' || child.type === 'table_custom' || child.type === 'shape') ? (child.height ? `${child.height}px` : 'auto') : child.type === 'line' ? `${child.lineThickness || 2}px` : 'auto',
                             padding: (child.type === 'image' || child.type === 'table_grades' || child.type === 'table_custom' || child.type === 'shape' || child.type === 'line') ? 0 : '2px',
                         };
-                        if (child.type === 'table_grades') return <div key={child.id} style={{...childStyle, background: child.isTransparent ? 'transparent' : 'white', overflow:'hidden'}}>{renderDynamicTable(child, data, sGrades, classAverages, useKatrol, mode, classesData, studentsInClass.length)}</div>;
-                        if (child.type === 'table_custom') return <div key={child.id} style={{...childStyle, background: child.isTransparent ? 'transparent' : 'white', overflow:'hidden'}}>{renderCustomTable(child, replaceVariables)}</div>;
+                        if (child.type === 'table_grades') return <div key={child.id} style={{...childStyle, background: child.isTransparent ? 'transparent' : 'white', overflow:'visible'}}>{renderDynamicTable(child, data, sGrades, classAverages, useKatrol, mode, classesData, studentsInClass.length)}</div>;
+                        if (child.type === 'table_custom') return <div key={child.id} style={{...childStyle, background: child.isTransparent ? 'transparent' : 'white', overflow:'visible'}}>{renderCustomTable(child, replaceVariables)}</div>;
                         if (child.type === 'image') return <img key={child.id} src={child.content} style={{...childStyle, objectFit: child.objectFit||'contain', objectPosition:`${child.objectPositionX??50}% ${child.objectPositionY??50}%`}} alt="c" />;
                         if (child.type === 'line') return <div key={child.id} style={{...childStyle, backgroundColor: child.lineColor || '#000000'}} />;
                         if (child.type === 'shape') return <div key={child.id} style={{...childStyle, backgroundColor: child.shapeFill || '#000000', borderRadius: `${child.shapeRadius || 0}px`, border: child.shapeBorder ? `${child.shapeBorder}px solid ${child.shapeBorderColor || '#000000'}` : 'none'}} />;

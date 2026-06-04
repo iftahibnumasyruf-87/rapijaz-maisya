@@ -18,3 +18,10 @@ input::placeholder {
 input[placeholder*="Arab"]::placeholder {
   font-family: 'Cairo', 'Traditional Arabic', 'Arial', sans-serif;
 }
+
+@media print {
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
