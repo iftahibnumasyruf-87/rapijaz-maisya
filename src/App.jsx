@@ -4435,7 +4435,7 @@ const LayoutBuilder = () => {
                             {activeEl.type === 'text' && (
                                 <>
                                     <textarea className="w-full p-2 border rounded text-sm focus:ring-2 outline-none min-h-[60px]" value={activeEl.content} onChange={e => updateElement(selectedElementId, { content: e.target.value })} />
-                                    <VariablesHelp onInsert={(val) => updateElement(selectedElementId, { content: (activeEl.content || '') + val })} masterSubjects={allData?.masterSubjects || data.masterSubjects || []} />
+                                    <VariablesHelp onInsert={(val) => updateElement(selectedElementId, { content: (activeEl.content || '') + val })} masterSubjects={data.masterSubjects || []} />
                                 </>
                             )}
 
@@ -5013,7 +5013,7 @@ const LayoutBuilder = () => {
                                                         newCells[ck] = {...(newCells[ck]||{}), content: currentVal + val}; 
                                                     });
                                                     updateElement(selectedElementId, { cells: newCells });
-                                                }} masterSubjects={allData?.masterSubjects || data.masterSubjects || []} />
+                                                }} masterSubjects={data.masterSubjects || []} />
                                                 <div className="flex gap-2 items-center">
                                                     <button onClick={() => {
                                                         const newCells = {...activeEl.cells};
