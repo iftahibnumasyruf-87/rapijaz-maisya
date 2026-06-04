@@ -5905,6 +5905,8 @@ const CetakDokumen = ({ mode = 'raport' }) => {
     const [printMargins, setPrintMargins] = useState({ top: 0, bottom: 0, left: 0, right: 0 });
     const [printScale, setPrintScale] = useState(0.9);
     const [previewZoom, setPreviewZoom] = useState(0.7);
+    const [printRangeStart, setPrintRangeStart] = useState('');
+    const [printRangeEnd, setPrintRangeEnd] = useState('');
     
     const activeSetting = data.settings.find(s => s.isActive) || {};
     const activeStudents = getStudentsForYear(data.studentSnapshots, activeSetting, data.students);
@@ -6109,9 +6111,86 @@ const CetakDokumen = ({ mode = 'raport' }) => {
         }, 1000);
     };
 
+    const handleBatchExportPDF = async () => {
+        if(!selectedClass || studentsInClass.length === 0) return;
+        
+        let start = 1;
+        let end = studentsInClass.length;
+        if (printRangeStart) start = Math.max(1, parseInt(printRangeStart));
+        if (printRangeEnd) end = Math.min(studentsInClass.length, parseInt(printRangeEnd));
+        if (start > end) start = end;
+
+        const ts = activeSetting.tahun ? activeSetting.tahun.replace(/\//g, '-') : 'tahun';
+        const ss = activeSetting.semester || '1';
+        const ks = getClassNameFromValue(classesData, selectedClass).replace(/\s+/g, '_');
+        const filename = mode === 'raport' 
+            ? `raport_masal_${ks}_${start}-${end}_${ts}_${ss}.pdf` 
+            : `ijazah_masal_${ks}_${start}-${end}_${ts}.pdf`;
+
+        addLog(`Menyimpan massal ${mode} sbg PDF untuk kelas ${ks} (${start}-${end})`);
+        
+        setIsBatchMode(true);
+        const oldZoom = previewZoom;
+        setPreviewZoom(1.0);
+        setIsExporting(true);
+        
+        await new Promise(r => setTimeout(r, 800)); // wait for render
+        
+        const pageContainers = document.querySelectorAll('.print-container');
+        if (!pageContainers || pageContainers.length === 0) {
+            setPreviewZoom(oldZoom);
+            setIsExporting(false);
+            setIsBatchMode(false);
+            return;
+        }
+        
+        const isF4 = layoutPageSize === 'F4';
+        const isLandscape = layoutOrientation === 'landscape';
+        const pdfW = isF4 ? (isLandscape ? 330.2 : 215.9) : (isLandscape ? 297 : 210);
+        const pdfH = isF4 ? (isLandscape ? 215.9 : 330.2) : (isLandscape ? 210 : 297);
+        
+        const pdf = new jsPDF({ unit: 'mm', format: [pdfW, pdfH], orientation: layoutOrientation });
+        
+        for (let i = 0; i < pageContainers.length; i++) {
+            const container = pageContainers[i];
+            const canvas = await html2canvas(container, {
+                scale: 1.5,
+                useCORS: true,
+                logging: false,
+                backgroundColor: '#ffffff',
+                width: container.offsetWidth,
+                height: container.offsetHeight,
+                scrollX: 0,
+                scrollY: 0,
+                x: 0,
+                y: 0,
+            });
+            
+            if (i > 0) pdf.addPage([pdfW, pdfH], layoutOrientation);
+            
+            const imgData = canvas.toDataURL('image/jpeg', 0.90);
+            pdf.addImage(imgData, 'JPEG', 0, 0, pdfW, pdfH);
+        }
+        
+        pdf.save(filename);
+        setPreviewZoom(oldZoom);
+        setIsExporting(false);
+        setIsBatchMode(false);
+    };
+
     const getStyles = (el) => ({ position: 'absolute', left: `${el.x}px`, top: `${el.y}px`, fontSize: `${el.fontSize}px`, fontFamily: el.fontFamily || 'Arial, sans-serif', fontWeight: el.fontWeight, color: 'black', textAlign: el.textAlign || 'left' });
 
-    const studentsToRender = isBatchMode ? studentsInClass : (studentData ? [studentData] : []);
+    let studentsToRender = [];
+    if (isBatchMode) {
+        let start = 0;
+        let end = studentsInClass.length;
+        if (printRangeStart) start = Math.max(0, parseInt(printRangeStart) - 1);
+        if (printRangeEnd) end = Math.min(studentsInClass.length, parseInt(printRangeEnd));
+        if (start > end) start = end;
+        studentsToRender = studentsInClass.slice(start, end);
+    } else {
+        studentsToRender = studentData ? [studentData] : [];
+    }
 
     const renderElementForStudent = (el, stdData) => {
         const sGrades = classGradesDoc[stdData.id] || {};
@@ -6352,8 +6431,20 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                         <button onClick={handleWA} disabled={!selectedStudent} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-lg font-bold flex justify-center items-center gap-2 transition"><Share2 size={18}/> Kirim Info via WA</button>
                     </div>
                     <div className="pt-2 border-t mt-4">
-                        <button onClick={handleBatchSavePDF} disabled={!selectedClass || studentsInClass.length === 0} className="w-full bg-orange-600 hover:bg-orange-700 text-white py-2.5 rounded-lg font-bold flex justify-center items-center gap-2 transition"><Printer size={18}/> Cetak Semua (1 Kelas)</button>
-                        <p className="text-xs text-gray-500 text-center mt-2">Cetak raport seluruh siswa di kelas yang dipilih dalam 1 file PDF.</p>
+                        <p className="text-sm font-bold text-gray-700 mb-2">Cetak / Simpan Massal</p>
+                        <div className="flex gap-2 items-center mb-3">
+                            <span className="text-xs font-semibold text-gray-600">Dari no:</span>
+                            <input type="number" min="1" max={studentsInClass.length || 1} placeholder="1" className="w-16 p-1.5 border rounded text-xs font-bold text-center" value={printRangeStart} onChange={e => setPrintRangeStart(e.target.value)} />
+                            <span className="text-xs font-semibold text-gray-600">s/d:</span>
+                            <input type="number" min="1" max={studentsInClass.length || 1} placeholder={studentsInClass.length || 1} className="w-16 p-1.5 border rounded text-xs font-bold text-center" value={printRangeEnd} onChange={e => setPrintRangeEnd(e.target.value)} />
+                        </div>
+                        <div className="flex flex-col gap-2">
+                            <button onClick={handleBatchSavePDF} disabled={!selectedClass || studentsInClass.length === 0 || isExporting} className="w-full bg-orange-600 hover:bg-orange-700 text-white py-2 rounded-lg font-bold flex justify-center items-center gap-2 transition"><Printer size={16}/> Cetak (Range/Kelas)</button>
+                            <button onClick={handleBatchExportPDF} disabled={!selectedClass || studentsInClass.length === 0 || isExporting} className="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg font-bold flex justify-center items-center gap-2 transition">
+                                {isExporting && isBatchMode ? <RefreshCw size={16} className="animate-spin" /> : <Download size={16}/>}
+                                {isExporting && isBatchMode ? 'Memproses PDF...' : 'Simpan PDF (Range/Kelas)'}
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
