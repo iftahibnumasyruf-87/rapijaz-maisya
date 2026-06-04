@@ -3697,17 +3697,28 @@ const LayoutBuilder = () => {
             showNotification('Gagal menduplikat layout, coba lagi.', 'error');
             return;
         }
-        const clonedElements = JSON.parse(JSON.stringify(source.elements || []));
+        
+        // Gunakan state LOKAL (elements, dll) yang berisi editan terbaru belum tersimpan (menunggu auto-save)
+        const clonedElements = JSON.parse(JSON.stringify(elements || []));
+        
         // Assign new IDs to cloned elements to avoid conflicts
-        clonedElements.forEach(el => { el.id = `${el.id}_copy_${Date.now()}`; });
+        clonedElements.forEach(el => { 
+            const randomHash = Math.random().toString(36).slice(2, 7);
+            el.id = `${el.id}_copy_${Date.now()}_${randomHash}`; 
+            if (el.type === 'table_grades' && el.columns) {
+                el.columns.forEach((col, idx) => col.id = `${Date.now()}_${randomHash}_${idx}`);
+            }
+        });
+
         saveToDb('layouts', newId, {
             name: newName,
             elements: clonedElements,
-            pageSize: source.pageSize || 'A4',
-            orientation: source.orientation || 'portrait',
-            guides: JSON.parse(JSON.stringify(source.guides || { h: [], v: [] })),
-            margins: JSON.parse(JSON.stringify(source.margins || { top: 0, bottom: 0, left: 0, right: 0 }))
+            pageSize: pageSize || 'A4',
+            orientation: orientation || 'portrait',
+            guides: JSON.parse(JSON.stringify(guides || { h: [], v: [] })),
+            margins: JSON.parse(JSON.stringify(margins || { top: 0, bottom: 0, left: 0, right: 0 }))
         }, false, `Menduplikat layout: ${sourceName}`);
+        
         setActiveLayout(newId);
         showNotification(`Layout "${newName}" berhasil dibuat!`, 'success');
     };
