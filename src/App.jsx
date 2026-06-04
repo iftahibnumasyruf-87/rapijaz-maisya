@@ -2311,16 +2311,24 @@ const MasterData = ({ activeTab }) => {
         );
       case 'masterSubjects':
         return (
-          <table className="w-full text-left border-collapse">
-            <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm">
-                <SortableHeader label="Pelajaran Utama (Indo)" sortKey="nameId" />
-                <SortableHeader label="Pelajaran Utama (Arab)" sortKey="nameAr" className="text-right" />
-                <th className="p-3 border-b text-center">Aksi</th>
-            </tr></thead>
-            <tbody>{sortedData.map(m => (
-                <tr key={m.id} className="border-b hover:bg-gray-50"><td className="p-3 font-semibold">{m.nameId}</td><td className="p-3 text-right font-arabic" dir="rtl">{m.nameAr}</td><td className="p-3 text-center"><button onClick={() => handleOpenModal(m)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('masterSubjects', m.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td></tr>
-              ))}</tbody>
-          </table>
+              <table className="w-full text-left border-collapse">
+                <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm">
+                    <SortableHeader label="Pelajaran Utama (Indo)" sortKey="nameId" />
+                    <SortableHeader label="Pelajaran Utama (Arab)" sortKey="nameAr" className="text-right" />
+                    <SortableHeader label="Variabel (Singkatan)" sortKey="shortCode" />
+                    <th className="p-3 border-b text-center">Aksi</th>
+                </tr></thead>
+                <tbody>{sortedData.map(m => {
+                    const varName = m.shortCode || m.nameId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    return (
+                    <tr key={m.id} className="border-b hover:bg-gray-50">
+                        <td className="p-3 font-semibold">{m.nameId}</td>
+                        <td className="p-3 text-right font-arabic" dir="rtl">{m.nameAr}</td>
+                        <td className="p-3 text-sm text-gray-600 font-mono select-all">{'{{nilai_'}{m.shortCode || m.nameId}{'}}'}</td>
+                        <td className="p-3 text-center"><button onClick={() => handleOpenModal(m)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('masterSubjects', m.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td>
+                    </tr>
+                )})}</tbody>
+              </table>
         );
       case 'subjects':
         return (
@@ -2626,7 +2634,8 @@ const MasterData = ({ activeTab }) => {
                     }}
                 />
                 <input className="w-full p-2 border rounded text-right font-arabic" placeholder="Nama Pelajaran (Arab) - Terisi Otomatis" dir="rtl" value={formData.nameAr || ''} onChange={e => setFormData({...formData, nameAr: e.target.value})} />
-                <p className="text-[10px] text-gray-500 italic">*Ketik nama pelajaran (Indonesia) dan klik sembarang di luar kotak. Kolom Arab akan otomatis diterjemahkan menggunakan Google Translate.</p>
+                <input className="w-full p-2 border rounded font-mono text-sm" placeholder="Variabel Singkatan (Opsional) - cth: bing, mtk" value={formData.shortCode || ''} onChange={e => setFormData({...formData, shortCode: e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '')})} />
+                <p className="text-[10px] text-gray-500 italic">*Ketik nama pelajaran (Indonesia) dan klik sembarang di luar kotak untuk terjemahan Arab. Anda juga bisa mengisi Variabel Singkatan agar lebih mudah saat disisipkan di tabel kustom (jika dikosongkan, akan otomatis memakai nama mapel).</p>
             </div>
         );
         case 'subjects': return (
@@ -3314,9 +3323,10 @@ const VariablesHelp = ({ onInsert, masterSubjects = [] }) => {
                 </optgroup>
                 {masterSubjects.length > 0 && (
                     <optgroup label="Daftar Pelajaran (Master)">
-                        {masterSubjects.map(m => (
-                            <option key={m.id} value={`{{nilai_${m.nameId}}}`}>Nilai {m.nameId}</option>
-                        ))}
+                        {masterSubjects.map(m => {
+                            const varName = m.shortCode || m.nameId;
+                            return <option key={m.id} value={`{{nilai_${varName}}}`}>Nilai {m.nameId}</option>;
+                        })}
                     </optgroup>
                 )}
                 <optgroup label="Variabel Excel">
@@ -6458,7 +6468,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                              .replace(/\{\{jumlah_santri\}\}/gi, jumlahSantri)
                              .replace(/\{\{jumlah_santri_ar\}\}/gi, jumlahSantriAr);
             
-            // Replace dynamic variables for Master Subjects (e.g. {{nilai_Al-Qur'an}})
+            // Replace dynamic variables for Master Subjects (e.g. {{nilai_Al-Qur'an}} or {{nilai_alq}})
             relevantSubjects.forEach(s => {
                 if (!s.mapel) return;
                 const gradeObj = sGrades[s.id];
@@ -6470,16 +6480,18 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                     gradeStr = gradeObj;
                 }
                 
-                const safeMapel = s.mapel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                const mapelAr = data.masterSubjects?.find(m => m.nameId === s.mapel)?.nameAr || s.mapel;
+                const masterSub = data.masterSubjects?.find(m => m.nameId === s.mapel);
+                const varName = masterSub?.shortCode || s.mapel;
+                const safeVarName = varName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const mapelAr = masterSub?.nameAr || s.mapel;
                 
                 replaced = replaced
-                    .replace(new RegExp(`\\{\\{nilai_${safeMapel}\\}\\}`, 'gi'), gradeStr)
-                    .replace(new RegExp(`\\{\\{nilai_${safeMapel}_ar\\}\\}`, 'gi'), gradeStr !== '-' ? toArabicNumbers(gradeStr) : '-')
-                    .replace(new RegExp(`\\{\\{mapel_${safeMapel}_id\\}\\}`, 'gi'), s.mapel)
-                    .replace(new RegExp(`\\{\\{mapel_${safeMapel}_ar\\}\\}`, 'gi'), mapelAr)
-                    .replace(new RegExp(`\\{\\{kkm_${safeMapel}\\}\\}`, 'gi'), s.kkm || '')
-                    .replace(new RegExp(`\\{\\{guru_${safeMapel}\\}\\}`, 'gi'), s.guru || '');
+                    .replace(new RegExp(`\\{\\{nilai_${safeVarName}\\}\\}`, 'gi'), gradeStr)
+                    .replace(new RegExp(`\\{\\{nilai_${safeVarName}_ar\\}\\}`, 'gi'), gradeStr !== '-' ? toArabicNumbers(gradeStr) : '-')
+                    .replace(new RegExp(`\\{\\{mapel_${safeVarName}_id\\}\\}`, 'gi'), s.mapel)
+                    .replace(new RegExp(`\\{\\{mapel_${safeVarName}_ar\\}\\}`, 'gi'), mapelAr)
+                    .replace(new RegExp(`\\{\\{kkm_${safeVarName}\\}\\}`, 'gi'), s.kkm || '')
+                    .replace(new RegExp(`\\{\\{guru_${safeVarName}\\}\\}`, 'gi'), s.guru || '');
             });
             
             return replaced.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
