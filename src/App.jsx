@@ -2319,23 +2319,39 @@ const MasterData = ({ activeTab }) => {
                     <th className="p-3 border-b">Var (Arab)</th>
                     <th className="p-3 border-b text-center">Aksi</th>
                 </tr></thead>
-                <tbody>{sortedData.map(m => {
-                    const clean = (m.nameId || '').trim();
-                    const words = clean.split(/\s+/).filter(Boolean);
-                    let autoKey = words.map(w => (w.match(/[a-zA-Z]/) ? w.match(/[a-zA-Z]/)[0] : w[0] || '')).join('').toLowerCase().replace(/[^a-z0-9]/g, '');
-                    if (autoKey.length === 0) autoKey = clean.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 3) || 'x';
-                    if (autoKey.length > 3) autoKey = autoKey.slice(0, 3);
-                    const varName = m.shortCode || autoKey;
-                    
-                    return (
-                    <tr key={m.id} className="border-b hover:bg-gray-50">
-                        <td className="p-3 font-semibold">{m.nameId}</td>
-                        <td className="p-3 text-right font-arabic" dir="rtl">{m.nameAr}</td>
-                        <td className="p-3 text-sm text-gray-600 font-mono"><span className="select-all p-1 bg-gray-100 rounded">{'{{'}{varName}{'}}'}</span></td>
-                        <td className="p-3 text-sm text-gray-600 font-mono"><span className="select-all p-1 bg-gray-100 rounded">{'{{'}{varName}_arb{'}}'}</span></td>
-                        <td className="p-3 text-center"><button onClick={() => handleOpenModal(m)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('masterSubjects', m.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td>
-                    </tr>
-                )})}</tbody>
+                <tbody>{(() => {
+                    // Generate unique autoKeys across all sortedData
+                    const usedAutoKeys = new Set();
+                    const getAutoKey = (nameId) => {
+                        const clean = (nameId || '').trim();
+                        const words = clean.split(/\s+/).filter(Boolean);
+                        let key = words.map(w => (w.match(/[a-zA-Z]/) ? w.match(/[a-zA-Z]/)[0] : w[0] || '')).join('').toLowerCase().replace(/[^a-z0-9]/g, '');
+                        if (key.length === 0) key = clean.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 3) || 'x';
+                        if (key.length > 3) key = key.slice(0, 3);
+                        if (usedAutoKeys.has(key)) {
+                            const fallback = clean.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 4);
+                            if (!usedAutoKeys.has(fallback)) key = fallback;
+                        }
+                        if (usedAutoKeys.has(key)) {
+                            const base = key; let i = 2;
+                            while (usedAutoKeys.has(`${base}${i}`)) i++;
+                            key = `${base}${i}`;
+                        }
+                        usedAutoKeys.add(key);
+                        return key;
+                    };
+                    return sortedData.map(m => {
+                        const varName = m.shortCode || getAutoKey(m.nameId);
+                        return (
+                        <tr key={m.id} className="border-b hover:bg-gray-50">
+                            <td className="p-3 font-semibold">{m.nameId}</td>
+                            <td className="p-3 text-right font-arabic" dir="rtl">{m.nameAr}</td>
+                            <td className="p-3 text-sm text-gray-600 font-mono"><span className="select-all cursor-pointer p-1 bg-indigo-50 border border-indigo-200 rounded hover:bg-indigo-100 transition" title="Klik untuk menyalin">{'{{'}{varName}{'}}'}</span></td>
+                            <td className="p-3 text-sm text-gray-600 font-mono"><span className="select-all cursor-pointer p-1 bg-amber-50 border border-amber-200 rounded hover:bg-amber-100 transition" title="Klik untuk menyalin">{'{{'}{varName}_arb{'}}'}</span></td>
+                            <td className="p-3 text-center"><button onClick={() => handleOpenModal(m)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('masterSubjects', m.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td>
+                        </tr>
+                    )});
+                })()}</tbody>
               </table>
         );
       case 'subjects':
@@ -3331,21 +3347,29 @@ const VariablesHelp = ({ onInsert, masterSubjects = [] }) => {
                 </optgroup>
                 {masterSubjects.length > 0 && (
                     <optgroup label="Daftar Pelajaran (Master)">
-                        {masterSubjects.map(m => {
-                            const clean = (m.nameId || '').trim();
-                            const words = clean.split(/\s+/).filter(Boolean);
-                            let autoKey = words.map(w => (w.match(/[a-zA-Z]/) ? w.match(/[a-zA-Z]/)[0] : w[0] || '')).join('').toLowerCase().replace(/[^a-z0-9]/g, '');
-                            if (autoKey.length === 0) autoKey = clean.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 3) || 'x';
-                            if (autoKey.length > 3) autoKey = autoKey.slice(0, 3);
-                            const varName = m.shortCode || autoKey;
-                            
-                            return (
-                                <React.Fragment key={m.id}>
-                                    <option value={`{{${varName}}}`}>Nama Indo: {m.nameId}</option>
-                                    <option value={`{{${varName}_arb}}`}>Nama Arab: {m.nameId}</option>
-                                </React.Fragment>
-                            );
-                        })}
+                        {(() => {
+                            const usedKeys2 = new Set();
+                            const getKey2 = (nameId) => {
+                                const clean = (nameId || '').trim();
+                                const words = clean.split(/\s+/).filter(Boolean);
+                                let key = words.map(w => (w.match(/[a-zA-Z]/) ? w.match(/[a-zA-Z]/)[0] : w[0] || '')).join('').toLowerCase().replace(/[^a-z0-9]/g, '');
+                                if (key.length === 0) key = clean.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 3) || 'x';
+                                if (key.length > 3) key = key.slice(0, 3);
+                                if (usedKeys2.has(key)) { const fb = clean.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0,4); if (!usedKeys2.has(fb)) key = fb; }
+                                if (usedKeys2.has(key)) { const base = key; let i = 2; while(usedKeys2.has(`${base}${i}`)) i++; key = `${base}${i}`; }
+                                usedKeys2.add(key);
+                                return key;
+                            };
+                            return masterSubjects.map(m => {
+                                const varName = m.shortCode || getKey2(m.nameId);
+                                return (
+                                    <React.Fragment key={m.id}>
+                                        <option value={`{{${varName}}}`}>Nama Indo: {m.nameId}</option>
+                                        <option value={`{{${varName}_arb}}`}>Nama Arab: {m.nameId}</option>
+                                    </React.Fragment>
+                                );
+                            });
+                        })()}
                     </optgroup>
                 )}
                 <optgroup label="Variabel Excel">
@@ -6487,26 +6511,47 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                              .replace(/\{\{jumlah_santri\}\}/gi, jumlahSantri)
                              .replace(/\{\{jumlah_santri_ar\}\}/gi, jumlahSantriAr);
             
-            // Replace dynamic variables for Master Subjects (e.g. {{alq}} or {{alq_arb}})
-            relevantSubjects.forEach(s => {
-                if (!s.mapel) return;
-                
-                const masterSub = data.masterSubjects?.find(m => m.nameId === s.mapel);
-                
-                const clean = (s.mapel || '').trim();
-                const words = clean.split(/\s+/).filter(Boolean);
-                let autoKey = words.map(w => (w.match(/[a-zA-Z]/) ? w.match(/[a-zA-Z]/)[0] : w[0] || '')).join('').toLowerCase().replace(/[^a-z0-9]/g, '');
-                if (autoKey.length === 0) autoKey = clean.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 3) || 'x';
-                if (autoKey.length > 3) autoKey = autoKey.slice(0, 3);
-                
-                const varName = masterSub?.shortCode || autoKey;
-                const safeVarName = varName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                const mapelAr = masterSub?.nameAr || s.mapel;
-                
-                replaced = replaced
-                    .replace(new RegExp(`\\{\\{${safeVarName}\\}\\}`, 'gi'), s.mapel)
-                    .replace(new RegExp(`\\{\\{${safeVarName}_arb\\}\\}`, 'gi'), mapelAr);
-            });
+            // Replace dynamic variables for Master Subjects
+            // Iterates ALL masterSubjects (not per-class filtered), supports:
+            //   {{shortCode}} / {{shortCode_arb}} (new short format)
+            //   {{nameId}} / {{nameId_arb}} (legacy full-name format)
+            if (data.masterSubjects && data.masterSubjects.length > 0) {
+                const usedAutoKeys3 = new Set();
+                const getAutoKey3 = (nameId) => {
+                    const clean3 = (nameId || '').trim();
+                    const words3 = clean3.split(/\s+/).filter(Boolean);
+                    let k = words3.map(w => (w.match(/[a-zA-Z]/) ? w.match(/[a-zA-Z]/)[0] : w[0] || '')).join('').toLowerCase().replace(/[^a-z0-9]/g, '');
+                    if (k.length === 0) k = clean3.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 3) || 'x';
+                    if (k.length > 3) k = k.slice(0, 3);
+                    if (usedAutoKeys3.has(k)) { const fb = clean3.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0,4); if(!usedAutoKeys3.has(fb)) k = fb; }
+                    if (usedAutoKeys3.has(k)) { const base = k; let i = 2; while(usedAutoKeys3.has(`${base}${i}`)) i++; k = `${base}${i}`; }
+                    usedAutoKeys3.add(k);
+                    return k;
+                };
+
+                data.masterSubjects.forEach(m => {
+                    const mapelAr = m.nameAr || m.nameId;
+                    const shortVar = m.shortCode || getAutoKey3(m.nameId);
+
+                    // Escape for use in RegExp
+                    const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+                    // 1) Replace short/custom key  {{alq}} → nameId, {{alq_arb}} → nameAr
+                    const safeShort = escapeRe(shortVar);
+                    replaced = replaced
+                        .replace(new RegExp(`\\{\\{${safeShort}\\}\\}`, 'gi'), m.nameId)
+                        .replace(new RegExp(`\\{\\{${safeShort}_arb\\}\\}`, 'gi'), mapelAr);
+
+                    // 2) Replace full nameId key (backward compat) {{Al-Qur'an}} → nameId
+                    if (shortVar !== m.nameId) {
+                        const safeNameId = escapeRe(m.nameId);
+                        replaced = replaced
+                            .replace(new RegExp(`\\{\\{${safeNameId}\\}\\}`, 'gi'), m.nameId)
+                            .replace(new RegExp(`\\{\\{${safeNameId}_arb\\}\\}`, 'gi'), mapelAr)
+                            .replace(new RegExp(`\\{\\{${safeNameId}_arb\\}\\}\\}`, 'gi'), mapelAr); // fix triple-brace legacy
+                    }
+                });
+            }
             
             return replaced.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
                  if (stdData[key] !== undefined) return stdData[key];
