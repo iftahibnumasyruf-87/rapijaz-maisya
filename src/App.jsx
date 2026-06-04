@@ -4850,23 +4850,42 @@ const LayoutBuilder = () => {
                                                         const isBold = newCells[ctSelCells[0]]?.bold;
                                                         ctSelCells.forEach(ck => { newCells[ck] = {...(newCells[ck]||{}), bold: !isBold}; });
                                                         updateElement(selectedElementId, { cells: newCells });
-                                                    }} className={`p-1.5 border rounded text-xs font-bold w-8 flex justify-center ${activeEl.cells?.[ctSelCells[0]]?.bold ? 'bg-gray-800 text-white' : 'bg-white hover:bg-gray-100'}`}>B</button>
-                                                    <div className="flex border rounded overflow-hidden flex-1">
+                                                    }} className={`p-1.5 border rounded text-xs font-bold w-8 flex justify-center shrink-0 ${activeEl.cells?.[ctSelCells[0]]?.bold ? 'bg-gray-800 text-white' : 'bg-white hover:bg-gray-100'}`}>B</button>
+                                                    
+                                                    <div className="flex border rounded overflow-hidden flex-1" title="Rata Kiri/Tengah/Kanan">
                                                         <button onClick={() => {
                                                             const newCells = {...activeEl.cells};
                                                             ctSelCells.forEach(ck => { newCells[ck] = {...(newCells[ck]||{}), align: 'left'}; });
                                                             updateElement(selectedElementId, { cells: newCells });
-                                                        }} className={`flex-1 p-1.5 flex justify-center ${activeEl.cells?.[ctSelCells[0]]?.align === 'left' ? 'bg-gray-800 text-white' : 'bg-white hover:bg-gray-100'}`}><AlignLeft size={14}/></button>
+                                                        }} className={`flex-1 p-1 flex justify-center ${activeEl.cells?.[ctSelCells[0]]?.align === 'left' ? 'bg-gray-800 text-white' : 'bg-white hover:bg-gray-100'}`}><AlignLeft size={14}/></button>
                                                         <button onClick={() => {
                                                             const newCells = {...activeEl.cells};
                                                             ctSelCells.forEach(ck => { newCells[ck] = {...(newCells[ck]||{}), align: 'center'}; });
                                                             updateElement(selectedElementId, { cells: newCells });
-                                                        }} className={`flex-1 p-1.5 flex justify-center border-l ${(!activeEl.cells?.[ctSelCells[0]]?.align || activeEl.cells?.[ctSelCells[0]]?.align === 'center') ? 'bg-gray-800 text-white' : 'bg-white hover:bg-gray-100'}`}><AlignCenter size={14}/></button>
+                                                        }} className={`flex-1 p-1 flex justify-center border-l ${(!activeEl.cells?.[ctSelCells[0]]?.align || activeEl.cells?.[ctSelCells[0]]?.align === 'center') ? 'bg-gray-800 text-white' : 'bg-white hover:bg-gray-100'}`}><AlignCenter size={14}/></button>
                                                         <button onClick={() => {
                                                             const newCells = {...activeEl.cells};
                                                             ctSelCells.forEach(ck => { newCells[ck] = {...(newCells[ck]||{}), align: 'right'}; });
                                                             updateElement(selectedElementId, { cells: newCells });
-                                                        }} className={`flex-1 p-1.5 flex justify-center border-l ${activeEl.cells?.[ctSelCells[0]]?.align === 'right' ? 'bg-gray-800 text-white' : 'bg-white hover:bg-gray-100'}`}><AlignRight size={14}/></button>
+                                                        }} className={`flex-1 p-1 flex justify-center border-l ${activeEl.cells?.[ctSelCells[0]]?.align === 'right' ? 'bg-gray-800 text-white' : 'bg-white hover:bg-gray-100'}`}><AlignRight size={14}/></button>
+                                                    </div>
+
+                                                    <div className="flex border rounded overflow-hidden flex-1" title="Rata Atas/Tengah/Bawah">
+                                                        <button onClick={() => {
+                                                            const newCells = {...activeEl.cells};
+                                                            ctSelCells.forEach(ck => { newCells[ck] = {...(newCells[ck]||{}), valign: 'top'}; });
+                                                            updateElement(selectedElementId, { cells: newCells });
+                                                        }} className={`flex-1 p-1 flex justify-center ${activeEl.cells?.[ctSelCells[0]]?.valign === 'top' ? 'bg-gray-800 text-white' : 'bg-white hover:bg-gray-100'}`}><AlignStartVertical size={14}/></button>
+                                                        <button onClick={() => {
+                                                            const newCells = {...activeEl.cells};
+                                                            ctSelCells.forEach(ck => { newCells[ck] = {...(newCells[ck]||{}), valign: 'middle'}; });
+                                                            updateElement(selectedElementId, { cells: newCells });
+                                                        }} className={`flex-1 p-1 flex justify-center border-l ${(!activeEl.cells?.[ctSelCells[0]]?.valign || activeEl.cells?.[ctSelCells[0]]?.valign === 'middle') ? 'bg-gray-800 text-white' : 'bg-white hover:bg-gray-100'}`}><AlignCenterVertical size={14}/></button>
+                                                        <button onClick={() => {
+                                                            const newCells = {...activeEl.cells};
+                                                            ctSelCells.forEach(ck => { newCells[ck] = {...(newCells[ck]||{}), valign: 'bottom'}; });
+                                                            updateElement(selectedElementId, { cells: newCells });
+                                                        }} className={`flex-1 p-1 flex justify-center border-l ${activeEl.cells?.[ctSelCells[0]]?.valign === 'bottom' ? 'bg-gray-800 text-white' : 'bg-white hover:bg-gray-100'}`}><AlignEndVertical size={14}/></button>
                                                     </div>
                                                 </div>
                                                 <div className="flex gap-2 items-center">
