@@ -3396,6 +3396,8 @@ const LayoutBuilder = () => {
     const [elements, setElements] = useState([]);
     const [newLayoutName, setNewLayoutName] = useState('');
     const [showNewLayoutForm, setShowNewLayoutForm] = useState(false);
+    const [expandedPanels, setExpandedPanels] = useState({ addElem: true, layers: true, editSingle: true, editMulti: true });
+    const togglePanel = (key) => setExpandedPanels(prev => ({ ...prev, [key]: !prev[key] }));
     const [pageSize, setPageSize] = useState('A4');
     const [guides, setGuides] = useState({ h: [], v: [] });
     const [selectedIds, setSelectedIds] = useState([]);
@@ -4290,79 +4292,101 @@ const LayoutBuilder = () => {
                         </div>
                     )}
                     
-                    <div className="space-y-2 border-b pb-4">
-                        <p className="text-xs font-semibold text-gray-500 uppercase sticky top-0 bg-white z-10 pb-1">Tambah Elemen</p>
-                        <button onClick={() => addElement('text')} className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded text-sm flex items-center justify-center gap-2"><TypeIcon size={16}/> Teks Bebas</button>
-                        <button onClick={() => addElement('image')} className="w-full bg-purple-50 hover:bg-purple-100 text-purple-700 py-2 rounded text-sm flex items-center justify-center gap-2"><ImageIcon size={16}/> Gambar (Logo/Stempel)</button>
-                        <button onClick={() => addElement('watermark')} className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 py-2 rounded text-sm flex items-center justify-center gap-2"><ImageIcon size={16}/> Gambar Watermark</button>
-                        <button onClick={() => addElement('table_grades')} className="w-full bg-orange-50 hover:bg-orange-100 text-orange-700 py-2 rounded text-sm flex items-center justify-center gap-2"><Columns size={16}/> Tabel Nilai Dinamis</button>
-                        <button onClick={() => addElement('table_custom')} className="w-full bg-cyan-50 hover:bg-cyan-100 text-cyan-700 py-2 rounded text-sm flex items-center justify-center gap-2"><Grid size={16}/> Tabel Kustom (Kosong)</button>
-                        
-                        <p className="text-xs font-semibold text-gray-500 uppercase mt-4 mb-1">Shape &amp; Garis</p>
-                        <div className="grid grid-cols-2 gap-1">
-                            <button onClick={() => addElement('line')} className="bg-gray-100 hover:bg-gray-200 text-gray-700 py-1.5 rounded text-sm flex items-center justify-center gap-2"><Minus size={14}/> Garis</button>
-                            <button onClick={() => addElement('shape')} className="bg-gray-100 hover:bg-gray-200 text-gray-700 py-1.5 rounded text-sm flex items-center justify-center gap-2"><Square size={14}/> Kotak/Shape</button>
-                        </div>
-                        
-                        <p className="text-xs font-semibold text-gray-500 uppercase mt-4 mb-1">Variabel Santri & Wali</p>
-                        <div className="grid grid-cols-2 gap-1">
-                            <button onClick={() => addElement('nama_santri')} className="bg-blue-50 hover:bg-blue-100 text-blue-700 py-1.5 rounded text-xs flex justify-center gap-1"><User size={14}/> Nama</button>
-                            <button onClick={() => addElement('nama_santri_ar')} className="bg-blue-50 hover:bg-blue-100 text-blue-700 py-1.5 rounded text-xs flex justify-center gap-1"><User size={14}/> Nama (Arab)</button>
-                            <button onClick={() => addElement('nis')} className="bg-blue-50 hover:bg-blue-100 text-blue-700 py-1.5 rounded text-xs flex justify-center gap-1"><CreditCard size={14}/> NIS</button>
-                            <button onClick={() => addElement('kelas')} className="bg-blue-50 hover:bg-blue-100 text-blue-700 py-1.5 rounded text-xs flex justify-center gap-1"><BookOpen size={14}/> Kelas</button>
-                            <button onClick={() => addElement('kelas_ar')} className="bg-blue-50 hover:bg-blue-100 text-blue-700 py-1.5 rounded text-xs flex justify-center gap-1"><BookOpen size={14}/> Kelas (Arab)</button>
-                            <button onClick={() => addElement('wali_kelas')} className="bg-purple-50 hover:bg-purple-100 text-purple-700 py-1.5 rounded text-xs flex justify-center gap-1"><User size={14}/> Wali Kelas</button>
-                            <button onClick={() => addElement('catatan_wali')} className="col-span-2 bg-pink-50 hover:bg-pink-100 text-pink-700 py-1.5 rounded text-xs flex justify-center gap-1"><FileSignature size={14}/> Catatan Wali Kelas</button>
-                        </div>
-                        
-                        <p className="text-xs font-semibold text-gray-500 uppercase mt-4 mb-1">Variabel Umum</p>
-                        <div className="grid grid-cols-2 gap-1">
-                            <button onClick={() => addElement('tahun_ajaran')} className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 py-1.5 rounded text-xs flex justify-center gap-1"><Calendar size={14}/> Tahun Ajaran</button>
-                            <button onClick={() => addElement('tahun_ajaran_ar')} className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 py-1.5 rounded text-xs flex justify-center gap-1"><Calendar size={14}/> Thn Ajaran (Arab)</button>
-                            <button onClick={() => addElement('semester')} className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 py-1.5 rounded text-xs flex justify-center gap-1"><BookOpen size={14}/> Semester</button>
-                            <button onClick={() => addElement('semester_ar')} className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 py-1.5 rounded text-xs flex justify-center gap-1"><BookOpen size={14}/> Semester (Arab)</button>
-                        </div>
-                        
-                        {data.studentFields && data.studentFields.length > 0 && (
-                        <div className="mt-2 grid grid-cols-2 gap-1">
-                            {data.studentFields.map(f => (
-                            <button key={f.id} onClick={() => addElement('custom', f.key)} className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 py-1.5 rounded text-xs flex justify-center gap-1 truncate px-1" title={f.name}>
-                                <FileText size={14}/> {f.name}
-                            </button>
-                            ))}
+                    <div className="border rounded-lg overflow-hidden">
+                        <button onClick={() => togglePanel('addElem')} className="w-full flex items-center justify-between px-3 py-2.5 bg-gray-50 hover:bg-gray-100 transition text-left">
+                            <span className="text-xs font-bold text-gray-700 uppercase tracking-wide flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                Tambah Elemen
+                            </span>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{transform: expandedPanels.addElem ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s'}}><polyline points="6 9 12 15 18 9"/></svg>
+                        </button>
+                        {expandedPanels.addElem && (
+                        <div className="p-3 space-y-1.5">
+                            <button onClick={() => addElement('text')} className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded text-sm flex items-center justify-center gap-2"><TypeIcon size={16}/> Teks Bebas</button>
+                            <button onClick={() => addElement('image')} className="w-full bg-purple-50 hover:bg-purple-100 text-purple-700 py-2 rounded text-sm flex items-center justify-center gap-2"><ImageIcon size={16}/> Gambar (Logo/Stempel)</button>
+                            <button onClick={() => addElement('watermark')} className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 py-2 rounded text-sm flex items-center justify-center gap-2"><ImageIcon size={16}/> Gambar Watermark</button>
+                            <button onClick={() => addElement('table_grades')} className="w-full bg-orange-50 hover:bg-orange-100 text-orange-700 py-2 rounded text-sm flex items-center justify-center gap-2"><Columns size={16}/> Tabel Nilai Dinamis</button>
+                            <button onClick={() => addElement('table_custom')} className="w-full bg-cyan-50 hover:bg-cyan-100 text-cyan-700 py-2 rounded text-sm flex items-center justify-center gap-2"><Grid size={16}/> Tabel Kustom (Kosong)</button>
+                            <p className="text-xs font-semibold text-gray-400 uppercase mt-3 mb-1">Shape & Garis</p>
+                            <div className="grid grid-cols-2 gap-1">
+                                <button onClick={() => addElement('line')} className="bg-gray-100 hover:bg-gray-200 text-gray-700 py-1.5 rounded text-sm flex items-center justify-center gap-2"><Minus size={14}/> Garis</button>
+                                <button onClick={() => addElement('shape')} className="bg-gray-100 hover:bg-gray-200 text-gray-700 py-1.5 rounded text-sm flex items-center justify-center gap-2"><Square size={14}/> Kotak/Shape</button>
+                            </div>
+                            <p className="text-xs font-semibold text-gray-400 uppercase mt-3 mb-1">Variabel Santri & Wali</p>
+                            <div className="grid grid-cols-2 gap-1">
+                                <button onClick={() => addElement('nama_santri')} className="bg-blue-50 hover:bg-blue-100 text-blue-700 py-1.5 rounded text-xs flex justify-center gap-1"><User size={14}/> Nama</button>
+                                <button onClick={() => addElement('nama_santri_ar')} className="bg-blue-50 hover:bg-blue-100 text-blue-700 py-1.5 rounded text-xs flex justify-center gap-1"><User size={14}/> Nama (Arab)</button>
+                                <button onClick={() => addElement('nis')} className="bg-blue-50 hover:bg-blue-100 text-blue-700 py-1.5 rounded text-xs flex justify-center gap-1"><CreditCard size={14}/> NIS</button>
+                                <button onClick={() => addElement('kelas')} className="bg-blue-50 hover:bg-blue-100 text-blue-700 py-1.5 rounded text-xs flex justify-center gap-1"><BookOpen size={14}/> Kelas</button>
+                                <button onClick={() => addElement('kelas_ar')} className="bg-blue-50 hover:bg-blue-100 text-blue-700 py-1.5 rounded text-xs flex justify-center gap-1"><BookOpen size={14}/> Kelas (Arab)</button>
+                                <button onClick={() => addElement('wali_kelas')} className="bg-purple-50 hover:bg-purple-100 text-purple-700 py-1.5 rounded text-xs flex justify-center gap-1"><User size={14}/> Wali Kelas</button>
+                                <button onClick={() => addElement('catatan_wali')} className="col-span-2 bg-pink-50 hover:bg-pink-100 text-pink-700 py-1.5 rounded text-xs flex justify-center gap-1"><FileSignature size={14}/> Catatan Wali Kelas</button>
+                            </div>
+                            <p className="text-xs font-semibold text-gray-400 uppercase mt-3 mb-1">Variabel Umum</p>
+                            <div className="grid grid-cols-2 gap-1">
+                                <button onClick={() => addElement('tahun_ajaran')} className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 py-1.5 rounded text-xs flex justify-center gap-1"><Calendar size={14}/> Tahun Ajaran</button>
+                                <button onClick={() => addElement('tahun_ajaran_ar')} className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 py-1.5 rounded text-xs flex justify-center gap-1"><Calendar size={14}/> Thn Ajaran (Arab)</button>
+                                <button onClick={() => addElement('semester')} className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 py-1.5 rounded text-xs flex justify-center gap-1"><BookOpen size={14}/> Semester</button>
+                                <button onClick={() => addElement('semester_ar')} className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 py-1.5 rounded text-xs flex justify-center gap-1"><BookOpen size={14}/> Semester (Arab)</button>
+                            </div>
+                            {data.studentFields && data.studentFields.length > 0 && (
+                            <div className="mt-2 grid grid-cols-2 gap-1">
+                                {data.studentFields.map(f => (
+                                <button key={f.id} onClick={() => addElement('custom', f.key)} className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 py-1.5 rounded text-xs flex justify-center gap-1 truncate px-1" title={f.name}>
+                                    <FileText size={14}/> {f.name}
+                                </button>
+                                ))}
+                            </div>
+                            )}
                         </div>
                         )}
-
-                        <div className="mt-6 pt-4 border-t">
-                            <p className="text-[10px] font-bold text-gray-400 uppercase mb-2 tracking-wide">Daftar Lapisan (Layers)</p>
-                            <div className="space-y-1 max-h-[150px] overflow-y-auto custom-scrollbar">
-                                {elements.filter(el => (el.pageIndex || 0) === currentPage).map((el, i) => (
-                                    <button 
-                                        key={el.id} 
-                                        onClick={(e) => {
-                                            if (e.shiftKey) {
-                                                setSelectedIds(prev => prev.includes(el.id) ? prev.filter(id => id !== el.id) : [...prev, el.id]);
-                                            } else {
-                                                setSelectedIds([el.id]);
-                                            }
-                                        }} 
-                                        className={`w-full text-left px-2 py-1.5 rounded text-xs flex items-center justify-between transition ${selectedIds.includes(el.id) ? 'bg-blue-100 text-blue-800 font-bold border border-blue-200' : 'hover:bg-gray-100 text-gray-700 border border-transparent'}`}
-                                    >
-                                        <span className="truncate w-[80%]">{el.type === 'group' ? 'Grup Elemen' : el.type === 'image' ? (el.zIndex === 0 ? 'Gambar Watermark' : 'Gambar') : el.type === 'table_grades' ? 'Tabel Nilai' : el.type === 'table_custom' ? 'Tabel Kustom' : (el.content || '').slice(0, 20) + ((el.content || '').length > 20 ? '...' : '')}</span>
-                                        {el.locked && <Lock size={12} className="text-yellow-600"/>}
-                                    </button>
-                                ))}
-                                {elements.filter(el => (el.pageIndex || 0) === currentPage).length === 0 && <p className="text-xs text-gray-400 italic">Belum ada elemen</p>}
-                            </div>
-                        </div>
                     </div>
 
+                    <div className="border rounded-lg overflow-hidden">
+                        <button onClick={() => togglePanel('layers')} className="w-full flex items-center justify-between px-3 py-2.5 bg-gray-50 hover:bg-gray-100 transition text-left">
+                            <span className="text-xs font-bold text-gray-700 uppercase tracking-wide flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+                                Lapisan (Layers)
+                                <span className="bg-gray-200 text-gray-600 rounded-full px-1.5 py-0.5 text-[10px] font-bold">{elements.filter(el => (el.pageIndex || 0) === currentPage).length}</span>
+                            </span>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{transform: expandedPanels.layers ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s'}}><polyline points="6 9 12 15 18 9"/></svg>
+                        </button>
+                        {expandedPanels.layers && (
+                        <div className="p-2 space-y-1 max-h-[200px] overflow-y-auto custom-scrollbar">
+                            {elements.filter(el => (el.pageIndex || 0) === currentPage).map((el, i) => (
+                                <button 
+                                    key={el.id} 
+                                    onClick={(e) => {
+                                        if (e.shiftKey) {
+                                            setSelectedIds(prev => prev.includes(el.id) ? prev.filter(id => id !== el.id) : [...prev, el.id]);
+                                        } else {
+                                            setSelectedIds([el.id]);
+                                        }
+                                    }} 
+                                    className={`w-full text-left px-2 py-1.5 rounded text-xs flex items-center justify-between transition ${selectedIds.includes(el.id) ? 'bg-blue-100 text-blue-800 font-bold border border-blue-200' : 'hover:bg-gray-100 text-gray-700 border border-transparent'}`}
+                                >
+                                    <span className="truncate w-[80%]">{el.type === 'group' ? 'Grup Elemen' : el.type === 'image' ? (el.zIndex === 0 ? 'Gambar Watermark' : 'Gambar') : el.type === 'table_grades' ? 'Tabel Nilai' : el.type === 'table_custom' ? 'Tabel Kustom' : (el.content || '').slice(0, 20) + ((el.content || '').length > 20 ? '...' : '')}</span>
+                                    {el.locked && <Lock size={12} className="text-yellow-600"/>}
+                                </button>
+                            ))}
+                            {elements.filter(el => (el.pageIndex || 0) === currentPage).length === 0 && <p className="text-xs text-gray-400 italic p-1">Belum ada elemen</p>}
+                        </div>
+                        )}
+                    </div>
                     {selectedIds.length > 1 && (
-                        <div className="space-y-3 pt-2 pb-8 bg-indigo-50/50 p-3 rounded-lg border border-indigo-100">
-                            <p className="text-xs font-bold text-indigo-800 uppercase flex items-center justify-between">
-                                {selectedIds.length} Elemen Terpilih
-                                <button onClick={() => setSelectedIds([])} className="text-gray-400 hover:text-gray-700"><X size={14}/></button>
-                            </p>
+                        <div className="border rounded-lg overflow-hidden border-indigo-200">
+                            <button onClick={() => togglePanel('editMulti')} className="w-full flex items-center justify-between px-3 py-2.5 bg-indigo-50 hover:bg-indigo-100 transition text-left">
+                                <span className="text-xs font-bold text-indigo-700 uppercase tracking-wide flex items-center gap-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                                    {selectedIds.length} Elemen Terpilih
+                                </span>
+                                <div className="flex items-center gap-2">
+                                    <button onClick={(e) => { e.stopPropagation(); setSelectedIds([]); }} className="text-gray-400 hover:text-gray-700"><X size={14}/></button>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{transform: expandedPanels.editMulti ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s'}}><polyline points="6 9 12 15 18 9"/></svg>
+                                </div>
+                            </button>
+                            {expandedPanels.editMulti && (
+                            <div className="space-y-3 p-3 bg-indigo-50/30">
                             
                             <div className="grid grid-cols-2 gap-2 mt-2">
                                 <button onClick={groupElements} className="bg-white border hover:bg-gray-50 text-indigo-700 py-1.5 rounded text-[10px] font-bold transition flex items-center justify-center gap-1"><Layers size={14}/> Group</button>
@@ -4416,15 +4440,26 @@ const LayoutBuilder = () => {
                                 setElements(elements.filter(el => !selectedIds.includes(el.id)));
                                 setSelectedIds([]);
                             }} className="w-full mt-3 bg-red-50 hover:bg-red-100 text-red-600 py-2 rounded text-[11px] font-bold flex justify-center items-center gap-1 transition"><Trash2 size={14}/> Hapus Semua Terpilih</button>
+                            </div>
+                            )}
                         </div>
                     )}
 
                     {selectedIds.length === 1 && activeEl && (
-                        <div className="space-y-3 pt-2 pb-8 bg-blue-50/30 p-3 rounded-lg border border-blue-100">
-                            <p className="text-xs font-bold text-blue-800 uppercase flex items-center justify-between">
-                                Sedang Edit: {activeEl.type === 'group' ? 'Grup' : activeEl.type === 'table_grades' ? 'Tabel' : activeEl.type === 'image' ? 'Gambar' : 'Teks'}
-                                <button onClick={() => setSelectedIds([])} className="text-gray-400 hover:text-gray-700"><X size={14}/></button>
-                            </p>
+                        <div className="border rounded-lg overflow-hidden border-blue-200">
+                            <button onClick={() => togglePanel('editSingle')} className="w-full flex items-center justify-between px-3 py-2.5 bg-blue-50 hover:bg-blue-100 transition text-left">
+                                <span className="text-xs font-bold text-blue-700 uppercase tracking-wide flex items-center gap-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                    Edit: {activeEl.type === 'group' ? 'Grup' : activeEl.type === 'table_grades' ? 'Tabel' : activeEl.type === 'image' ? 'Gambar' : activeEl.type === 'table_custom' ? 'Tabel Kustom' : 'Teks'}
+                                </span>
+                                <div className="flex items-center gap-2">
+                                    <button onClick={(e) => { e.stopPropagation(); setSelectedIds([]); }} className="text-gray-400 hover:text-gray-700"><X size={14}/></button>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{transform: expandedPanels.editSingle ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s'}}><polyline points="6 9 12 15 18 9"/></svg>
+                                </div>
+                            </button>
+                            {expandedPanels.editSingle && (
+                            <div className="space-y-3 pt-2 pb-4 p-3 bg-blue-50/30">
+
 
                             {activeEl.locked ? (
                                 <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-center space-y-3 mt-4">
@@ -5237,6 +5272,8 @@ const LayoutBuilder = () => {
                                 <button onClick={() => removeElement(selectedElementId)} className="flex-1 min-w-[30%] bg-red-50 hover:bg-red-100 text-red-600 py-2 rounded text-[11px] font-bold flex justify-center items-center gap-1 transition"><Trash2 size={14}/> Hapus</button>
                             </div>
                                 </>
+                            )}
+                            </div>
                             )}
                         </div>
                     )}
