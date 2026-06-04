@@ -2843,7 +2843,11 @@ const renderCustomTable = (el, replaceVars = s => s, options = {}) => {
                             return (
                                 <td key={c} colSpan={cs} rowSpan={rs} 
                                     onMouseDown={(e) => {
+                                        if (options.onCellDragStart) options.onCellDragStart(e, ck);
                                         if (options.onCellClick) options.onCellClick(e, ck);
+                                    }}
+                                    onMouseEnter={() => {
+                                        if (options.onCellMouseEnter) options.onCellMouseEnter(ck);
                                     }}
                                     style={{
                                     border: bStyle,
@@ -2861,6 +2865,7 @@ const renderCustomTable = (el, replaceVars = s => s, options = {}) => {
                                     overflow: 'hidden',
                                     wordBreak: 'break-word',
                                     position: 'relative',
+                                    cursor: options.onCellDragStart ? 'cell' : 'default',
                                 }}>
                                     <span style={{whiteSpace:'pre-wrap'}} dangerouslySetInnerHTML={{ __html: (() => {
                                         let html = replaceVars(cell.content || '').replace(/\n/g, '<br/>');
@@ -3345,9 +3350,26 @@ const LayoutBuilder = () => {
     const [showSidebar, setShowSidebar] = useState(true);
     // Custom table editor state
     const [ctSelCells, setCtSelCells] = useState([]); // selected cell keys e.g. ['0_0','0_1']
+    const [ctDragStartCell, setCtDragStartCell] = useState(null);
+    const [isDraggingCells, setIsDraggingCells] = useState(false);
     const [ctActiveCell, setCtActiveCell] = useState(null); // last clicked cell key
     const [ctDrag, setCtDrag] = useState(null); // {type:'col'|'row', idx, startX, startY, startVals}
     const ctDragRef = useRef(null);
+
+    // Helper: get all cell keys in rectangular area between two corner cells
+    const getCellsInRect = (startCk, endCk) => {
+        const [r1, c1] = startCk.split('_').map(Number);
+        const [r2, c2] = endCk.split('_').map(Number);
+        const minR = Math.min(r1, r2), maxR = Math.max(r1, r2);
+        const minC = Math.min(c1, c2), maxC = Math.max(c1, c2);
+        const result = [];
+        for (let r = minR; r <= maxR; r++) {
+            for (let c = minC; c <= maxC; c++) {
+                result.push(`${r}_${c}`);
+            }
+        }
+        return result;
+    };
 
     const startColResize = (elId, colIdx, e) => {
         const el = elements.find(item => item.id === elId);
@@ -3522,6 +3544,18 @@ const LayoutBuilder = () => {
     useEffect(() => {
         latestLayoutsRef.current = data.layouts;
     }, [data.layouts]);
+
+    // Stop cell drag on global mouseup
+    useEffect(() => {
+        const handleMouseUp = () => {
+            if (isDraggingCells) {
+                setIsDraggingCells(false);
+                setCtDragStartCell(null);
+            }
+        };
+        window.addEventListener('mouseup', handleMouseUp);
+        return () => window.removeEventListener('mouseup', handleMouseUp);
+    }, [isDraggingCells]);
 
     useEffect(() => {
         if (prevLayoutRef.current === activeLayout) return;
@@ -4838,7 +4872,20 @@ const LayoutBuilder = () => {
                                                 {Array.from({length: activeEl.tableRows || 3}).map((_, r) => Array.from({length: activeEl.tableCols || 3}).map((_, c) => {
                                                     const ck = `${r}_${c}`;
                                                     const isSel = ctSelCells.includes(ck);
-                                                    return <button key={ck} className={`h-8 text-[10px] font-mono border-0 flex items-center justify-center truncate ${isSel ? 'bg-indigo-600 text-white' : 'bg-white text-gray-500 hover:bg-gray-100'}`} onClick={(e) => {
+                                                    return <button key={ck} className={`h-8 text-[10px] font-mono border-0 flex items-center justify-center truncate cursor-cell ${isSel ? 'bg-indigo-600 text-white' : 'bg-white text-gray-500 hover:bg-gray-100'}`} 
+                                                        onMouseDown={(e) => {
+                                                            e.preventDefault();
+                                                            setIsDraggingCells(true);
+                                                            setCtDragStartCell(ck);
+                                                            setCtSelCells([ck]);
+                                                            setCtActiveCell(ck);
+                                                        }}
+                                                        onMouseEnter={() => {
+                                                            if (isDraggingCells && ctDragStartCell) {
+                                                                setCtSelCells(getCellsInRect(ctDragStartCell, ck));
+                                                            }
+                                                        }}
+                                                        onClick={(e) => {
                                                         if (e.shiftKey) { setCtSelCells(prev => prev.includes(ck) ? prev.filter(k=>k!==ck) : [...prev, ck]); } 
                                                         else { setCtSelCells([ck]); setCtActiveCell(ck); }
                                                     }}>{r+1},{c+1}</button>
@@ -4995,6 +5042,61 @@ const LayoutBuilder = () => {
                                                     }}/>
                                                     Ubah Angka (0-9) ke Arab (٠-٩)
                                                 </label>
+                                                {/* Merge / Unmerge Buttons */}
+                                                {ctSelCells.length > 1 ? (
+                                                    <button
+                                                        onClick={() => {
+                                                            // Merge selected cells
+                                                            const rows = ctSelCells.map(k => parseInt(k.split('_')[0]));
+                                                            const cols = ctSelCells.map(k => parseInt(k.split('_')[1]));
+                                                            const minR = Math.min(...rows), maxR = Math.max(...rows);
+                                                            const minC = Math.min(...cols), maxC = Math.max(...cols);
+                                                            const cspan = maxC - minC + 1;
+                                                            const rspan = maxR - minR + 1;
+                                                            const topLeft = `${minR}_${minC}`;
+                                                            const newCells = { ...(activeEl.cells || {}) };
+                                                            // Hide all selected except top-left
+                                                            ctSelCells.forEach(ck => {
+                                                                if (ck === topLeft) {
+                                                                    newCells[ck] = { ...(newCells[ck] || {}), colspan: cspan, rowspan: rspan, isHidden: false };
+                                                                } else {
+                                                                    newCells[ck] = { ...(newCells[ck] || {}), isHidden: true };
+                                                                }
+                                                            });
+                                                            updateElement(selectedElementId, { cells: newCells });
+                                                            setCtSelCells([topLeft]);
+                                                            setCtActiveCell(topLeft);
+                                                        }}
+                                                        className="w-full mt-1 py-1.5 px-2 rounded text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center gap-1 transition"
+                                                    >
+                                                        ⊞ Gabungkan Sel Terpilih (Merge)
+                                                    </button>
+                                                ) : ctSelCells.length === 1 && ((activeEl.cells?.[ctSelCells[0]]?.colspan > 1) || (activeEl.cells?.[ctSelCells[0]]?.rowspan > 1)) ? (
+                                                    <button
+                                                        onClick={() => {
+                                                            const ck = ctSelCells[0];
+                                                            const [r, c] = ck.split('_').map(Number);
+                                                            const cs = activeEl.cells?.[ck]?.colspan || 1;
+                                                            const rs = activeEl.cells?.[ck]?.rowspan || 1;
+                                                            const newCells = { ...(activeEl.cells || {}) };
+                                                            // Reset top-left cell
+                                                            newCells[ck] = { ...(newCells[ck] || {}), colspan: 1, rowspan: 1 };
+                                                            // Un-hide all cells in the merged area
+                                                            for (let ri = r; ri < r + rs; ri++) {
+                                                                for (let ci = c; ci < c + cs; ci++) {
+                                                                    const hk = `${ri}_${ci}`;
+                                                                    if (hk !== ck) {
+                                                                        newCells[hk] = { ...(newCells[hk] || {}), isHidden: false };
+                                                                    }
+                                                                }
+                                                            }
+                                                            updateElement(selectedElementId, { cells: newCells });
+                                                        }}
+                                                        className="w-full mt-1 py-1.5 px-2 rounded text-xs font-bold bg-red-500 hover:bg-red-600 text-white flex items-center justify-center gap-1 transition"
+                                                    >
+                                                        ⊟ Pisahkan Sel (Unmerge)
+                                                    </button>
+                                                ) : null}
                                                 <div className="flex gap-2">
                                                     <div className="w-1/2 flex items-center justify-between border rounded px-2 py-1 bg-gray-50">
                                                         <span className="text-[10px] text-gray-600 font-bold">Colspan (Kanan)</span>
@@ -5286,7 +5388,7 @@ const LayoutBuilder = () => {
                                                     zIndex: child.zIndex ?? 1, opacity: child.opacity ?? 1
                                                 }}>
                                                     {child.type === 'table_grades' ? renderDynamicTable(child, data, mockStudentGrades, mockClassAverages, false, 'raport', classesData, 0) 
-                                                    : child.type === 'table_custom' ? renderCustomTable(child, s=>s, { isEditable: selectedIds.includes(child.id), selectedCells: selectedIds.includes(child.id) ? ctSelCells : [], onColResizeStart: startColResize, onRowResizeStart: startRowResize, onCellClick: (e, ck) => { if (e.shiftKey) { setCtSelCells(prev => prev.includes(ck) ? prev.filter(k=>k!==ck) : [...prev, ck]); } else { setCtSelCells([ck]); setCtActiveCell(ck); } } })
+                                                    : child.type === 'table_custom' ? renderCustomTable(child, s=>s, { isEditable: selectedIds.includes(child.id), selectedCells: selectedIds.includes(child.id) ? ctSelCells : [], onColResizeStart: startColResize, onRowResizeStart: startRowResize, onCellDragStart: (e, ck) => { e.preventDefault(); setIsDraggingCells(true); setCtDragStartCell(ck); setCtSelCells([ck]); setCtActiveCell(ck); }, onCellMouseEnter: (ck) => { if (isDraggingCells && ctDragStartCell) { setCtSelCells(getCellsInRect(ctDragStartCell, ck)); } }, onCellClick: (e, ck) => { if (e.shiftKey) { setCtSelCells(prev => prev.includes(ck) ? prev.filter(k=>k!==ck) : [...prev, ck]); } else { setCtSelCells([ck]); setCtActiveCell(ck); } } })
                                                     : child.type === 'image' ? <img src={child.content} style={{ width: '100%', height: '100%', objectFit: child.objectFit || 'contain', objectPosition: `${child.objectPositionX ?? 50}% ${child.objectPositionY ?? 50}%`, pointerEvents: 'none' }} alt="elemen" />
                                                     : child.type === 'line' ? <div style={{ width: '100%', height: `${child.lineThickness || 2}px`, backgroundColor: child.lineColor || '#000000', pointerEvents: 'none' }} />
                                                     : child.type === 'shape' ? <div style={{ width: '100%', height: '100%', backgroundColor: child.shapeFill || '#000000', borderRadius: `${child.shapeRadius || 0}px`, border: child.shapeBorder ? `${child.shapeBorder}px solid ${child.shapeBorderColor || '#000000'}` : 'none', pointerEvents: 'none' }} />
@@ -5295,7 +5397,7 @@ const LayoutBuilder = () => {
                                             ))}
                                         </div>
                                     ) : el.type === 'table_grades' ? renderDynamicTable(el, data, mockStudentGrades, mockClassAverages, false, 'raport', classesData, 0) 
-                                    : el.type === 'table_custom' ? renderCustomTable(el, s=>s, { isEditable: selectedIds.includes(el.id), selectedCells: selectedIds.includes(el.id) ? ctSelCells : [], onColResizeStart: startColResize, onRowResizeStart: startRowResize, onCellClick: (e, ck) => { if (e.shiftKey) { setCtSelCells(prev => prev.includes(ck) ? prev.filter(k=>k!==ck) : [...prev, ck]); } else { setCtSelCells([ck]); setCtActiveCell(ck); } } })
+                                    : el.type === 'table_custom' ? renderCustomTable(el, s=>s, { isEditable: selectedIds.includes(el.id), selectedCells: selectedIds.includes(el.id) ? ctSelCells : [], onColResizeStart: startColResize, onRowResizeStart: startRowResize, onCellDragStart: (e, ck) => { e.preventDefault(); setIsDraggingCells(true); setCtDragStartCell(ck); setCtSelCells([ck]); setCtActiveCell(ck); }, onCellMouseEnter: (ck) => { if (isDraggingCells && ctDragStartCell) { setCtSelCells(getCellsInRect(ctDragStartCell, ck)); } }, onCellClick: (e, ck) => { if (e.shiftKey) { setCtSelCells(prev => prev.includes(ck) ? prev.filter(k=>k!==ck) : [...prev, ck]); } else { setCtSelCells([ck]); setCtActiveCell(ck); } } })
                                     : el.type === 'image' ? <img src={el.content} style={{ width: '100%', height: '100%', objectFit: el.objectFit || 'contain', objectPosition: `${el.objectPositionX ?? 50}% ${el.objectPositionY ?? 50}%`, pointerEvents: 'none' }} alt="elemen" />
                                     : el.type === 'line' ? <div style={{ width: '100%', height: `${el.lineThickness || 2}px`, backgroundColor: el.lineColor || '#000000', pointerEvents: 'none' }} />
                                     : el.type === 'shape' ? <div style={{ width: '100%', height: '100%', backgroundColor: el.shapeFill || '#000000', borderRadius: `${el.shapeRadius || 0}px`, border: el.shapeBorder ? `${el.shapeBorder}px solid ${el.shapeBorderColor || '#000000'}` : 'none', pointerEvents: 'none' }} />
