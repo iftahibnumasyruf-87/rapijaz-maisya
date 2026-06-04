@@ -319,6 +319,57 @@ const isReligiousCategory = (cat) => {
     return keywords.some(k => n.includes(k));
 };
 
+// Generate short 2-3 char key from a name, guaranteed unique within usedKeys
+const makeShortKey = (name, usedKeys) => {
+    const clean = (name || '').trim();
+    const words = clean.split(/\s+/).filter(Boolean);
+    // Try initials of each word
+    let key = words.map(w => (w.match(/[a-zA-Z]/) ? w.match(/[a-zA-Z]/)[0] : w[0] || '')).join('').toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (key.length === 0) key = clean.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 3) || 'x';
+    if (key.length > 3) key = key.slice(0, 3);
+    // If collision, try first 3 chars of full name
+    if (usedKeys.has(key)) {
+        const fallback = clean.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 3);
+        if (!usedKeys.has(fallback)) key = fallback;
+    }
+    // If still collision, append number
+    if (usedKeys.has(key)) {
+        const base = key;
+        let i = 2;
+        while (usedKeys.has(`${base}${i}`)) i++;
+        key = `${base}${i}`;
+    }
+    usedKeys.add(key);
+    return key;
+};
+
+// Build map: shortKey -> { id, type } for subjects/presences/characterTraits/extracurriculars
+const buildShortKeyMap = (subjects = [], presences = [], characterTraits = [], extracurriculars = []) => {
+    const usedKeys = new Set();
+    const map = {}; // shortKey -> { realId, dataType }
+    subjects.forEach(sub => {
+        const sk = makeShortKey(sub.nameId || sub.name || sub.id, usedKeys);
+        map[sk] = { realId: sub.id, dataType: 'subject' };
+        // Also register _UTS and _UAS variants
+        map[`${sk}_u`] = { realId: sub.id, dataType: 'subject_uts' };
+        map[`${sk}_a`] = { realId: sub.id, dataType: 'subject_uas' };
+    });
+    presences.forEach(p => {
+        const sk = makeShortKey(p.name || p.id, usedKeys);
+        map[sk] = { realId: p.id, dataType: 'presence' };
+    });
+    characterTraits.forEach(p => {
+        const sk = makeShortKey(p.name || p.id, usedKeys);
+        map[sk] = { realId: p.id, dataType: 'trait' };
+    });
+    extracurriculars.forEach(p => {
+        const sk = makeShortKey(p.name || p.id, usedKeys);
+        map[sk] = { realId: p.id, dataType: 'ekskul' };
+    });
+    map['cw'] = { realId: 'catatan_wali', dataType: 'catatan' };
+    return map;
+};
+
 const sortSubjectsByCategory = (subjects, subjectCategories = []) => {
     const categoryOrder = new Map(subjectCategories.map((cat, idx) => [normalizeValue(cat.name), idx]));
 
@@ -5293,6 +5344,21 @@ const InputNilai = ({ activeInputTab }) => {
     const subjectsInClass = useMemo(() => sortSubjectsByCategory(filterSubjectsByClass(data.subjects, selectedClass, classesData), data.subjectCategories), [data.subjects, data.subjectCategories, selectedClass, classesData]);
     const gradeDocId = getGradeDocId(selectedClass, classesData, activeSetting, data.grades);
 
+    // Build short key map: shortKey -> { realId, dataType }
+    const shortKeyMap = useMemo(() => buildShortKeyMap(
+        subjectsInClass, data.presences, data.characterTraits, data.extracurriculars
+    ), [subjectsInClass, data.presences, data.characterTraits, data.extracurriculars]);
+    // Build reverse map: realId -> shortKey (for display in headers)
+    const idToShortKey = useMemo(() => {
+        const reverse = {};
+        Object.entries(shortKeyMap).forEach(([sk, val]) => {
+            if (val.dataType !== 'subject_uts' && val.dataType !== 'subject_uas') {
+                reverse[val.realId] = sk;
+            }
+        });
+        return reverse;
+    }, [shortKeyMap]);
+
     useEffect(() => {
         if (!gradeDocId) {
             setLocalGrades({}); setIsInitialized(false); return;
@@ -5499,7 +5565,7 @@ const InputNilai = ({ activeInputTab }) => {
                                     <div className="font-bold">{sub.nameId}</div>
                                     <div className="text-[11px] text-emerald-200 font-normal mt-0.5">(Guru: {sub.guru || '-'})</div>
                                     <div className="text-[11px] text-yellow-300 font-bold mt-0.5">KKM: {sub.kkm || '-'}</div>
-                                    <div className="text-[10px] text-emerald-300 mt-1 hover:text-emerald-100 cursor-pointer transition-colors inline-flex bg-emerald-800/50 px-2 py-0.5 rounded-full" title="Klik untuk menyalin" onClick={() => {navigator.clipboard.writeText(`{{${sub.id}}}`); showNotification('Variabel disalin!');}}>Var: {`{{${sub.id}}}`}</div>
+                                    <div className="text-[10px] text-emerald-300 mt-1 hover:text-emerald-100 cursor-pointer transition-colors inline-flex bg-emerald-800/50 px-2 py-0.5 rounded-full" title={`Klik untuk menyalin. Raport: {{${idToShortKey[sub.id]||sub.id}}}, UTS: {{${idToShortKey[sub.id]||sub.id}_u}}, UAS: {{${idToShortKey[sub.id]||sub.id}_a}}`} onClick={() => {navigator.clipboard.writeText(`{{${idToShortKey[sub.id]||sub.id}}}`); showNotification(`Disalin: {{${idToShortKey[sub.id]||sub.id}}}`);}}>Var: {`{{${idToShortKey[sub.id]||sub.id}}}`}</div>
                                     <div className="text-[11px] text-slate-100 font-semibold mt-2">UTS / UAS / Raport</div>
                                 </th>
                             ))}
@@ -5562,7 +5628,7 @@ const InputNilai = ({ activeInputTab }) => {
                             {data.presences.map(p => (
                                 <th key={p.id} className="p-3 border-b border-r border-indigo-600 text-center min-w-[120px]">
                                     <div className="font-bold">{p.name}</div>
-                                    <div className="text-[10px] text-indigo-300 mt-1 hover:text-indigo-100 cursor-pointer transition-colors" title="Klik untuk menyalin" onClick={() => {navigator.clipboard.writeText(`{{${p.id}}}`); showNotification('Variabel disalin!');}}>{`{{${p.id}}}`}</div>
+                                    <div className="text-[10px] text-indigo-300 mt-1 hover:text-indigo-100 cursor-pointer transition-colors" title={`Klik untuk menyalin: {{${idToShortKey[p.id]||p.id}}}`} onClick={() => {navigator.clipboard.writeText(`{{${idToShortKey[p.id]||p.id}}}`); showNotification(`Disalin: {{${idToShortKey[p.id]||p.id}}}`);}}>{`{{${idToShortKey[p.id]||p.id}}}`}</div>
                                 </th>
                             ))}
                         </tr>
@@ -5597,7 +5663,7 @@ const InputNilai = ({ activeInputTab }) => {
                             {data.characterTraits.map(p => (
                                 <th key={p.id} className="p-3 border-b border-r border-blue-600 text-center min-w-[120px]">
                                     <div className="font-bold">{p.name}</div>
-                                    <div className="text-[10px] text-blue-300 mt-1 hover:text-blue-100 cursor-pointer transition-colors" title="Klik untuk menyalin" onClick={() => {navigator.clipboard.writeText(`{{${p.id}}}`); showNotification('Variabel disalin!');}}>{`{{${p.id}}}`}</div>
+                                    <div className="text-[10px] text-blue-300 mt-1 hover:text-blue-100 cursor-pointer transition-colors" title={`Klik untuk menyalin: {{${idToShortKey[p.id]||p.id}}}`} onClick={() => {navigator.clipboard.writeText(`{{${idToShortKey[p.id]||p.id}}}`); showNotification(`Disalin: {{${idToShortKey[p.id]||p.id}}}`);}}>{`{{${idToShortKey[p.id]||p.id}}}`}</div>
                                 </th>
                             ))}
                         </tr>
@@ -5632,7 +5698,7 @@ const InputNilai = ({ activeInputTab }) => {
                             {data.extracurriculars.map(p => (
                                 <th key={p.id} className="p-3 border-b border-r border-orange-600 text-center min-w-[120px]">
                                     <div className="font-bold">{p.name}</div>
-                                    <div className="text-[10px] text-orange-300 mt-1 hover:text-orange-100 cursor-pointer transition-colors" title="Klik untuk menyalin" onClick={() => {navigator.clipboard.writeText(`{{${p.id}}}`); showNotification('Variabel disalin!');}}>{`{{${p.id}}}`}</div>
+                                    <div className="text-[10px] text-orange-300 mt-1 hover:text-orange-100 cursor-pointer transition-colors" title={`Klik untuk menyalin: {{${idToShortKey[p.id]||p.id}}}`} onClick={() => {navigator.clipboard.writeText(`{{${idToShortKey[p.id]||p.id}}}`); showNotification(`Disalin: {{${idToShortKey[p.id]||p.id}}}`);}}>{`{{${idToShortKey[p.id]||p.id}}}`}</div>
                                 </th>
                             ))}
                         </tr>
@@ -5666,7 +5732,7 @@ const InputNilai = ({ activeInputTab }) => {
                             <th className="p-3 border-b border-r border-pink-600 w-48">Nama Santri</th>
                             <th className="p-3 border-b border-pink-600 text-center w-64">
                                 <div className="font-bold">Isi Catatan Wali Kelas</div>
-                                <div className="text-[10px] text-pink-300 mt-1 hover:text-pink-100 cursor-pointer transition-colors inline-flex bg-pink-800/50 px-2 py-0.5 rounded-full" title="Klik untuk menyalin" onClick={() => {navigator.clipboard.writeText(`{{catatan_wali}}`); showNotification('Variabel disalin!');}}>{`{{catatan_wali}}`}</div>
+                                <div className="text-[10px] text-pink-300 mt-1 hover:text-pink-100 cursor-pointer transition-colors inline-flex bg-pink-800/50 px-2 py-0.5 rounded-full" title="Klik untuk menyalin: {{cw}}" onClick={() => {navigator.clipboard.writeText(`{{cw}}`); showNotification('Disalin: {{cw}}');}}>{`{{cw}}`}</div>
                             </th>
                         </tr>
                     </thead>
@@ -5979,6 +6045,10 @@ const CetakDokumen = ({ mode = 'raport' }) => {
         const sGrades = classGradesDoc[stdData.id] || {};
         const className = getClassNameFromValue(classesData, selectedClass);
         const classDataObj = classesData.find(c => c.id === selectedClass);
+
+        // Build short key map once per student render (deterministic, same order as InputNilai)
+        const subjectsForClass = sortSubjectsByCategory(filterSubjectsByClass(data.subjects, selectedClass, classesData), data.subjectCategories);
+        const shortKeyMapRender = buildShortKeyMap(subjectsForClass, data.presences, data.characterTraits, data.extracurriculars);
         
         const replaceVariables = (str) => {
             if (typeof str !== 'string') return str;
@@ -6026,6 +6096,31 @@ const CetakDokumen = ({ mode = 'raport' }) => {
             return replaced.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
                  if (stdData[key] !== undefined) return stdData[key];
                  if (stdData.fields && stdData.fields[key] !== undefined) return stdData.fields[key];
+                 // Resolve short key alias (e.g. {{bi}}, {{bi_u}}, {{bi_a}}, {{cw}})
+                 const shortEntry = shortKeyMapRender[key];
+                 if (shortEntry) {
+                     const { realId, dataType } = shortEntry;
+                     if (dataType === 'subject') {
+                         const g = sGrades[realId];
+                         if (g && typeof g === 'object') { const r = computeRaportScore(g.uts, g.uas); return r !== '' ? r : ''; }
+                         return g !== undefined ? g : '';
+                     }
+                     if (dataType === 'subject_uts') {
+                         const g = sGrades[realId];
+                         return (g && typeof g === 'object') ? (g.uts || '') : '';
+                     }
+                     if (dataType === 'subject_uas') {
+                         const g = sGrades[realId];
+                         return (g && typeof g === 'object') ? (g.uas || '') : '';
+                     }
+                     if (dataType === 'presence' || dataType === 'trait' || dataType === 'ekskul') {
+                         return sGrades[realId] !== undefined ? sGrades[realId] : '';
+                     }
+                     if (dataType === 'catatan') {
+                         return sGrades['catatan_wali'] || '';
+                     }
+                 }
+                 // Legacy long-ID support
                  if (sGrades && sGrades[key] !== undefined) {
                      if (typeof sGrades[key] === 'object') {
                          const r = computeRaportScore(sGrades[key].uts, sGrades[key].uas);
