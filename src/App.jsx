@@ -353,6 +353,9 @@ const buildShortKeyMap = (subjects = [], presences = [], characterTraits = [], e
         // Also register _UTS and _UAS variants
         map[`${sk}_u`] = { realId: sub.id, dataType: 'subject_uts' };
         map[`${sk}_a`] = { realId: sub.id, dataType: 'subject_uas' };
+        map[`${sk}_nilai`] = { realId: sub.id, dataType: 'subject_nilai' };
+        map[`${sk}_kkm`] = { realId: sub.id, dataType: 'subject_kkm' };
+        map[`${sk}_rata`] = { realId: sub.id, dataType: 'subject_rata' };
     });
     presences.forEach(p => {
         const sk = makeShortKey(p.name || p.id, usedKeys);
@@ -3366,6 +3369,9 @@ const VariablesHelp = ({ onInsert, masterSubjects = [] }) => {
                                     <React.Fragment key={m.id}>
                                         <option value={`{{${varName}}}`}>Nama Indo: {m.nameId}</option>
                                         <option value={`{{${varName}_arb}}`}>Nama Arab: {m.nameId}</option>
+                                        <option value={`{{${varName}_nilai}}`}>Nilai: {m.nameId}</option>
+                                        <option value={`{{${varName}_kkm}}`}>KKM: {m.nameId}</option>
+                                        <option value={`{{${varName}_rata}}`}>Rata-rata: {m.nameId}</option>
                                     </React.Fragment>
                                 );
                             });
@@ -6560,10 +6566,17 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                  const shortEntry = shortKeyMapRender[key];
                  if (shortEntry) {
                      const { realId, dataType } = shortEntry;
-                     if (dataType === 'subject') {
+                     if (dataType === 'subject' || dataType === 'subject_nilai') {
                          const g = sGrades[realId];
                          if (g && typeof g === 'object') { const r = computeRaportScore(g.uts, g.uas); return r !== '' ? r : ''; }
                          return g !== undefined ? g : '';
+                     }
+                     if (dataType === 'subject_kkm') {
+                         const subObj = subjectsForClass.find(s => s.id === realId);
+                         return subObj ? (subObj.kkm || '') : '';
+                     }
+                     if (dataType === 'subject_rata') {
+                         return classAverages[realId] !== undefined ? classAverages[realId] : '';
                      }
                      if (dataType === 'subject_uts') {
                          const g = sGrades[realId];
