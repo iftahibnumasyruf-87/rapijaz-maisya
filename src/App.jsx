@@ -5499,6 +5499,7 @@ const InputNilai = ({ activeInputTab }) => {
                                     <div className="font-bold">{sub.nameId}</div>
                                     <div className="text-[11px] text-emerald-200 font-normal mt-0.5">(Guru: {sub.guru || '-'})</div>
                                     <div className="text-[11px] text-yellow-300 font-bold mt-0.5">KKM: {sub.kkm || '-'}</div>
+                                    <div className="text-[10px] text-emerald-300 mt-1 hover:text-emerald-100 cursor-pointer transition-colors inline-flex bg-emerald-800/50 px-2 py-0.5 rounded-full" title="Klik untuk menyalin" onClick={() => {navigator.clipboard.writeText(`{{${sub.id}}}`); showNotification('Variabel disalin!');}}>Var: {`{{${sub.id}}}`}</div>
                                     <div className="text-[11px] text-slate-100 font-semibold mt-2">UTS / UAS / Raport</div>
                                 </th>
                             ))}
@@ -5558,7 +5559,12 @@ const InputNilai = ({ activeInputTab }) => {
                             <th className="p-3 border-b border-r border-indigo-600 text-center w-12 sticky left-0 z-30 bg-indigo-800">No</th>
                             <th className="p-3 border-b border-r border-indigo-600 text-center w-20 bg-indigo-800">NIS</th>
                             <th className="p-3 border-b border-r border-indigo-600 sticky left-12 z-30 bg-indigo-800">Nama Santri</th>
-                            {data.presences.map(p => <th key={p.id} className="p-3 border-b border-r border-indigo-600 text-center min-w-[100px]">{p.name}</th>)}
+                            {data.presences.map(p => (
+                                <th key={p.id} className="p-3 border-b border-r border-indigo-600 text-center min-w-[120px]">
+                                    <div className="font-bold">{p.name}</div>
+                                    <div className="text-[10px] text-indigo-300 mt-1 hover:text-indigo-100 cursor-pointer transition-colors" title="Klik untuk menyalin" onClick={() => {navigator.clipboard.writeText(`{{${p.id}}}`); showNotification('Variabel disalin!');}}>{`{{${p.id}}}`}</div>
+                                </th>
+                            ))}
                         </tr>
                     </thead>
                     <tbody>
@@ -5588,7 +5594,12 @@ const InputNilai = ({ activeInputTab }) => {
                             <th className="p-3 border-b border-r border-blue-600 text-center w-12 sticky left-0 z-30 bg-blue-800">No</th>
                             <th className="p-3 border-b border-r border-blue-600 text-center w-20 bg-blue-800">NIS</th>
                             <th className="p-3 border-b border-r border-blue-600 sticky left-12 z-30 bg-blue-800">Nama Santri</th>
-                            {data.characterTraits.map(p => <th key={p.id} className="p-3 border-b border-r border-blue-600 text-center min-w-[120px]">{p.name}</th>)}
+                            {data.characterTraits.map(p => (
+                                <th key={p.id} className="p-3 border-b border-r border-blue-600 text-center min-w-[120px]">
+                                    <div className="font-bold">{p.name}</div>
+                                    <div className="text-[10px] text-blue-300 mt-1 hover:text-blue-100 cursor-pointer transition-colors" title="Klik untuk menyalin" onClick={() => {navigator.clipboard.writeText(`{{${p.id}}}`); showNotification('Variabel disalin!');}}>{`{{${p.id}}}`}</div>
+                                </th>
+                            ))}
                         </tr>
                     </thead>
                     <tbody>
@@ -5618,7 +5629,12 @@ const InputNilai = ({ activeInputTab }) => {
                             <th className="p-3 border-b border-r border-orange-600 text-center w-12 sticky left-0 z-30 bg-orange-800">No</th>
                             <th className="p-3 border-b border-r border-orange-600 text-center w-20 bg-orange-800">NIS</th>
                             <th className="p-3 border-b border-r border-orange-600 sticky left-12 z-30 bg-orange-800">Nama Santri</th>
-                            {data.extracurriculars.map(p => <th key={p.id} className="p-3 border-b border-r border-orange-600 text-center min-w-[120px]">{p.name}</th>)}
+                            {data.extracurriculars.map(p => (
+                                <th key={p.id} className="p-3 border-b border-r border-orange-600 text-center min-w-[120px]">
+                                    <div className="font-bold">{p.name}</div>
+                                    <div className="text-[10px] text-orange-300 mt-1 hover:text-orange-100 cursor-pointer transition-colors" title="Klik untuk menyalin" onClick={() => {navigator.clipboard.writeText(`{{${p.id}}}`); showNotification('Variabel disalin!');}}>{`{{${p.id}}}`}</div>
+                                </th>
+                            ))}
                         </tr>
                     </thead>
                     <tbody>
@@ -5648,7 +5664,10 @@ const InputNilai = ({ activeInputTab }) => {
                             <th className="p-3 border-b border-r border-pink-600 text-center w-12">No</th>
                             <th className="p-3 border-b border-r border-pink-600 text-center w-20">NIS</th>
                             <th className="p-3 border-b border-r border-pink-600 w-48">Nama Santri</th>
-                            <th className="p-3 border-b border-pink-600">Isi Catatan Wali Kelas</th>
+                            <th className="p-3 border-b border-pink-600 text-center w-64">
+                                <div className="font-bold">Isi Catatan Wali Kelas</div>
+                                <div className="text-[10px] text-pink-300 mt-1 hover:text-pink-100 cursor-pointer transition-colors inline-flex bg-pink-800/50 px-2 py-0.5 rounded-full" title="Klik untuk menyalin" onClick={() => {navigator.clipboard.writeText(`{{catatan_wali}}`); showNotification('Variabel disalin!');}}>{`{{catatan_wali}}`}</div>
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
@@ -6007,6 +6026,24 @@ const CetakDokumen = ({ mode = 'raport' }) => {
             return replaced.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
                  if (stdData[key] !== undefined) return stdData[key];
                  if (stdData.fields && stdData.fields[key] !== undefined) return stdData.fields[key];
+                 if (sGrades && sGrades[key] !== undefined) {
+                     if (typeof sGrades[key] === 'object') {
+                         const r = computeRaportScore(sGrades[key].uts, sGrades[key].uas);
+                         return r !== '' ? r : match;
+                     }
+                     return sGrades[key];
+                 }
+                 if (key.endsWith('_UTS')) {
+                     const realKey = key.replace('_UTS', '');
+                     if (sGrades && sGrades[realKey] && typeof sGrades[realKey] === 'object') return sGrades[realKey].uts || '';
+                 }
+                 if (key.endsWith('_UAS')) {
+                     const realKey = key.replace('_UAS', '');
+                     if (sGrades && sGrades[realKey] && typeof sGrades[realKey] === 'object') return sGrades[realKey].uas || '';
+                 }
+                 if (key === 'catatan_wali') {
+                     return sGrades ? sGrades['catatan_wali'] || '' : '';
+                 }
                  return match;
             });
         };
