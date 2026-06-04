@@ -6773,7 +6773,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                 }}>
                     {el.type === 'table_grades' 
                         ? renderDynamicTable(el, data, sGrades, classAverages, useKatrol, mode, classesData, studentsInClass.length)
-                        : renderCustomTable(el, replaceVariables, { allElements: elements })
+                        : renderCustomTable(el, replaceVariables, { allElements: activeLayout })
                     }
                 </div>
             );
@@ -6811,7 +6811,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                             padding: (child.type === 'image' || child.type === 'table_grades' || child.type === 'table_custom' || child.type === 'shape' || child.type === 'line') ? 0 : '2px',
                         };
                         if (child.type === 'table_grades') return <div key={child.id} style={{...childStyle, background: child.isTransparent ? 'transparent' : 'white', overflow:'visible'}}>{renderDynamicTable(child, data, sGrades, classAverages, useKatrol, mode, classesData, studentsInClass.length)}</div>;
-                        if (child.type === 'table_custom') return <div key={child.id} style={{...childStyle, background: child.isTransparent ? 'transparent' : 'white', overflow:'visible'}}>{renderCustomTable(child, replaceVariables, { allElements: elements })}</div>;
+                        if (child.type === 'table_custom') return <div key={child.id} style={{...childStyle, background: child.isTransparent ? 'transparent' : 'white', overflow:'visible'}}>{renderCustomTable(child, replaceVariables, { allElements: activeLayout })}</div>;
                         if (child.type === 'image') return <img key={child.id} src={child.content} style={{...childStyle, objectFit: child.objectFit||'contain', objectPosition:`${child.objectPositionX??50}% ${child.objectPositionY??50}%`}} alt="c" />;
                         if (child.type === 'line') return <div key={child.id} style={{...childStyle, backgroundColor: child.lineColor || '#000000'}} />;
                         if (child.type === 'shape') return <div key={child.id} style={{...childStyle, backgroundColor: child.shapeFill || '#000000', borderRadius: `${child.shapeRadius || 0}px`, border: child.shapeBorder ? `${child.shapeBorder}px solid ${child.shapeBorderColor || '#000000'}` : 'none'}} />;
