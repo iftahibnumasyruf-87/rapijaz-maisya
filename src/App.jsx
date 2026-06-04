@@ -2862,7 +2862,16 @@ const renderCustomTable = (el, replaceVars = s => s, options = {}) => {
                                     wordBreak: 'break-word',
                                     position: 'relative',
                                 }}>
-                                    <span style={{whiteSpace:'pre-wrap'}} dangerouslySetInnerHTML={{ __html: replaceVars(cell.content || '').replace(/\n/g, '<br/>') }}></span>
+                                    <span style={{whiteSpace:'pre-wrap'}} dangerouslySetInnerHTML={{ __html: (() => {
+                                        let html = replaceVars(cell.content || '').replace(/\n/g, '<br/>');
+                                        if (cell.isArabicDigits || el.isArabicDigits) {
+                                            html = html.split(/(<[^>]*>)/).map(part => {
+                                                if (part.startsWith('<') && part.endsWith('>')) return part;
+                                                return part.replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[d]);
+                                            }).join('');
+                                        }
+                                        return html;
+                                    })() }}></span>
                                     
                                     {isEditable && targetColIdx < cols - 1 && (
                                         <div 
@@ -4960,13 +4969,31 @@ const LayoutBuilder = () => {
                                                         }}/>
                                                     </div>
                                                 </div>
-                                                <label className="flex items-center gap-2 text-xs text-gray-700 bg-gray-50 p-2 rounded cursor-pointer border">
-                                                    <input type="checkbox" checked={activeEl.cells?.[ctSelCells[0]]?.isHeaderCell || false} onChange={e => {
+                                                <div className="flex gap-2">
+                                                    <label className="flex-1 flex items-center gap-2 text-[11px] text-gray-700 bg-gray-50 p-2 rounded cursor-pointer border">
+                                                        <input type="checkbox" checked={activeEl.cells?.[ctSelCells[0]]?.isHeaderCell || false} onChange={e => {
+                                                            const newCells = {...activeEl.cells};
+                                                            ctSelCells.forEach(ck => { newCells[ck] = {...(newCells[ck]||{}), isHeaderCell: e.target.checked}; });
+                                                            updateElement(selectedElementId, { cells: newCells });
+                                                        }}/>
+                                                        Sel Header
+                                                    </label>
+                                                    <label className="flex-1 flex items-center gap-2 text-[11px] text-gray-700 bg-gray-50 p-2 rounded cursor-pointer border">
+                                                        <input type="checkbox" checked={activeEl.cells?.[ctSelCells[0]]?.isRtl || false} onChange={e => {
+                                                            const newCells = {...activeEl.cells};
+                                                            ctSelCells.forEach(ck => { newCells[ck] = {...(newCells[ck]||{}), isRtl: e.target.checked}; });
+                                                            updateElement(selectedElementId, { cells: newCells });
+                                                        }}/>
+                                                        Arah Teks Arab (RTL)
+                                                    </label>
+                                                </div>
+                                                <label className="flex items-center gap-2 text-[11px] text-gray-700 bg-gray-50 p-2 rounded cursor-pointer border mt-1">
+                                                    <input type="checkbox" checked={activeEl.cells?.[ctSelCells[0]]?.isArabicDigits || false} onChange={e => {
                                                         const newCells = {...activeEl.cells};
-                                                        ctSelCells.forEach(ck => { newCells[ck] = {...(newCells[ck]||{}), isHeaderCell: e.target.checked}; });
+                                                        ctSelCells.forEach(ck => { newCells[ck] = {...(newCells[ck]||{}), isArabicDigits: e.target.checked}; });
                                                         updateElement(selectedElementId, { cells: newCells });
                                                     }}/>
-                                                    Tandai sebagai Sel Header (Abu-abu)
+                                                    Ubah Angka (0-9) ke Arab (٠-٩)
                                                 </label>
                                                 <div className="flex gap-2">
                                                     <div className="w-1/2 flex items-center justify-between border rounded px-2 py-1 bg-gray-50">
