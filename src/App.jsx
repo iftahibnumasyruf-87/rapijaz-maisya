@@ -3622,7 +3622,7 @@ const LayoutBuilder = () => {
                         });
                         
                         setPast(p => [...p, elements]); setFuture([]);
-                        setElements(elements.map(e => e.id === el.id ? { ...e, cells: newCells } : e));
+                        setElements(prev => prev.map(e => e.id === el.id ? { ...e, cells: newCells } : e));
                         return;
                     }
                 }
@@ -3638,7 +3638,7 @@ const LayoutBuilder = () => {
                     newCells[ctSelCells[0]] = { ...(newCells[ctSelCells[0]] || {}), content: '=' };
                     
                     setPast(p => [...p, elements]); setFuture([]);
-                    setElements(elements.map(e => e.id === el.id ? { ...e, cells: newCells } : e));
+                    setElements(prev => prev.map(e => e.id === el.id ? { ...e, cells: newCells } : e));
                     return;
                 }
             }
@@ -5562,15 +5562,19 @@ const LayoutBuilder = () => {
                                                     {child.type === 'table_grades' ? renderDynamicTable(child, data, mockStudentGrades, mockClassAverages, false, 'raport', classesData, 0) 
                                                     : child.type === 'table_custom' ? renderCustomTable(child, s=>s, { allElements: elements, isEditable: selectedIds.includes(child.id), selectedCells: selectedIds.includes(child.id) ? ctSelCells : [], onColResizeStart: startColResize, onRowResizeStart: startRowResize, onCellDragStart: (e, ck) => { e.preventDefault(); e.stopPropagation(); setSelectedIds([child.id]); setIsDraggingCells(true); setCtDragStartCell(ck); setCtSelCells([ck]); setCtActiveCell(ck); }, onCellMouseEnter: (ck) => { if (isDraggingCells && ctDragStartCell) { setCtSelCells(getCellsInRect(ctDragStartCell, ck)); } }, onCellClick: (e, ck) => {
                                                         e.stopPropagation();
+                                                        console.log('Cell Clicked!', { linkingCell, ck, childId: child.id });
                                                         if (linkingCell) {
+                                                            console.log('Inside linkingCell logic!', linkingCell);
                                                             const targetElId = linkingCell.elId;
-                                                            const targetEl = elements.find(el => el.id === targetElId);
-                                                            if (targetEl) {
-                                                                const newCells = { ...(targetEl.cells || {}) };
-                                                                newCells[linkingCell.cellKey] = { ...(newCells[linkingCell.cellKey] || {}), content: `=${child.id}.${ck}` };
-                                                                setPast(p => [...p, elements]); setFuture([]);
-                                                                setElements(elements.map(el => el.id === targetElId ? { ...el, cells: newCells } : el));
-                                                            }
+                                                            setPast(p => { const newP = [...p, elements]; return newP; }); setFuture([]);
+                                                            setElements(prev => prev.map(el => {
+                                                                if (el.id === targetElId) {
+                                                                    const newCells = { ...(el.cells || {}) };
+                                                                    newCells[linkingCell.cellKey] = { ...(newCells[linkingCell.cellKey] || {}), content: `=${child.id}.${ck}` };
+                                                                    return { ...el, cells: newCells };
+                                                                }
+                                                                return el;
+                                                            }));
                                                             setLinkingCell(null);
                                                             return;
                                                         }
