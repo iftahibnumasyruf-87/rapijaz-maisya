@@ -2324,7 +2324,10 @@ const MasterData = ({ activeTab }) => {
                     <tr key={m.id} className="border-b hover:bg-gray-50">
                         <td className="p-3 font-semibold">{m.nameId}</td>
                         <td className="p-3 text-right font-arabic" dir="rtl">{m.nameAr}</td>
-                        <td className="p-3 text-sm text-gray-600 font-mono select-all">{'{{nilai_'}{m.shortCode || m.nameId}{'}}'}</td>
+                        <td className="p-3 text-sm text-gray-600 font-mono select-all flex flex-col gap-1">
+                            <span>{'{{'}{varName}{'}}'}</span>
+                            <span>{'{{'}{varName}_arb{'}}'}</span>
+                        </td>
                         <td className="p-3 text-center"><button onClick={() => handleOpenModal(m)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('masterSubjects', m.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td>
                     </tr>
                 )})}</tbody>
@@ -3324,8 +3327,13 @@ const VariablesHelp = ({ onInsert, masterSubjects = [] }) => {
                 {masterSubjects.length > 0 && (
                     <optgroup label="Daftar Pelajaran (Master)">
                         {masterSubjects.map(m => {
-                            const varName = m.shortCode || m.nameId;
-                            return <option key={m.id} value={`{{nilai_${varName}}}`}>Nilai {m.nameId}</option>;
+                            const varName = m.shortCode || m.nameId.replace(/[.*+?^${}()|[\]\\]/g, '');
+                            return (
+                                <React.Fragment key={m.id}>
+                                    <option value={`{{${varName}}}`}>Nama Indo: {m.nameId}</option>
+                                    <option value={`{{${varName}_arb}}}`}>Nama Arab: {m.nameId}</option>
+                                </React.Fragment>
+                            );
                         })}
                     </optgroup>
                 )}
@@ -6468,17 +6476,9 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                              .replace(/\{\{jumlah_santri\}\}/gi, jumlahSantri)
                              .replace(/\{\{jumlah_santri_ar\}\}/gi, jumlahSantriAr);
             
-            // Replace dynamic variables for Master Subjects (e.g. {{nilai_Al-Qur'an}} or {{nilai_alq}})
+            // Replace dynamic variables for Master Subjects (e.g. {{alq}} or {{alq_arb}})
             relevantSubjects.forEach(s => {
                 if (!s.mapel) return;
-                const gradeObj = sGrades[s.id];
-                let gradeStr = '-';
-                if (gradeObj && typeof gradeObj === 'object') {
-                    const r = computeRaportScore(gradeObj.uts, gradeObj.uas);
-                    if (r !== '') gradeStr = r;
-                } else if (gradeObj !== undefined && gradeObj !== '') {
-                    gradeStr = gradeObj;
-                }
                 
                 const masterSub = data.masterSubjects?.find(m => m.nameId === s.mapel);
                 const varName = masterSub?.shortCode || s.mapel;
@@ -6486,12 +6486,8 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                 const mapelAr = masterSub?.nameAr || s.mapel;
                 
                 replaced = replaced
-                    .replace(new RegExp(`\\{\\{nilai_${safeVarName}\\}\\}`, 'gi'), gradeStr)
-                    .replace(new RegExp(`\\{\\{nilai_${safeVarName}_ar\\}\\}`, 'gi'), gradeStr !== '-' ? toArabicNumbers(gradeStr) : '-')
-                    .replace(new RegExp(`\\{\\{mapel_${safeVarName}_id\\}\\}`, 'gi'), s.mapel)
-                    .replace(new RegExp(`\\{\\{mapel_${safeVarName}_ar\\}\\}`, 'gi'), mapelAr)
-                    .replace(new RegExp(`\\{\\{kkm_${safeVarName}\\}\\}`, 'gi'), s.kkm || '')
-                    .replace(new RegExp(`\\{\\{guru_${safeVarName}\\}\\}`, 'gi'), s.guru || '');
+                    .replace(new RegExp(`\\{\\{${safeVarName}\\}\\}`, 'gi'), s.mapel)
+                    .replace(new RegExp(`\\{\\{${safeVarName}_arb\\}\\}`, 'gi'), mapelAr);
             });
             
             return replaced.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
