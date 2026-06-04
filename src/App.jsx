@@ -532,6 +532,26 @@ const AppProvider = ({ children }) => {
         }
       }
 
+      // Optimistic update
+      setAllData(prev => {
+        const currentItems = prev[colName] || [];
+        const existingIdx = currentItems.findIndex(i => i.id === docId);
+        const newItem = { id: docId, ...cleanPayload };
+        let newItems;
+        if (existingIdx >= 0) {
+          newItems = [...currentItems];
+          newItems[existingIdx] = newItem;
+        } else {
+          newItems = [...currentItems, newItem];
+        }
+        
+        if (colName === 'settings' && cleanPayload.isActive) {
+            newItems = newItems.map(item => item.id !== docId ? { ...item, isActive: false } : item);
+        }
+
+        return { ...prev, [colName]: sortDataItems(newItems) };
+      });
+
       const { error } = await supabase.from(colName).upsert([{ id: docId, payload: cleanPayload }]);
       if (error) throw error;
       
@@ -563,6 +583,15 @@ const AppProvider = ({ children }) => {
 
   const deleteFromDb = async (colName, docId, silent = false, customLogMsg = null) => {
     try {
+      // Optimistic update
+      setAllData(prev => {
+        const currentItems = prev[colName] || [];
+        return {
+          ...prev,
+          [colName]: currentItems.filter(item => item.id !== docId)
+        };
+      });
+
       const { error } = await supabase.from(colName).delete().eq('id', docId);
       if (error) throw error;
       
