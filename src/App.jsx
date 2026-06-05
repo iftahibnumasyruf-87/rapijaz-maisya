@@ -3617,6 +3617,144 @@ const LayoutBuilder = () => {
         return result;
     };
 
+    // ==========================================
+    // INSERT / DELETE ROW / COLUMN HELPERS
+    // ==========================================
+    const insertRowAt = (insertAfter) => {
+        const el = elements.find(item => item.id === selectedElementId);
+        if (!el) return;
+        const rows = el.tableRows || 3;
+        const cols = el.tableCols || 3;
+        const oldCells = el.cells || {};
+        const oldHeights = [...(el.rowHeights || Array.from({length: rows}, () => 30))];
+        // insertAfter = true means insert below selected row, false = above
+        const [selRow] = ctSelCells.length > 0 ? ctSelCells[0].split('_').map(Number) : [0];
+        const insertIdx = insertAfter ? selRow + 1 : selRow;
+        // Shift existing cells down for rows >= insertIdx
+        const newCells = {};
+        Object.keys(oldCells).forEach(ck => {
+            const [r, c] = ck.split('_').map(Number);
+            if (r < insertIdx) {
+                newCells[`${r}_${c}`] = oldCells[ck];
+            } else {
+                newCells[`${r + 1}_${c}`] = oldCells[ck];
+            }
+        });
+        const newHeights = [...oldHeights];
+        const refH = oldHeights[insertAfter ? selRow : Math.max(0, selRow)] || 30;
+        newHeights.splice(insertIdx, 0, refH);
+        updateElement(selectedElementId, {
+            tableRows: rows + 1,
+            rowHeights: newHeights,
+            cells: newCells,
+        });
+        const newSel = `${insertIdx}_${ctSelCells.length > 0 ? ctSelCells[0].split('_')[1] : 0}`;
+        setCtSelCells([newSel]);
+        setCtActiveCell(newSel);
+    };
+
+    const deleteRowAt = () => {
+        const el = elements.find(item => item.id === selectedElementId);
+        if (!el) return;
+        const rows = el.tableRows || 3;
+        if (rows <= 1) return;
+        const cols = el.tableCols || 3;
+        const oldCells = el.cells || {};
+        const oldHeights = [...(el.rowHeights || Array.from({length: rows}, () => 30))];
+        const [selRow] = ctSelCells.length > 0 ? ctSelCells[0].split('_').map(Number) : [0];
+        const newCells = {};
+        Object.keys(oldCells).forEach(ck => {
+            const [r, c] = ck.split('_').map(Number);
+            if (r < selRow) {
+                newCells[`${r}_${c}`] = oldCells[ck];
+            } else if (r > selRow) {
+                newCells[`${r - 1}_${c}`] = oldCells[ck];
+            }
+        });
+        const newHeights = [...oldHeights];
+        newHeights.splice(selRow, 1);
+        const newSelRow = Math.min(selRow, rows - 2);
+        updateElement(selectedElementId, {
+            tableRows: rows - 1,
+            rowHeights: newHeights,
+            cells: newCells,
+        });
+        const newSel = `${newSelRow}_${ctSelCells.length > 0 ? ctSelCells[0].split('_')[1] : 0}`;
+        setCtSelCells([newSel]);
+        setCtActiveCell(newSel);
+    };
+
+    const insertColAt = (insertAfter) => {
+        const el = elements.find(item => item.id === selectedElementId);
+        if (!el) return;
+        const rows = el.tableRows || 3;
+        const cols = el.tableCols || 3;
+        const oldCells = el.cells || {};
+        const oldWidths = [...(el.colWidths || Array.from({length: cols}, () => Math.round(100/cols)))];
+        const [, selCol] = ctSelCells.length > 0 ? ctSelCells[0].split('_').map(Number) : [0, 0];
+        const insertIdx = insertAfter ? selCol + 1 : selCol;
+        const newCells = {};
+        Object.keys(oldCells).forEach(ck => {
+            const [r, c] = ck.split('_').map(Number);
+            if (c < insertIdx) {
+                newCells[`${r}_${c}`] = oldCells[ck];
+            } else {
+                newCells[`${r}_${c + 1}`] = oldCells[ck];
+            }
+        });
+        // Shrink widths proportionally to fit new column
+        const refW = oldWidths[insertAfter ? selCol : Math.max(0, selCol)] || Math.round(100/cols);
+        const halfW = Math.max(1, Math.round(refW / 2));
+        const newWidths = [...oldWidths];
+        newWidths[insertAfter ? selCol : Math.max(0, selCol)] = refW - halfW;
+        newWidths.splice(insertIdx, 0, halfW);
+        updateElement(selectedElementId, {
+            tableCols: cols + 1,
+            colWidths: newWidths,
+            cells: newCells,
+        });
+        const newSel = `${ctSelCells.length > 0 ? ctSelCells[0].split('_')[0] : 0}_${insertIdx}`;
+        setCtSelCells([newSel]);
+        setCtActiveCell(newSel);
+    };
+
+    const deleteColAt = () => {
+        const el = elements.find(item => item.id === selectedElementId);
+        if (!el) return;
+        const rows = el.tableRows || 3;
+        const cols = el.tableCols || 3;
+        if (cols <= 1) return;
+        const oldCells = el.cells || {};
+        const oldWidths = [...(el.colWidths || Array.from({length: cols}, () => Math.round(100/cols)))];
+        const [, selCol] = ctSelCells.length > 0 ? ctSelCells[0].split('_').map(Number) : [0, 0];
+        const newCells = {};
+        Object.keys(oldCells).forEach(ck => {
+            const [r, c] = ck.split('_').map(Number);
+            if (c < selCol) {
+                newCells[`${r}_${c}`] = oldCells[ck];
+            } else if (c > selCol) {
+                newCells[`${r}_${c - 1}`] = oldCells[ck];
+            }
+        });
+        // Redistribute deleted col width to adjacent col
+        const deletedW = oldWidths[selCol] || Math.round(100/cols);
+        const newWidths = [...oldWidths];
+        newWidths.splice(selCol, 1);
+        if (newWidths.length > 0) {
+            const giveToIdx = selCol > 0 ? selCol - 1 : 0;
+            newWidths[giveToIdx] = (newWidths[giveToIdx] || 0) + deletedW;
+        }
+        const newSelCol = Math.min(selCol, cols - 2);
+        updateElement(selectedElementId, {
+            tableCols: cols - 1,
+            colWidths: newWidths,
+            cells: newCells,
+        });
+        const newSel = `${ctSelCells.length > 0 ? ctSelCells[0].split('_')[0] : 0}_${newSelCol}`;
+        setCtSelCells([newSel]);
+        setCtActiveCell(newSel);
+    };
+
     const startColResize = (elId, colIdx, e) => {
         const el = elements.find(item => item.id === elId);
         if (!el) return;
@@ -5486,6 +5624,66 @@ const LayoutBuilder = () => {
                                                                 }
                                                             }}>+</button>
                                                         </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Insert / Delete Row & Column */}
+                                                <div className="mt-2 border border-emerald-200 rounded-lg overflow-hidden">
+                                                    <div className="bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-800 uppercase tracking-wide flex items-center gap-1">
+                                                        ✦ Sisipkan / Hapus Baris &amp; Kolom
+                                                    </div>
+                                                    <div className="p-2 space-y-1.5">
+                                                        {/* Row actions */}
+                                                        <div className="flex gap-1">
+                                                            <button
+                                                                onClick={() => insertRowAt(false)}
+                                                                title="Sisipkan baris kosong di ATAS baris sel yang dipilih"
+                                                                className="flex-1 py-1 px-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold rounded flex items-center justify-center gap-0.5 transition"
+                                                            >
+                                                                ↑ Baris Atas
+                                                            </button>
+                                                            <button
+                                                                onClick={() => insertRowAt(true)}
+                                                                title="Sisipkan baris kosong di BAWAH baris sel yang dipilih"
+                                                                className="flex-1 py-1 px-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold rounded flex items-center justify-center gap-0.5 transition"
+                                                            >
+                                                                ↓ Baris Bawah
+                                                            </button>
+                                                            <button
+                                                                onClick={() => deleteRowAt()}
+                                                                title="Hapus baris dari sel yang dipilih"
+                                                                disabled={(activeEl.tableRows || 3) <= 1}
+                                                                className="flex-1 py-1 px-1 bg-red-500 hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-[10px] font-bold rounded flex items-center justify-center gap-0.5 transition"
+                                                            >
+                                                                ✕ Baris
+                                                            </button>
+                                                        </div>
+                                                        {/* Column actions */}
+                                                        <div className="flex gap-1">
+                                                            <button
+                                                                onClick={() => insertColAt(false)}
+                                                                title="Sisipkan kolom kosong di KIRI kolom sel yang dipilih"
+                                                                className="flex-1 py-1 px-1 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold rounded flex items-center justify-center gap-0.5 transition"
+                                                            >
+                                                                ← Kol Kiri
+                                                            </button>
+                                                            <button
+                                                                onClick={() => insertColAt(true)}
+                                                                title="Sisipkan kolom kosong di KANAN kolom sel yang dipilih"
+                                                                className="flex-1 py-1 px-1 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold rounded flex items-center justify-center gap-0.5 transition"
+                                                            >
+                                                                → Kol Kanan
+                                                            </button>
+                                                            <button
+                                                                onClick={() => deleteColAt()}
+                                                                title="Hapus kolom dari sel yang dipilih"
+                                                                disabled={(activeEl.tableCols || 3) <= 1}
+                                                                className="flex-1 py-1 px-1 bg-red-500 hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-[10px] font-bold rounded flex items-center justify-center gap-0.5 transition"
+                                                            >
+                                                                ✕ Kolom
+                                                            </button>
+                                                        </div>
+                                                        <p className="text-[9px] text-gray-400 leading-tight">Baris/kolom disisipkan berdasarkan sel yang dipilih. Data sel yang ada digeser otomatis.</p>
                                                     </div>
                                                 </div>
                                             </div>
