@@ -7,7 +7,7 @@ import {
   Download, Upload, Share2, AlertCircle, CheckCircle, GripHorizontal,
   Type, User, CreditCard, Image as ImageIcon, Ruler, Type as TypeIcon, FileText,
   Columns, FileSignature, TrendingUp, UserX, Clock, Activity, ChevronDown,
-  ZoomIn, ZoomOut, Maximize, Minimize, ChevronUp, Lock, Database, Copy, Undo, Redo, Eye, EyeOff,
+  ZoomIn, ZoomOut, Maximize, Minimize, ChevronUp, Lock, Database, Copy, Undo, Redo, Eye, EyeOff, Scissors,
   AlignLeft, AlignCenter, AlignRight, AlignStartVertical, AlignCenterVertical, AlignEndVertical, BarChart2, AlignJustify, Layers, Calendar,
   Minus, Square, Grid, Info, RefreshCw
 } from 'lucide-react';
@@ -3572,6 +3572,7 @@ const LayoutBuilder = () => {
     const [expandedPanels, setExpandedPanels] = useState({ addElem: true, layers: true, editSingle: true, editMulti: true });
     const togglePanel = (key) => setExpandedPanels(prev => ({ ...prev, [key]: !prev[key] }));
     const [clipboardCells, setClipboardCells] = useState(null);
+    const [elementClipboard, setElementClipboard] = useState(null); // { items: [], isCut: bool }
     const [linkingCell, setLinkingCell] = useState(null);
     const [pageSize, setPageSize] = useState('A4');
     const [guides, setGuides] = useState({ h: [], v: [] });
@@ -3889,17 +3890,41 @@ const LayoutBuilder = () => {
                     return;
                 }
                 
-                // Custom Table Copy/Paste
+                // Custom Table Copy/Paste (sel dalam tabel)
                 if (e.key.toLowerCase() === 'c' && selectedIds.length === 1) {
                     const el = elements.find(el => el.id === selectedIds[0]);
                     if (el && el.type === 'table_custom' && ctSelCells && ctSelCells.length > 0) {
                         e.preventDefault();
                         const cellsData = ctSelCells.map(ck => ({ key: ck, data: el.cells?.[ck] || {} }));
                         setClipboardCells(cellsData);
+                        showNotification(`📋 ${cellsData.length} sel disalin`);
                         return;
                     }
                 }
-                
+
+                // Element Copy (Ctrl+C) — salin elemen ke clipboard
+                if (e.key.toLowerCase() === 'c' && selectedIds.length > 0) {
+                    e.preventDefault();
+                    const copied = elements
+                        .filter(el => selectedIds.includes(el.id))
+                        .map(el => JSON.parse(JSON.stringify(el)));
+                    setElementClipboard({ items: copied, isCut: false });
+                    showNotification(`📋 ${copied.length} elemen disalin — tekan Ctrl+V untuk tempel`);
+                    return;
+                }
+
+                // Element Cut (Ctrl+X) — potong elemen
+                if (e.key.toLowerCase() === 'x' && selectedIds.length > 0) {
+                    e.preventDefault();
+                    const cut = elements
+                        .filter(el => selectedIds.includes(el.id))
+                        .map(el => JSON.parse(JSON.stringify(el)));
+                    setElementClipboard({ items: cut, isCut: true });
+                    showNotification(`✂️ ${cut.length} elemen dipotong — pindah halaman lalu tekan Ctrl+V`);
+                    return;
+                }
+
+                // Table Cell Paste (Ctrl+V) — tempel sel tabel
                 if (e.key.toLowerCase() === 'v' && selectedIds.length === 1 && clipboardCells) {
                     const el = elements.find(el => el.id === selectedIds[0]);
                     if (el && el.type === 'table_custom' && ctSelCells && ctSelCells.length > 0) {
@@ -3918,11 +3943,39 @@ const LayoutBuilder = () => {
                                 newCells[newKey] = { ...copied.data };
                             }
                         });
-                        
                         setPast(p => [...p, elements]); setFuture([]);
                         setElements(prev => prev.map(e => e.id === el.id ? { ...e, cells: newCells } : e));
                         return;
                     }
+                }
+
+                // Element Paste (Ctrl+V) — tempel elemen ke halaman aktif
+                if (e.key.toLowerCase() === 'v' && elementClipboard && elementClipboard.items?.length > 0) {
+                    e.preventDefault();
+                    const now = Date.now();
+                    const isCut = elementClipboard.isCut;
+                    const offset = isCut ? 0 : 20;
+                    const newEls = elementClipboard.items.map((el, i) => ({
+                        ...el,
+                        id: (now + i).toString(),
+                        pageIndex: currentPage,
+                        x: (el.x || 0) + offset,
+                        y: (el.y || 0) + offset,
+                    }));
+                    setPast(p => [...p, elements]); setFuture([]);
+                    if (isCut) {
+                        const cutIds = elementClipboard.items.map(el => el.id);
+                        setElements(prev => [
+                            ...prev.filter(el => !cutIds.includes(el.id)),
+                            ...newEls
+                        ]);
+                        setElementClipboard(null);
+                    } else {
+                        setElements(prev => [...prev, ...newEls]);
+                    }
+                    setSelectedIds(newEls.map(el => el.id));
+                    showNotification(`✅ ${newEls.length} elemen ditempel ke Halaman ${currentPage + 1}`);
+                    return;
                 }
             }
             
@@ -3971,7 +4024,7 @@ const LayoutBuilder = () => {
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [selectedIds, elements, past, future, ctSelCells, clipboardCells]);
+    }, [selectedIds, elements, past, future, ctSelCells, clipboardCells, elementClipboard, currentPage]);
 
     const prevLayoutRef = useRef(null);
     const latestLayoutsRef = useRef(data.layouts);
@@ -5698,6 +5751,13 @@ const LayoutBuilder = () => {
                                 )}
                                 <button onClick={() => {updateElement(selectedElementId, { locked: true }); setSelectedIds([]);}} className="flex-1 min-w-[30%] bg-yellow-50 hover:bg-yellow-100 text-yellow-700 py-2 rounded text-[11px] font-bold flex justify-center items-center gap-1 transition" title="Kunci posisi agar tidak tergeser"><Lock size={14}/> Kunci</button>
                                 <button onClick={() => duplicateElement(selectedElementId)} className="flex-1 min-w-[30%] bg-blue-50 hover:bg-blue-100 text-blue-600 py-2 rounded text-[11px] font-bold flex justify-center items-center gap-1 transition"><Copy size={14}/> Duplikat</button>
+                                <button onClick={() => {
+                                    const cut = elements.filter(el => el.id === selectedElementId).map(el => JSON.parse(JSON.stringify(el)));
+                                    setElementClipboard({ items: cut, isCut: true });
+                                    showNotification(`✂️ ${cut.length} elemen dipotong — pindah halaman lalu tekan Ctrl+V atau klik tombol Tempel`);
+                                }} className="flex-1 min-w-[30%] bg-orange-50 hover:bg-orange-100 text-orange-600 py-2 rounded text-[11px] font-bold flex justify-center items-center gap-1 transition" title="Potong elemen ke clipboard">
+                                    <Scissors size={14}/> Potong
+                                </button>
                                 <button onClick={() => removeElement(selectedElementId)} className="flex-1 min-w-[30%] bg-red-50 hover:bg-red-100 text-red-600 py-2 rounded text-[11px] font-bold flex justify-center items-center gap-1 transition"><Trash2 size={14}/> Hapus</button>
                             </div>
                                 </>
@@ -5783,6 +5843,44 @@ const LayoutBuilder = () => {
                         <div className="w-px h-4 bg-gray-300"></div>
                         <button onClick={undo} disabled={past.length === 0} className="text-gray-500 hover:text-blue-600 disabled:opacity-30" title="Undo"><Undo size={18}/></button>
                         <button onClick={redo} disabled={future.length === 0} className="text-gray-500 hover:text-blue-600 disabled:opacity-30" title="Redo"><Redo size={18}/></button>
+                        {elementClipboard && elementClipboard.items?.length > 0 && (
+                            <>
+                                <div className="w-px h-4 bg-gray-300"></div>
+                                <div className="flex items-center gap-1 bg-amber-50 border border-amber-300 rounded-full px-2 py-0.5">
+                                    <span className="text-amber-600 text-xs">{elementClipboard.isCut ? '✂️' : '📋'}</span>
+                                    <span className="text-amber-800 text-[11px] font-bold">{elementClipboard.items.length} el</span>
+                                    <button
+                                        onClick={() => {
+                                            const now = Date.now();
+                                            const isCut = elementClipboard.isCut;
+                                            const offset = isCut ? 0 : 20;
+                                            const newEls = elementClipboard.items.map((el, i) => ({
+                                                ...el,
+                                                id: (now + i).toString(),
+                                                pageIndex: currentPage,
+                                                x: (el.x || 0) + offset,
+                                                y: (el.y || 0) + offset,
+                                            }));
+                                            setPast(p => [...p, elements]); setFuture([]);
+                                            if (isCut) {
+                                                const cutIds = elementClipboard.items.map(el => el.id);
+                                                setElements(prev => [...prev.filter(el => !cutIds.includes(el.id)), ...newEls]);
+                                                setElementClipboard(null);
+                                            } else {
+                                                setElements(prev => [...prev, ...newEls]);
+                                            }
+                                            setSelectedIds(newEls.map(el => el.id));
+                                            showNotification(`✅ ${newEls.length} elemen ditempel ke Halaman ${currentPage + 1}`);
+                                        }}
+                                        className="text-[11px] font-bold text-emerald-700 bg-emerald-100 hover:bg-emerald-200 px-1.5 py-0.5 rounded-full transition"
+                                        title={`Tempel ke Halaman ${currentPage + 1} (atau tekan Ctrl+V)`}
+                                    >
+                                        Tempel
+                                    </button>
+                                    <button onClick={() => setElementClipboard(null)} className="text-gray-400 hover:text-red-500 ml-0.5 text-xs leading-none" title="Bersihkan clipboard">✕</button>
+                                </div>
+                            </>
+                        )}
                         <div className="w-px h-4 bg-gray-300"></div>
                         <button onClick={() => setZoom(z => Math.max(0.3, z - 0.1))} className="text-gray-500 hover:text-emerald-600" title="Zoom Out"><ZoomOut size={18}/></button>
                         <span className="text-sm font-bold text-gray-700 w-10 text-center">{Math.round(zoom * 100)}%</span>
