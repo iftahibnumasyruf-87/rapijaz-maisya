@@ -3182,9 +3182,22 @@ const renderCustomTable = (el, replaceVars = s => s, options = {}) => {
                                         if (contentStr.startsWith('=')) {
                                             const match = contentStr.match(/^=([a-zA-Z0-9_-]+)\.([0-9]+_[0-9]+)$/);
                                             if (match && options.allElements) {
-                                                const targetEl = options.allElements.find(e => e.id === match[1]);
+                                                // Pencarian rekursif - menembus grup
+                                                const findElById = (els, id) => {
+                                                    for (const e of els) {
+                                                        if (e.id === id) return e;
+                                                        if (e.type === 'group' && e.children) {
+                                                            const found = findElById(e.children, id);
+                                                            if (found) return found;
+                                                        }
+                                                    }
+                                                    return null;
+                                                };
+                                                const targetEl = findElById(options.allElements, match[1]);
                                                 if (targetEl && targetEl.cells && targetEl.cells[match[2]]) {
                                                     contentStr = targetEl.cells[match[2]].content || '';
+                                                } else if (targetEl) {
+                                                    contentStr = ''; // elemen ada tapi sel kosong
                                                 } else {
                                                     contentStr = '#REF!';
                                                 }
@@ -3983,6 +3996,18 @@ const LayoutBuilder = () => {
                 return;
             }
 
+            // Escape → batalkan mode formula linking
+            if (e.key === 'Escape' && linkingCell) {
+                e.preventDefault();
+                updateElement(linkingCell.elId, (targetEl) => {
+                    const newCells = { ...(targetEl.cells || {}) };
+                    newCells[linkingCell.cellKey] = { ...(newCells[linkingCell.cellKey] || {}), content: '' };
+                    return { cells: newCells };
+                });
+                setLinkingCell(null);
+                return;
+            }
+
             // Undo (Ctrl+Z) dan Redo (Ctrl+Y atau Ctrl+Shift+Z)
             if (e.ctrlKey || e.metaKey) {
                 if (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z')) {
@@ -4125,15 +4150,14 @@ const LayoutBuilder = () => {
             
             // Cell Referencing (Formula Mode)
             if (e.key === '=' && selectedIds.length === 1 && ctSelCells && ctSelCells.length === 1) {
-                const el = elements.find(el => el.id === selectedIds[0]);
+                const el = findElementById(elements, selectedIds[0]);
                 if (el && el.type === 'table_custom') {
                     e.preventDefault();
                     setLinkingCell({ elId: el.id, cellKey: ctSelCells[0] });
                     const newCells = { ...(el.cells || {}) };
                     newCells[ctSelCells[0]] = { ...(newCells[ctSelCells[0]] || {}), content: '=' };
                     
-                    setPast(p => [...p, elements]); setFuture([]);
-                    setElements(prev => prev.map(e => e.id === el.id ? { ...e, cells: newCells } : e));
+                    updateElement(el.id, { cells: newCells });
                     return;
                 }
             }
@@ -4142,15 +4166,14 @@ const LayoutBuilder = () => {
 
             // Delete isi sel tabel kustom yang dipilih (jangan hapus elemen)
             if (e.key === 'Delete' && ctSelCells && ctSelCells.length > 0) {
-                const el = elements.find(el => el.id === selectedIds[0]);
+                const el = findElementById(elements, selectedIds[0]);
                 if (el && el.type === 'table_custom') {
                     e.preventDefault();
                     const newCells = { ...(el.cells || {}) };
                     ctSelCells.forEach(ck => {
                         newCells[ck] = { ...(newCells[ck] || {}), content: '' };
                     });
-                    setPast(p => [...p, elements]); setFuture([]);
-                    setElements(prev => prev.map(e => e.id === el.id ? { ...e, cells: newCells } : e));
+                    updateElement(el.id, { cells: newCells });
                     showNotification(`🗑️ ${ctSelCells.length} sel dikosongkan`);
                     return;
                 }
@@ -4184,7 +4207,7 @@ const LayoutBuilder = () => {
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [selectedIds, elements, past, future, ctSelCells, clipboardCells, elementClipboard, currentPage]);
+    }, [selectedIds, elements, past, future, ctSelCells, clipboardCells, elementClipboard, currentPage, linkingCell, updateElement]);
 
     const prevLayoutRef = useRef(null);
     const latestLayoutsRef = useRef(data.layouts);
@@ -4297,6 +4320,17 @@ const LayoutBuilder = () => {
         setFuture([]);
         setElements([...elements, newEl]);
         setSelectedIds([newEl.id]);
+    };
+
+    const findElementById = (els, id) => {
+        for (const el of els) {
+            if (el.id === id) return el;
+            if (el.type === 'group' && el.children) {
+                const found = findElementById(el.children, id);
+                if (found) return found;
+            }
+        }
+        return null;
     };
 
     const updateElement = (id, changes, commit = true) => {
@@ -4477,6 +4511,31 @@ const LayoutBuilder = () => {
         });
         setPast(p => [...p, elements]);
         setFuture([]);
+    };
+
+    const handleCellClick = (e, clickedElId, ck) => {
+        e.stopPropagation();
+        if (linkingCell) {
+            // Jika sedang mode linking (setelah tekan '='), simpan referensi formula
+            updateElement(linkingCell.elId, (targetEl) => {
+                const newCells = { ...(targetEl.cells || {}) };
+                newCells[linkingCell.cellKey] = {
+                    ...(newCells[linkingCell.cellKey] || {}),
+                    content: `=${clickedElId}.${ck}`
+                };
+                return { cells: newCells };
+            });
+            setLinkingCell(null);
+            return;
+        }
+        // Mode normal: pilih sel
+        setSelectedIds([clickedElId]);
+        if (e.shiftKey) {
+            setCtSelCells(prev => prev.includes(ck) ? prev.filter(k => k !== ck) : [...prev, ck]);
+        } else {
+            setCtSelCells([ck]);
+            setCtActiveCell(ck);
+        }
     };
 
     const handleElementMouseDown = (e, el) => {
@@ -4674,6 +4733,17 @@ const LayoutBuilder = () => {
 
     // Klik pada background kanvas atau area scroll sekitarnya → mulai rubber-band selection
     const handleCanvasMouseDown = (e) => {
+        // Jika dalam mode linking formula, klik di luar sel membatalkan mode
+        if (linkingCell) {
+            // Batalkan formula mode: kembalikan sel ke kosong
+            updateElement(linkingCell.elId, (targetEl) => {
+                const newCells = { ...(targetEl.cells || {}) };
+                newCells[linkingCell.cellKey] = { ...(newCells[linkingCell.cellKey] || {}), content: '' };
+                return { cells: newCells };
+            });
+            setLinkingCell(null);
+            return;
+        }
         // Hanya jalankan jika target bukan elemen interaktif atau dalam elemen kanvas
         if (
             e.target.closest('button') || 
@@ -6083,6 +6153,27 @@ const LayoutBuilder = () => {
                         <div className="w-px h-4 bg-gray-300"></div>
                         <button onClick={undo} disabled={past.length === 0} className="text-gray-500 hover:text-blue-600 disabled:opacity-30" title="Undo"><Undo size={18}/></button>
                         <button onClick={redo} disabled={future.length === 0} className="text-gray-500 hover:text-blue-600 disabled:opacity-30" title="Redo"><Redo size={18}/></button>
+                        {linkingCell && (
+                            <>
+                                <div className="w-px h-4 bg-gray-300"></div>
+                                <div className="flex items-center gap-2 bg-indigo-600 text-white rounded-full px-3 py-1 shadow-md animate-pulse">
+                                    <span className="text-xs font-bold">🔗 MODE FORMULA: Klik sel tujuan!</span>
+                                    <button
+                                        onClick={() => {
+                                            updateElement(linkingCell.elId, (targetEl) => {
+                                                const newCells = { ...(targetEl.cells || {}) };
+                                                newCells[linkingCell.cellKey] = { ...(newCells[linkingCell.cellKey] || {}), content: '' };
+                                                return { cells: newCells };
+                                            });
+                                            setLinkingCell(null);
+                                        }}
+                                        className="text-white hover:text-indigo-200 text-xs font-bold bg-indigo-700 rounded-full px-2 py-0.5"
+                                        title="Batal (Esc)"
+                                    >Batal</button>
+                                </div>
+                                <div className="w-px h-4 bg-gray-300"></div>
+                            </>
+                        )}
                         {elementClipboard && elementClipboard.items?.length > 0 && (
                             <>
                                 <div className="w-px h-4 bg-gray-300"></div>
