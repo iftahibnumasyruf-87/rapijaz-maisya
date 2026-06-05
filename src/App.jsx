@@ -3270,350 +3270,7 @@ const renderCustomTable = (el, replaceVars = s => s, options = {}) => {
     );
 };
 
-const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatrol = false, mode = 'raport', classesData = [], studentsCount = 0) => {
-    const activeSetting = data.settings?.find(s => s.key === 'activeSetting')?.value || {};
-    const toArabicNumbers = (val) => String(val).replace(/[0-9]/g, w => ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'][w]);
 
-    const bColor = el.borderColor !== undefined ? el.borderColor : '#b1b1b1';
-    const bWidth = el.borderWidth !== undefined ? el.borderWidth : 1;
-    const bStyle = bWidth > 0 ? 'solid' : 'none';
-
-    const columns = el.columns || [];
-    if(columns.length === 0) return <div className="p-4 border bg-red-50 text-red-500 text-xs">Tabel belum dikonfigurasi. Silakan edit kolom di panel kiri.</div>;
-
-    const toArabic = (val) => el.isRtl && val != null ? toArabicNumbers(val) : (val != null ? val : '-');
-
-    const renderHeaders = () => (
-        <thead>
-            <tr style={{ height: el.headerRowHeight ? `${el.headerRowHeight}px` : 'auto' }}>
-                {columns.map((col, idx) => {
-                    if (col.type === 'SPASI_KOSONG') {
-                        return <th key={idx} style={{width: `${col.width}%`, height: col.height ? `${col.height}px` : 'auto', border: 'none', background: 'transparent'}}>{col.header === 'Kolom Baru' ? '' : col.header}</th>;
-                    }
-                    return (
-                        <th key={idx} className="bg-gray-100 border border-black p-1 font-bold" style={{width: `${col.width}%`, height: el.headerRowHeight ? `${el.headerRowHeight}px` : (col.height ? `${col.height}px` : 'auto'), fontSize: col.fontSize ? `${col.fontSize}px` : 'inherit', fontFamily: col.fontFamily || 'inherit', fontWeight: col.fontWeight || 'bold', textAlign: col.textAlign || 'center', verticalAlign: 'middle', padding: '5px 6px', lineHeight: '1.25', borderColor: bColor, borderWidth: `${bWidth}px`, borderStyle: bStyle}}>
-                            {toArabic(col.header)}
-                        </th>
-                    );
-                })}
-            </tr>
-        </thead>
-    );
-
-    const renderRowCells = (sub, idx) => {
-        return columns.map((col, cIdx) => {
-            let content = '-';
-            let style = { verticalAlign: 'middle' };
-            
-            let gradeObj = studentGrades[sub.id];
-            let rawGrade = 0;
-            if (gradeObj && typeof gradeObj === 'object') {
-                const r = computeRaportScore(gradeObj.uts, gradeObj.uas);
-                if (r !== '') rawGrade = Number(r);
-            } else if (gradeObj !== undefined && gradeObj !== '' && !isNaN(gradeObj)) {
-                rawGrade = Number(gradeObj);
-            }
-            let finalGrade = isKatrol ? Math.max(rawGrade, Number(sub.kkm || 0)) : rawGrade;
-            let isRed = !isKatrol && rawGrade > 0 && rawGrade < Number(sub.kkm || 0);
-
-            switch(col.type) {
-                case 'NO': content = toArabic(idx + 1); style={textAlign: 'center', verticalAlign: 'middle'}; break;
-                case 'NO_AR': content = toArabicNumbers(idx + 1); style={textAlign: 'center', verticalAlign: 'middle', fontFamily: '"Amiri", "Scheherazade New", serif'}; break;
-                
-                case 'MAPEL_ID': content = toArabic(sub.nameId || sub.name); style={verticalAlign: 'middle'}; break;
-                case 'MAPEL_AR': content = sub.nameAr || '-'; style={textAlign: 'right', verticalAlign: 'middle', fontFamily: '"Amiri", "Scheherazade New", serif'}; break;
-                
-                case 'KKM': content = toArabic(sub.kkm); style={textAlign: 'center', verticalAlign: 'middle'}; break;
-                case 'KKM_AR': content = sub.kkm ? toArabicNumbers(sub.kkm) : '-'; style={textAlign: 'center', verticalAlign: 'middle', fontFamily: '"Amiri", "Scheherazade New", serif'}; break;
-                
-                case 'NILAI': 
-                    content = finalGrade ? toArabic(finalGrade) : '-'; 
-                    style={textAlign: 'center', verticalAlign: 'middle', fontWeight: 'bold', color: isRed ? 'red' : 'inherit'}; 
-                    break;
-                case 'NILAI_AR': 
-                    content = finalGrade ? toArabicNumbers(finalGrade) : '-'; 
-                    style={textAlign: 'center', verticalAlign: 'middle', fontWeight: 'bold', color: isRed ? 'red' : 'inherit', fontFamily: '"Amiri", "Scheherazade New", serif'}; 
-                    break;
-                    
-                case 'RATA_KELAS': 
-                    content = classAverages[sub.id] ? toArabic(classAverages[sub.id]) : '-'; 
-                    style={textAlign: 'center', verticalAlign: 'middle'}; 
-                    break;
-                case 'RATA_KELAS_AR': 
-                    content = classAverages[sub.id] ? toArabicNumbers(classAverages[sub.id]) : '-'; 
-                    style={textAlign: 'center', verticalAlign: 'middle', fontFamily: '"Amiri", "Scheherazade New", serif'}; 
-                    break;
-
-                case 'TOTAL_RAPORT': case 'TOTAL_RAPORT_AR':
-                case 'RATA_RAPORT': case 'RATA_RAPORT_AR':
-                case 'JUMLAH_SANTRI': case 'JUMLAH_SANTRI_AR':
-                    // Tipe ini hanya tampil di baris footer, bukan per-baris mapel
-                    content = ''; style={textAlign: 'center', verticalAlign: 'middle'}; break;
-                    
-                case 'KATEGORI':
-                    const catName = el.isRtl ? (data.subjectCategories?.find(c => normalizeValue(c.name) === normalizeValue(sub.kategori))?.nameAr || sub.kategori) : sub.kategori;
-                    content = toArabic(catName);
-                    style = el.isRtl ? { textAlign: 'right', verticalAlign: 'middle', fontFamily: '"Amiri", "Scheherazade New", serif' } : { textAlign: 'left', verticalAlign: 'middle' };
-                    break;
-                case 'KATEGORI_AR':
-                    const catNameAr = data.subjectCategories?.find(c => normalizeValue(c.name) === normalizeValue(sub.kategori))?.nameAr || sub.kategori;
-                    content = catNameAr;
-                    style = { textAlign: 'right', verticalAlign: 'middle', fontFamily: '"Amiri", "Scheherazade New", serif' };
-                    break;
-                default: 
-                    if(col.type.startsWith('PRESENCE_')) {
-                        const pId = col.type.replace('PRESENCE_', '');
-                        content = studentGrades[pId] ? toArabic(studentGrades[pId]) : '-';
-                        style={textAlign: 'center', verticalAlign: 'middle'};
-                    } else if(col.type.startsWith('SIKAP_')) {
-                        const sId = col.type.replace('SIKAP_', '');
-                        content = studentGrades[sId] ? toArabic(studentGrades[sId]) : '-';
-                        style={textAlign: 'center', verticalAlign: 'middle'};
-                    } else if(col.type.startsWith('EKSKUL_')) {
-                        const eId = col.type.replace('EKSKUL_', '');
-                        content = studentGrades[eId] ? toArabic(studentGrades[eId]) : '-';
-                        style={textAlign: 'center', verticalAlign: 'middle'};
-                    } else if(col.type === 'SPASI_KOSONG') {
-                        content = '';
-                        style={verticalAlign: 'middle'};
-                    }
-            }
-            style = {
-                padding: '5px 6px',
-                lineHeight: '1.25',
-                borderColor: bColor,
-                borderWidth: `${bWidth}px`,
-                borderStyle: bStyle,
-                ...style
-            };
-            if (col.height) style.height = `${col.height}px`;
-            if (col.fontSize) style.fontSize = `${col.fontSize}px`;
-            if (col.fontFamily) style.fontFamily = col.fontFamily;
-            if (col.fontWeight) style.fontWeight = col.fontWeight;
-            if (col.textAlign) style.textAlign = col.textAlign;
-            
-            if (col.type === 'SPASI_KOSONG') {
-                return <td key={cIdx} style={{...style, border: 'none', background: 'transparent', padding: 0}}></td>;
-            }
-            return <td key={cIdx} className="border border-black" style={style}>{content}</td>
-        });
-    };
-
-    // Hitung total raport & rata-rata raport untuk baris footer
-    const footerTypes = ['TOTAL_RAPORT','TOTAL_RAPORT_AR','RATA_RAPORT','RATA_RAPORT_AR','JUMLAH_SANTRI','JUMLAH_SANTRI_AR'];
-    const hasFooterRow = columns.some(c => footerTypes.includes(c.type));
-
-    const computeFooterValues = () => {
-        const baseSubjectsAll = mode === 'ijazah' ? data.subjects.filter(s => s.isIjazah) : data.subjects;
-        const subsForCalc = el.filterClass
-            ? filterSubjectsByClass(baseSubjectsAll, el.filterClass, classesData.length ? classesData : data.classes || [])
-            : baseSubjectsAll;
-        let totalVal = 0; let countVal = 0;
-        subsForCalc.forEach(s => {
-            const gradeObj = studentGrades[s.id];
-            let num = null;
-            if (gradeObj && typeof gradeObj === 'object') {
-                const r = computeRaportScore(gradeObj.uts, gradeObj.uas);
-                if (r !== '') num = Number(r);
-            } else if (gradeObj !== undefined && gradeObj !== '' && !isNaN(gradeObj)) {
-                num = Number(gradeObj);
-            }
-            if (num !== null && num > 0) { totalVal += num; countVal++; }
-        });
-        const rataRaport = countVal > 0 ? parseFloat((totalVal / countVal).toFixed(2)) : 0;
-        return { totalRaport: totalVal, rataRaport, jumlahSantri: studentsCount };
-    };
-
-    const renderFooterCells = () => {
-        const { totalRaport, rataRaport, jumlahSantri } = computeFooterValues();
-        return columns.map((col, cIdx) => {
-            let content = '';
-            let style = { textAlign: 'center', verticalAlign: 'middle', fontWeight: 'bold', padding: '5px 6px', lineHeight: '1.25', borderColor: bColor, borderWidth: `${bWidth}px`, borderStyle: bStyle };
-            if (col.height) style.height = `${col.height}px`;
-            if (col.fontSize) style.fontSize = `${col.fontSize}px`;
-            if (col.fontFamily) style.fontFamily = col.fontFamily;
-            if (col.textAlign) style.textAlign = col.textAlign;
-
-            switch (col.type) {
-                case 'TOTAL_RAPORT':
-                    content = totalRaport > 0 ? toArabic(totalRaport) : '-';
-                    break;
-                case 'TOTAL_RAPORT_AR':
-                    content = totalRaport > 0 ? toArabicNumbers(totalRaport) : '-';
-                    style.fontFamily = '"Amiri", "Scheherazade New", serif';
-                    break;
-                case 'RATA_RAPORT':
-                    content = rataRaport > 0 ? toArabic(rataRaport) : '-';
-                    break;
-                case 'RATA_RAPORT_AR':
-                    content = rataRaport > 0 ? toArabicNumbers(rataRaport) : '-';
-                    style.fontFamily = '"Amiri", "Scheherazade New", serif';
-                    break;
-                case 'JUMLAH_SANTRI':
-                    content = jumlahSantri > 0 ? toArabic(jumlahSantri) : '-';
-                    break;
-                case 'JUMLAH_SANTRI_AR':
-                    content = jumlahSantri > 0 ? toArabicNumbers(jumlahSantri) : '-';
-                    style.fontFamily = '"Amiri", "Scheherazade New", serif';
-                    break;
-                case 'SPASI_KOSONG':
-                    return <td key={cIdx} style={{ border: 'none', background: 'transparent', padding: 0 }}></td>;
-                default:
-                    // Tampilkan header kolom sebagai label di baris footer jika bukan tipe footer
-                    if (col.type === 'MAPEL_ID' || col.type === 'MAPEL_AR' || col.type === 'KATEGORI' || col.type === 'KATEGORI_AR') {
-                        content = el.isRtl ? 'مجموع / معدل' : 'Jumlah / Rata-Rata';
-                        style.textAlign = el.isRtl ? 'right' : 'left';
-                        if (col.type === 'MAPEL_AR' || col.type === 'KATEGORI_AR') style.fontFamily = '"Amiri", "Scheherazade New", serif';
-                    } else {
-                        content = '';
-                    }
-                    break;
-            }
-            return <td key={cIdx} className="border border-black" style={style}>{content}</td>;
-        });
-    };
-
-    const baseSubjects = mode === 'ijazah' ? data.subjects.filter(s => s.isIjazah) : data.subjects;
-    const subjectsToRenderRaw = el.filterClass
-        ? filterSubjectsByClass(baseSubjects, el.filterClass, classesData.length ? classesData : data.classes || [])
-        : baseSubjects;
-
-    // Urutkan mata pelajaran sesuai urutan plotting per kelas (Kategori -> Order -> Name)
-    const subjectsToRender = [...subjectsToRenderRaw].sort((a, b) => {
-        const catA = a.kategori || '';
-        const catB = b.kategori || '';
-        let comp = catA.localeCompare(catB, undefined, { numeric: true, sensitivity: 'base' });
-        if (comp !== 0) return comp;
-
-        const orderA = typeof a.order === 'number' ? a.order : 999999;
-        const orderB = typeof b.order === 'number' ? b.order : 999999;
-        comp = orderA - orderB;
-        if (comp !== 0) return comp;
-
-        return (a.nameId || a.name || '').localeCompare(b.nameId || b.name || '', undefined, { numeric: true, sensitivity: 'base' });
-    });
-
-    if (el.groupByCategory) {
-        const grouped = groupBy(subjectsToRender, 'kategori');
-        let globalIndex = 0;
-        return (
-            <table className="w-full border-collapse text-sm" dir={el.isRtl ? 'rtl' : 'ltr'} style={{ tableLayout: 'fixed', width: '100%', height: el.height ? `${el.height}px` : 'auto', fontSize: `${el.fontSize}px`, fontFamily: el.fontFamily }}>
-                {renderHeaders()}
-                <tbody>
-                    {Object.entries(grouped).sort(([a],[b]) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })).map(([cat, subs]) => {
-                        const segments = [];
-                        let currentSegment = null;
-
-                        columns.forEach((col, colIdx) => {
-                            if (col.type === 'SPASI_KOSONG') {
-                                if (currentSegment) {
-                                    segments.push(currentSegment);
-                                    currentSegment = null;
-                                }
-                                segments.push({ type: 'spasi', index: colIdx });
-                            } else {
-                                if (!currentSegment) {
-                                    currentSegment = { type: 'data', startIndex: colIdx, count: 0 };
-                                }
-                                currentSegment.count += 1;
-                            }
-                        });
-                        if (currentSegment) {
-                            segments.push(currentSegment);
-                        }
-
-                        return (
-                        <React.Fragment key={cat}>
-                            {cat && (
-                                <tr style={{ height: el.catRowHeight ? `${el.catRowHeight}px` : 'auto' }}>
-                                    {segments.map((seg, segIdx) => {
-                                        if (seg.type === 'spasi') {
-                                            return <td key={`spasi-${segIdx}`} style={{ border: 'none', background: 'transparent', padding: 0 }}></td>;
-                                        }
-                                        
-                                        const segmentCols = columns.slice(seg.startIndex, seg.startIndex + seg.count);
-                                        const isArabicSegment = segmentCols.some(col => col.type.endsWith('_AR'));
-                                        
-                                        let segLabel = cat;
-                                        let segTextAlign = 'left';
-                                        let segFontFamily = 'inherit';
-                                        
-                                        let segFontSize = undefined;
-                                        if (isArabicSegment) {
-                                            segLabel = data.subjectCategories?.find(c => normalizeValue(c.name) === normalizeValue(cat))?.nameAr || cat;
-                                            segTextAlign = 'right';
-                                            segFontFamily = el.catArFontFamily || '"Amiri", "Scheherazade New", serif';
-                                            if (el.catArFontSize) segFontSize = `${el.catArFontSize}px`;
-                                        } else {
-                                            segLabel = cat;
-                                            segTextAlign = 'left';
-                                            segFontFamily = el.catFontFamily || 'inherit';
-                                            if (el.catFontSize) segFontSize = `${el.catFontSize}px`;
-                                        }
-                                        
-                                        if (el.isRtl && !isArabicSegment && !segmentCols.some(col => col.type === 'MAPEL_ID')) {
-                                            segLabel = data.subjectCategories?.find(c => normalizeValue(c.name) === normalizeValue(cat))?.nameAr || cat;
-                                            segTextAlign = 'right';
-                                            segFontFamily = el.catArFontFamily || '"Amiri", "Scheherazade New", serif';
-                                            if (el.catArFontSize) segFontSize = `${el.catArFontSize}px`;
-                                        }
-                                        
-                                        return (
-                                            <td 
-                                                key={`data-${segIdx}`} 
-                                                colSpan={seg.count} 
-                                                className="border border-black font-bold" 
-                                                style={{ 
-                                                    textAlign: segTextAlign, 
-                                                    fontFamily: segFontFamily, 
-                                                    fontSize: segFontSize,
-                                                    backgroundColor: el.isTransparent 
-                                                        ? 'transparent' 
-                                                        : (el.disableCatBg 
-                                                            ? 'transparent' 
-                                                            : (el.catBgColor || '#e5e7eb')),
-                                                    padding: '5px 6px',
-                                                    lineHeight: '1.25',
-                                                    borderColor: bColor,
-                                                    borderWidth: `${bWidth}px`,
-                                                    borderStyle: bStyle
-                                                }}
-                                            >
-                                                {segLabel}
-                                            </td>
-                                        );
-                                    })}
-                                </tr>
-                            )}
-                            {subs.map(sub => {
-                                globalIndex++;
-                                return <tr key={sub.id} style={{ height: el.dataRowHeight ? `${el.dataRowHeight}px` : 'auto' }}>{renderRowCells(sub, globalIndex - 1)}</tr>
-                            })}
-                        </React.Fragment>
-                        );
-                    })}
-                    {hasFooterRow && (
-                        <tr>{renderFooterCells()}</tr>
-                    )}
-                </tbody>
-            </table>
-        );
-    } else {
-        return (
-            <table className="w-full border-collapse text-sm" dir={el.isRtl ? 'rtl' : 'ltr'} style={{ tableLayout: 'fixed', width: '100%', height: el.height ? `${el.height}px` : 'auto', fontSize: `${el.fontSize}px`, fontFamily: el.fontFamily }}>
-                {renderHeaders()}
-                <tbody>
-                    {subjectsToRender.map((sub, idx) => (
-                        <tr key={sub.id} style={{ height: el.dataRowHeight ? `${el.dataRowHeight}px` : 'auto' }}>{renderRowCells(sub, idx)}</tr>
-                    ))}
-                    {hasFooterRow && (
-                        <tr>{renderFooterCells()}</tr>
-                    )}
-                </tbody>
-            </table>
-        );
-    }
-};
 
 // ==========================================
 // DRAG & DROP LAYOUT BUILDER
@@ -3628,13 +3285,7 @@ const defaultFontOptions = [
 const pageDimensions = { 'A4': { width: 794, height: 1123 }, 'F4': { width: 816, height: 1248 } };
 // A4 at 96 DPI: 794px = 21cm, so 1cm = 794/21 ≈ 37.8px
 const PX_PER_CM = 794 / 21;
-const defaultTableColumns = [
-    { id: 'c1', header: 'No', type: 'NO', width: 5 },
-    { id: 'c2', header: 'Mata Pelajaran', type: 'MAPEL_ID', width: 35 },
-    { id: 'c3', header: 'المادة', type: 'MAPEL_AR', width: 35 },
-    { id: 'c4', header: 'KKM', type: 'KKM', width: 10 },
-    { id: 'c5', header: 'Nilai', type: 'NILAI', width: 15 }
-];
+
 const VariablesHelp = ({ onInsert, masterSubjects = [] }) => {
     return (
         <div className="mt-2 text-xs flex gap-2 items-center bg-gray-50 p-2 rounded border">
@@ -4340,14 +3991,13 @@ const LayoutBuilder = () => {
             pageIndex: currentPage,
             type: elementType, content: defaultContent,
             x: 50, y: 50, fontSize: 12, fontFamily: 'Arial, sans-serif', fontWeight: 'normal',
-            width: isLine ? 400 : isShape ? 200 : isCustomTable ? 500 : (elementType === 'table_grades' ? 650 : elementType === 'image' ? (isWatermark ? 400 : 100) : 200),
-            height: isLine ? 2 : isShape ? 50 : isCustomTable ? 120 : (elementType === 'table_grades' ? 300 : elementType === 'image' ? (isWatermark ? 400 : 100) : 30),
+            width: isLine ? 400 : isShape ? 200 : isCustomTable ? 500 : (elementType === 'image' ? (isWatermark ? 400 : 100) : 200),
+            height: isLine ? 2 : isShape ? 50 : isCustomTable ? 120 : (elementType === 'image' ? (isWatermark ? 400 : 100) : 30),
             zIndex: isWatermark ? 0 : 1,
             opacity: isWatermark ? 0.2 : 1,
             // line/shape specific
             ...(isLine ? { lineColor: '#000000', lineThickness: 2 } : {}),
             ...(isShape ? { shapeFill: '#000000', shapeRadius: 0, shapeBorder: 0, shapeBorderColor: '#000000' } : {}),
-            ...(elementType === 'table_grades' ? { columns: [...defaultTableColumns], groupByCategory: false, filterClass: '', headerRowHeight: undefined, dataRowHeight: undefined, catRowHeight: undefined, borderColor: '#000000', borderWidth: 1 } : {}),
             ...(isCustomTable ? { tableRows: defaultCTRows, tableCols: defaultCTCols, colWidths: [33,33,34], rowHeights: [35,35,35], cells: defaultCells, borderColor: '#000000', borderWidth: 1, headerBg: '#e5e7eb', isRtl: false, isTransparent: false } : {})
         };
         setPast(p => [...p, elements]);
@@ -4374,10 +4024,6 @@ const LayoutBuilder = () => {
             y: elToDuplicate.y + 20,
         };
         
-        if (newEl.type === 'table_grades' && newEl.columns) {
-            newEl.columns = JSON.parse(JSON.stringify(newEl.columns));
-            newEl.columns.forEach((col, idx) => col.id = Date.now().toString() + '_' + idx);
-        }
         if (newEl.type === 'table_custom' && newEl.cells) {
             newEl.cells = JSON.parse(JSON.stringify(newEl.cells));
         }
@@ -4469,9 +4115,6 @@ const LayoutBuilder = () => {
         clonedElements.forEach(el => { 
             const randomHash = Math.random().toString(36).slice(2, 7);
             el.id = `${el.id}_copy_${Date.now()}_${randomHash}`; 
-            if (el.type === 'table_grades' && el.columns) {
-                el.columns.forEach((col, idx) => col.id = `${Date.now()}_${randomHash}_${idx}`);
-            }
         });
 
         saveToDb('layouts', newId, {
@@ -4523,8 +4166,8 @@ const LayoutBuilder = () => {
         let rawY = (e.clientY - rect.top) * scaleY;
         
         const domNode = document.querySelector(`[data-element-id="${el.id}"]`);
-        const actualWidth = domNode ? domNode.offsetWidth : (el.width || (el.type === 'table_grades' ? 650 : 200));
-        const actualHeight = domNode ? domNode.offsetHeight : (el.height || (el.type === 'table_grades' ? 300 : 30));
+        const actualWidth = domNode ? domNode.offsetWidth : (el.width || 200);
+        const actualHeight = domNode ? domNode.offsetHeight : (el.height || 30);
 
         setInitialRect({ 
             width: actualWidth, 
@@ -4938,9 +4581,7 @@ const LayoutBuilder = () => {
         setElements(elements.map(el => selectedIds.includes(el.id) ? { ...el, ...(updMap[el.id] || {}) } : el));
     };
     
-    // Memberikan objek dummy default agar renderDynamicTable tidak crash saat proses desain layout
-    const mockStudentGrades = {};
-    const mockClassAverages = {};
+    // Memberikan objek dummy default agar tidak crash saat proses desain layout
 
     return (
         <div ref={layoutContainerRef} className={`flex flex-col md:flex-row gap-6 print:h-auto print:block ${isFullscreen ? 'h-screen w-screen bg-gray-50 p-4' : 'h-[80vh]'}`}>
@@ -5106,7 +4747,6 @@ const LayoutBuilder = () => {
                             <button onClick={() => addElement('text')} className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded text-sm flex items-center justify-center gap-2"><TypeIcon size={16}/> Teks Bebas</button>
                             <button onClick={() => addElement('image')} className="w-full bg-purple-50 hover:bg-purple-100 text-purple-700 py-2 rounded text-sm flex items-center justify-center gap-2"><ImageIcon size={16}/> Gambar (Logo/Stempel)</button>
                             <button onClick={() => addElement('watermark')} className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 py-2 rounded text-sm flex items-center justify-center gap-2"><ImageIcon size={16}/> Gambar Watermark</button>
-                            <button onClick={() => addElement('table_grades')} className="w-full bg-orange-50 hover:bg-orange-100 text-orange-700 py-2 rounded text-sm flex items-center justify-center gap-2"><Columns size={16}/> Tabel Nilai Dinamis</button>
                             <button onClick={() => addElement('table_custom')} className="w-full bg-cyan-50 hover:bg-cyan-100 text-cyan-700 py-2 rounded text-sm flex items-center justify-center gap-2"><Grid size={16}/> Tabel Kustom (Kosong)</button>
                             <p className="text-xs font-semibold text-gray-400 uppercase mt-3 mb-1">Shape & Garis</p>
                             <div className="grid grid-cols-2 gap-1">
@@ -5166,7 +4806,7 @@ const LayoutBuilder = () => {
                                     }} 
                                     className={`w-full text-left px-2 py-1.5 rounded text-xs flex items-center justify-between transition ${selectedIds.includes(el.id) ? 'bg-blue-100 text-blue-800 font-bold border border-blue-200' : 'hover:bg-gray-100 text-gray-700 border border-transparent'}`}
                                 >
-                                    <span className="truncate w-[80%]">{el.type === 'group' ? 'Grup Elemen' : el.type === 'image' ? (el.zIndex === 0 ? 'Gambar Watermark' : 'Gambar') : el.type === 'table_grades' ? 'Tabel Nilai' : el.type === 'table_custom' ? 'Tabel Kustom' : (el.content || '').slice(0, 20) + ((el.content || '').length > 20 ? '...' : '')}</span>
+                                    <span className="truncate w-[80%]">{el.type === 'group' ? 'Grup Elemen' : el.type === 'image' ? (el.zIndex === 0 ? 'Gambar Watermark' : 'Gambar') : el.type === 'table_custom' ? 'Tabel Kustom' : (el.content || '').slice(0, 20) + ((el.content || '').length > 20 ? '...' : '')}</span>
                                     {el.locked && <Lock size={12} className="text-yellow-600"/>}
                                 </button>
                             ))}
@@ -5251,7 +4891,7 @@ const LayoutBuilder = () => {
                             <button onClick={() => togglePanel('editSingle')} className="w-full flex items-center justify-between px-3 py-2.5 bg-blue-50 hover:bg-blue-100 transition text-left">
                                 <span className="text-xs font-bold text-blue-700 uppercase tracking-wide flex items-center gap-2">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                                    Edit: {activeEl.type === 'group' ? 'Grup' : activeEl.type === 'table_grades' ? 'Tabel' : activeEl.type === 'image' ? 'Gambar' : activeEl.type === 'table_custom' ? 'Tabel Kustom' : 'Teks'}
+                                    Edit: {activeEl.type === 'group' ? 'Grup' : activeEl.type === 'image' ? 'Gambar' : activeEl.type === 'table_custom' ? 'Tabel Kustom' : 'Teks'}
                                 </span>
                                 <div className="flex items-center gap-2">
                                     <button onClick={(e) => { e.stopPropagation(); setSelectedIds([]); }} className="text-gray-400 hover:text-gray-700"><X size={14}/></button>
@@ -5377,7 +5017,7 @@ const LayoutBuilder = () => {
                                 </>
                             )}
 
-                            {(activeEl.type === 'image' || activeEl.type === 'table_grades' || activeEl.type === 'table_custom') && (
+                            {(activeEl.type === 'image' || activeEl.type === 'table_custom') && (
                                 <div className="flex flex-col gap-2">
                                     <div className="flex gap-2">
                                         <div className="w-1/2"><label className="text-[10px] text-gray-500 font-bold uppercase">Lebar (Width)</label><input type="number" className="w-full p-1.5 border rounded text-sm" value={activeEl.width} onChange={e => updateElement(selectedElementId, { width: Number(e.target.value) })}/></div>
@@ -5407,318 +5047,6 @@ const LayoutBuilder = () => {
                                             )}
                                         </div>
                                     )}
-                                </div>
-                            )}
-
-                            {activeEl.type === 'table_grades' && (
-                                <div className="mt-4 border-t pt-3 space-y-3">
-                                    <div className="bg-gray-50 border border-gray-200 p-2 rounded-lg space-y-2">
-                                        <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">Tinggi Baris (Row Height)</p>
-                                        <div className="flex gap-2">
-                                            <div className="w-1/3">
-                                                <label className="text-[9px] text-gray-400 block mb-1">Header (px)</label>
-                                                <input type="number" placeholder="Auto" className="w-full p-1 border rounded text-xs outline-none bg-white" value={activeEl.headerRowHeight || ''} onChange={e => updateElement(selectedElementId, { headerRowHeight: e.target.value ? Number(e.target.value) : undefined })} />
-                                            </div>
-                                            <div className="w-1/3">
-                                                <label className="text-[9px] text-gray-400 block mb-1">Pelajaran (px)</label>
-                                                <input type="number" placeholder="Auto" className="w-full p-1 border rounded text-xs outline-none bg-white" value={activeEl.dataRowHeight || ''} onChange={e => updateElement(selectedElementId, { dataRowHeight: e.target.value ? Number(e.target.value) : undefined })} />
-                                            </div>
-                                            <div className="w-1/3">
-                                                <label className="text-[9px] text-gray-400 block mb-1">Kategori (px)</label>
-                                                <input type="number" placeholder="Auto" className="w-full p-1 border rounded text-xs outline-none bg-white" value={activeEl.catRowHeight || ''} onChange={e => updateElement(selectedElementId, { catRowHeight: e.target.value ? Number(e.target.value) : undefined })} disabled={!activeEl.groupByCategory} title={!activeEl.groupByCategory ? "Aktifkan 'Kelompokkan per Kategori Pelajaran' terlebih dahulu" : ""} />
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="flex gap-2 items-center bg-gray-50 border border-gray-200 p-2 rounded-lg">
-                                        <label className="text-xs font-semibold text-gray-700 whitespace-nowrap">Warna Border</label>
-                                        <input type="color" className="w-10 h-8 p-0 border-0 rounded cursor-pointer" value={activeEl.borderColor || '#b1b1b1'} onChange={e => updateElement(selectedElementId, { borderColor: e.target.value }, false)} onBlur={e => updateElement(selectedElementId, { borderColor: e.target.value })}/>
-                                        <input type="number" min="0" max="10" className="w-16 p-1.5 border rounded text-sm ml-2" value={activeEl.borderWidth !== undefined ? activeEl.borderWidth : 1} onChange={e => updateElement(selectedElementId, { borderWidth: Number(e.target.value) })} title="Tebal Border (px)"/> px
-                                    </div>
-                                    <div>
-                                        <label className="text-[10px] text-gray-500 font-bold uppercase">Filter Kelas</label>
-                                        <select
-                                            className="w-full p-1.5 border rounded text-sm bg-white outline-none"
-                                            value={activeEl.filterClass || ''}
-                                            onChange={e => updateElement(selectedElementId, { filterClass: e.target.value })}
-                                        >
-                                            <option value="">— Semua Kelas —</option>
-                                            {Array.from(new Map(classesData.map(c => [normalizeValue(c.name), c])).values()).map(cls => (
-                                                <option key={cls.id} value={cls.id}>{cls.name}</option>
-                                            ))}
-                                        </select>
-                                        <p className="text-[10px] text-gray-400 mt-0.5">Pilih kelas agar hanya mata pelajaran kelas tersebut yang tampil.</p>
-                                    </div>
-
-                                    <div className="flex items-center justify-between">
-                                        <p className="text-xs font-bold text-orange-800">Konfigurasi Kolom Tabel</p>
-                                        <button 
-                                            onClick={() => {
-                                                const newCols = [...(activeEl.columns||[])];
-                                                newCols.push({ id: Date.now().toString(), header: 'Kolom Baru', type: 'NILAI', width: 10 });
-                                                updateElement(selectedElementId, { columns: newCols });
-                                            }}
-                                            className="text-[10px] bg-orange-100 text-orange-700 px-2 py-1 rounded font-bold hover:bg-orange-200"
-                                        >+ Kolom</button>
-                                    </div>
-                                    
-                                    <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 bg-white p-2 border rounded cursor-pointer mt-3">
-                                        <input type="checkbox" checked={activeEl?.groupByCategory || false} onChange={e => updateElement(selectedElementId, { groupByCategory: e.target.checked })} />
-                                        Kelompokkan per Kategori Pelajaran
-                                    </label>
-                                    
-                                    {activeEl?.groupByCategory && (
-                                        <div className="space-y-3 mt-2 p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                                            <div>
-                                                <label className="text-[10px] text-gray-500 font-bold uppercase mb-1 block">Font Kategori (Latin)</label>
-                                                <div className="flex gap-2">
-                                                    <div className="w-2/3">
-                                                        <input 
-                                                            list="font-options" 
-                                                            className="w-full p-1.5 border rounded text-xs outline-none bg-white" 
-                                                            value={activeEl.catFontFamily || ''} 
-                                                            onChange={e => updateElement(selectedElementId, { catFontFamily: e.target.value })}
-                                                            placeholder="Default (Tabel)"
-                                                        />
-                                                    </div>
-                                                    <div className="w-1/3">
-                                                        <input 
-                                                            type="number" 
-                                                            className="w-full p-1.5 border rounded text-xs outline-none bg-white" 
-                                                            value={activeEl.catFontSize || ''} 
-                                                            placeholder="Ukuran"
-                                                            onChange={e => updateElement(selectedElementId, { catFontSize: e.target.value ? Number(e.target.value) : undefined })}
-                                                        />
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            
-                                            <div>
-                                                <label className="text-[10px] text-gray-500 font-bold uppercase mb-1 block">Font Kategori (Arab)</label>
-                                                <div className="flex gap-2">
-                                                    <div className="w-2/3">
-                                                        <input 
-                                                            list="font-options" 
-                                                            className="w-full p-1.5 border rounded text-xs outline-none bg-white" 
-                                                            value={activeEl.catArFontFamily || ''} 
-                                                            onChange={e => updateElement(selectedElementId, { catArFontFamily: e.target.value })}
-                                                            placeholder="Amiri / Scheherazade"
-                                                        />
-                                                    </div>
-                                                    <div className="w-1/3">
-                                                        <input 
-                                                            type="number" 
-                                                            className="w-full p-1.5 border rounded text-xs outline-none bg-white" 
-                                                            value={activeEl.catArFontSize || ''} 
-                                                            placeholder="Ukuran"
-                                                            onChange={e => updateElement(selectedElementId, { catArFontSize: e.target.value ? Number(e.target.value) : undefined })}
-                                                        />
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div>
-                                                <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 cursor-pointer">
-                                                    <input 
-                                                        type="checkbox" 
-                                                        checked={activeEl.disableCatBg || false} 
-                                                        onChange={e => updateElement(selectedElementId, { disableCatBg: e.target.checked })} 
-                                                    />
-                                                    Tanpa Header (Matikan Background Abu-abu)
-                                                </label>
-                                                {!activeEl.disableCatBg && (
-                                                    <div className="flex gap-2 items-center mt-2">
-                                                        <input
-                                                            type="color"
-                                                            className="w-9 h-8 p-0.5 border rounded cursor-pointer bg-white"
-                                                            value={activeEl.catBgColor}
-                                                            onChange={e => updateElement(selectedElementId, { catBgColor: e.target.value })}
-                                                        />
-                                                        <input
-                                                            type="text"
-                                                            className="flex-1 p-1.5 border rounded text-xs outline-none bg-white font-mono"
-                                                            value={activeEl.catBgColor}
-                                                            onChange={e => updateElement(selectedElementId, { catBgColor: e.target.value })}
-                                                            placeholder="#e5e7eb"
-                                                        />
-                                                        <button
-                                                            className="text-[10px] px-2 py-1 bg-gray-200 border rounded hover:bg-gray-300 text-gray-700 shrink-0 font-bold"
-                                                            onClick={() => updateElement(selectedElementId, { catBgColor: '#e5e7eb' })}
-                                                        >Reset</button>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    )}
-                                    
-                                    <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 bg-white p-2 border rounded cursor-pointer mt-1">
-                                        <input type="checkbox" checked={activeEl?.isRtl || false} onChange={e => updateElement(selectedElementId, { isRtl: e.target.checked })} />
-                                        Format Tabel Arab (RTL & Angka Arab)
-                                    </label>
-                                    
-                                    <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 bg-white p-2 border rounded cursor-pointer mt-1">
-                                        <input type="checkbox" checked={activeEl?.isTransparent || false} onChange={e => updateElement(selectedElementId, { isTransparent: e.target.checked })} />
-                                        Latar Tabel Transparan (Tanpa Putih)
-                                    </label>
-
-                                    <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar mt-2">
-                                        {(activeEl.columns || []).map((col, idx) => (
-                                            <div key={col.id} className="bg-white p-2 border rounded border-l-4 border-l-orange-400 relative group">
-                                                <div className="absolute top-1 right-1 flex gap-0.5 bg-white rounded shadow-sm border p-0.5 z-10">
-                                                    <button onClick={() => {
-                                                        if (idx === 0) return;
-                                                        const newCols = [...activeEl.columns];
-                                                        [newCols[idx - 1], newCols[idx]] = [newCols[idx], newCols[idx - 1]];
-                                                        updateElement(selectedElementId, { columns: newCols });
-                                                    }} disabled={idx === 0} className={`p-0.5 rounded ${idx === 0 ? 'text-gray-300' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-100'}`} title="Geser ke Kiri (Sebelumnya)"><ChevronUp size={14}/></button>
-                                                    <button onClick={() => {
-                                                        if (idx === activeEl.columns.length - 1) return;
-                                                        const newCols = [...activeEl.columns];
-                                                        [newCols[idx + 1], newCols[idx]] = [newCols[idx], newCols[idx + 1]];
-                                                        updateElement(selectedElementId, { columns: newCols });
-                                                    }} disabled={idx === activeEl.columns.length - 1} className={`p-0.5 rounded ${idx === activeEl.columns.length - 1 ? 'text-gray-300' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-100'}`} title="Geser ke Kanan (Selanjutnya)"><ChevronDown size={14}/></button>
-                                                    <div className="w-[1px] bg-gray-200 mx-0.5"></div>
-                                                    <button onClick={() => {
-                                                        const newCols = [...activeEl.columns]; newCols.splice(idx, 1);
-                                                        updateElement(selectedElementId, { columns: newCols });
-                                                    }} className="p-0.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded" title="Hapus Kolom"><X size={14}/></button>
-                                                </div>
-                                                
-                                                <input className="w-[85%] text-xs font-bold border-b mb-1 outline-none focus:border-orange-500" value={col.header} onChange={e => {
-                                                    const newCols = [...activeEl.columns]; newCols[idx].header = e.target.value;
-                                                    updateElement(selectedElementId, { columns: newCols });
-                                                }} placeholder="Judul Header"/>
-                                                
-                                                <div className="flex gap-1 mt-1">
-                                                    <select className="w-1/2 text-[10px] p-1 border rounded bg-gray-50" value={col.type} onChange={e => {
-                                                        const newCols = [...activeEl.columns]; newCols[idx].type = e.target.value;
-                                                        updateElement(selectedElementId, { columns: newCols });
-                                                    }}>
-                                                        <optgroup label="Standar Pelajaran">
-                                                            <option value="NO">Nomor Urut</option>
-                                                            <option value="KATEGORI">Kategori Pelajaran</option>
-                                                            <option value="MAPEL_ID">Nama Pelajaran (Indo)</option>
-                                                            <option value="MAPEL_AR">Nama Pelajaran (Arab)</option>
-                                                            <option value="KKM">Nilai KKM</option>
-                                                            <option value="NILAI">Nilai Angka Santri</option>
-                                                            <option value="RATA_KELAS">Rata-rata Kelas</option>
-                                                            <option value="TOTAL_RAPORT">Total Raport (مجموع النتائج)</option>
-                                                            <option value="RATA_RAPORT">Rata-rata Raport (معدل النتائج)</option>
-                                                            <option value="JUMLAH_SANTRI">Jumlah Santri di Kelas (عدد الطلاب)</option>
-                                                            <option value="SPASI_KOSONG">Spasi Pemisah (Tanpa Border)</option>
-                                                        </optgroup>
-                                                        <optgroup label="Pelajaran (Khusus Arab)">
-                                                            <option value="NO_AR">Nomor Urut (Arab)</option>
-                                                            <option value="KATEGORI_AR">Kategori Pelajaran (Arab)</option>
-                                                            <option value="KKM_AR">Nilai KKM (Arab)</option>
-                                                            <option value="NILAI_AR">Nilai Angka Santri (Arab)</option>
-                                                            <option value="RATA_KELAS_AR">Rata-rata Kelas (Arab)</option>
-                                                            <option value="TOTAL_RAPORT_AR">مجموع النتائج (Total Raport Arab)</option>
-                                                            <option value="RATA_RAPORT_AR">معدل النتائج (Rata-rata Raport Arab)</option>
-                                                            <option value="JUMLAH_SANTRI_AR">عدد الطلاب (Jumlah Santri Arab)</option>
-                                                        </optgroup>
-                                                        {data.presences.length > 0 && (
-                                                            <optgroup label="Aspek Presensi">
-                                                                {data.presences.map(p => <option key={p.id} value={`PRESENCE_${p.id}`}>{p.name}</option>)}
-                                                            </optgroup>
-                                                        )}
-                                                        {data.characterTraits?.length > 0 && (
-                                                            <optgroup label="Sikap/Kesantrian">
-                                                                {data.characterTraits.map(p => <option key={p.id} value={`SIKAP_${p.id}`}>{p.name}</option>)}
-                                                            </optgroup>
-                                                        )}
-                                                        {data.extracurriculars?.length > 0 && (
-                                                            <optgroup label="Ekstrakurikuler">
-                                                                {data.extracurriculars.map(p => <option key={p.id} value={`EKSKUL_${p.id}`}>{p.name}</option>)}
-                                                            </optgroup>
-                                                        )}
-                                                    </select>
-                                                    <div className="flex w-1/2 gap-1">
-                                                        <div className="w-1/3 relative">
-                                                            <input type="number" className="w-full text-[10px] p-1 border rounded pr-3" value={col.width} onChange={e => {
-                                                                const newCols = [...activeEl.columns]; newCols[idx].width = Number(e.target.value);
-                                                                updateElement(selectedElementId, { columns: newCols });
-                                                            }} title="Lebar (%)"/>
-                                                            <span className="absolute right-0.5 top-1 text-[9px] text-gray-400 pointer-events-none">%</span>
-                                                        </div>
-                                                        <div className="w-1/3 relative">
-                                                            <input type="number" className="w-full text-[10px] p-1 border rounded pr-3" value={col.height || ''} onChange={e => {
-                                                                const newCols = [...activeEl.columns]; newCols[idx].height = Number(e.target.value);
-                                                                updateElement(selectedElementId, { columns: newCols });
-                                                            }} title="Tinggi Kolom (px)" placeholder="H"/>
-                                                            <span className="absolute right-0.5 top-1 text-[9px] text-gray-400 pointer-events-none">px</span>
-                                                        </div>
-                                                        <div className="w-1/3 relative">
-                                                            <input type="number" className="w-full text-[10px] p-1 border rounded pr-3" value={col.fontSize || ''} onChange={e => {
-                                                                const newCols = [...activeEl.columns]; newCols[idx].fontSize = Number(e.target.value);
-                                                                updateElement(selectedElementId, { columns: newCols });
-                                                            }} title="Ukuran Font (px)" placeholder="F"/>
-                                                            <span className="absolute right-0.5 top-1 text-[9px] text-gray-400 pointer-events-none">px</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <div className="flex gap-1 mt-1 bg-gray-50 p-1 rounded border border-gray-100">
-                                                    <div className="w-[45%] relative">
-                                                        <select className="w-full text-[9px] p-1 border rounded bg-white font-medium outline-none" value={col.fontFamily || ''} onChange={e => {
-                                                            const newCols = [...activeEl.columns]; newCols[idx].fontFamily = e.target.value;
-                                                            updateElement(selectedElementId, { columns: newCols });
-                                                        }} title="Jenis Font Kolom">
-                                                            <option value="">Font Tabel</option>
-                                                            {allFonts.map((f, fIdx) => (
-                                                                <option key={fIdx} value={f.value}>{f.name}</option>
-                                                            ))}
-                                                        </select>
-                                                    </div>
-                                                    <div className="w-[55%] flex gap-0.5">
-                                                        <button 
-                                                            onClick={() => {
-                                                                const newCols = [...activeEl.columns]; 
-                                                                newCols[idx].fontWeight = col.fontWeight === 'bold' ? 'normal' : 'bold';
-                                                                updateElement(selectedElementId, { columns: newCols });
-                                                            }} 
-                                                            className={`text-[9px] px-1.5 py-0.5 border rounded font-bold transition flex-1 text-center ${col.fontWeight === 'bold' ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'}`} 
-                                                            title="Tebal (Bold)"
-                                                        >
-                                                            B
-                                                        </button>
-                                                        <button 
-                                                            onClick={() => {
-                                                                const newCols = [...activeEl.columns]; 
-                                                                newCols[idx].textAlign = 'left';
-                                                                updateElement(selectedElementId, { columns: newCols });
-                                                            }} 
-                                                            className={`text-[9px] p-0.5 border rounded transition flex-1 flex justify-center items-center font-semibold ${col.textAlign === 'left' ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'}`} 
-                                                            title="Rata Kiri"
-                                                        >
-                                                            L
-                                                        </button>
-                                                        <button 
-                                                            onClick={() => {
-                                                                const newCols = [...activeEl.columns]; 
-                                                                newCols[idx].textAlign = 'center';
-                                                                updateElement(selectedElementId, { columns: newCols });
-                                                            }} 
-                                                            className={`text-[9px] p-0.5 border rounded transition flex-1 flex justify-center items-center font-semibold ${col.textAlign === 'center' ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'}`} 
-                                                            title="Rata Tengah"
-                                                        >
-                                                            C
-                                                        </button>
-                                                        <button 
-                                                            onClick={() => {
-                                                                const newCols = [...activeEl.columns]; 
-                                                                newCols[idx].textAlign = 'right';
-                                                                updateElement(selectedElementId, { columns: newCols });
-                                                            }} 
-                                                            className={`text-[9px] p-0.5 border rounded transition flex-1 flex justify-center items-center font-semibold ${col.textAlign === 'right' ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'}`} 
-                                                            title="Rata Kanan"
-                                                        >
-                                                            R
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
                                 </div>
                             )}
 
@@ -6508,12 +5836,12 @@ const LayoutBuilder = () => {
                                 <div key={el.id} data-element-id={el.id} onMouseDown={(e) => handleElementMouseDown(e, el)}
                                     style={{
                                         position: 'absolute', left: `${el.x}px`, top: `${el.y}px`, fontSize: `${el.fontSize}px`, fontFamily: el.fontFamily || 'Arial, sans-serif', fontWeight: el.fontWeight,
-                                        width: el.width ? `${el.width}px` : 'auto', height: (el.type === 'image' || el.type === 'table_grades' || el.type === 'table_custom') ? (el.height ? `${el.height}px` : 'auto') : 'auto',
-                                        cursor: isDraggingThis ? 'grabbing' : 'grab', outline: isSelected ? '2px dashed #059669' : 'none', padding: (el.type === 'image' || el.type === 'table_grades' || el.type === 'table_custom') ? '0' : '2px',
+                                        width: el.width ? `${el.width}px` : 'auto', height: (el.type === 'image' || el.type === 'table_custom') ? (el.height ? `${el.height}px` : 'auto') : 'auto',
+                                        cursor: isDraggingThis ? 'grabbing' : 'grab', outline: isSelected ? '2px dashed #059669' : 'none', padding: (el.type === 'image' || el.type === 'table_custom') ? '0' : '2px',
                                         zIndex: isSelected ? 20 : (el.zIndex ?? 1), opacity: el.opacity ?? 1,
                                         pointerEvents: el.locked ? 'none' : 'auto'
                                     }}
-                                    className={`hover:outline hover:outline-1 hover:outline-gray-400 ${(el.type === 'table_grades' || el.type === 'table_custom') && !el.isTransparent ? 'bg-white' : ''}`}
+                                    className={`hover:outline hover:outline-1 hover:outline-gray-400 ${el.type === 'table_custom' && !el.isTransparent ? 'bg-white' : ''}`}
                                 >
                                     {el.type === 'group' ? (
                                         <div style={{ position: 'relative', width: '100%', height: '100%' }}>
@@ -6521,11 +5849,10 @@ const LayoutBuilder = () => {
                                                 <div key={child.id} style={{
                                                     position: 'absolute', left: `${child.x}px`, top: `${child.y}px`, fontSize: `${child.fontSize}px`, fontFamily: child.fontFamily || 'Arial, sans-serif', fontWeight: child.fontWeight,
                                                     width: child.width ? `${child.width}px` : 'auto', height: (child.type === 'image' || child.type === 'shape' || child.type === 'table_custom') ? `${child.height}px` : 'auto',
-                                                    padding: (child.type === 'image' || child.type === 'table_grades' || child.type === 'table_custom' || child.type === 'shape' || child.type === 'line') ? '0' : '2px',
+                                                    padding: (child.type === 'image' || child.type === 'table_custom' || child.type === 'shape' || child.type === 'line') ? '0' : '2px',
                                                     zIndex: child.zIndex ?? 1, opacity: child.opacity ?? 1
                                                 }}>
-                                                    {child.type === 'table_grades' ? renderDynamicTable(child, data, mockStudentGrades, mockClassAverages, false, 'raport', classesData, 0) 
-                                                    : child.type === 'table_custom' ? renderCustomTable(child, s=>s, { allElements: elements, isEditable: selectedIds.includes(child.id), selectedCells: selectedIds.includes(child.id) ? ctSelCells : [], onColResizeStart: startColResize, onRowResizeStart: startRowResize, onCellDragStart: (e, ck) => { e.preventDefault(); e.stopPropagation(); setSelectedIds([child.id]); setIsDraggingCells(true); setCtDragStartCell(ck); setCtSelCells([ck]); setCtActiveCell(ck); }, onCellMouseEnter: (ck) => { if (isDraggingCells && ctDragStartCell) { setCtSelCells(getCellsInRect(ctDragStartCell, ck)); } }, onCellClick: (e, ck) => handleCellClick(e, child.id, ck), onCellDoubleClick: (e, ck) => { e.stopPropagation(); const currentContent = String(child.cells?.[ck]?.content ?? ''); const newContent = window.prompt('Ubah teks cell (ketik \\n untuk baris baru):', currentContent.replace(/\n/g, '\\n')); if (newContent !== null) { const newCells = {...(child.cells||{}), [ck]: {...(child.cells?.[ck]||{}), content: newContent.replace(/\\n/g, '\n')}}; updateElement(child.id, { cells: newCells }); } } })
+                                                    {child.type === 'table_custom' ? renderCustomTable(child, s=>s, { allElements: elements, isEditable: selectedIds.includes(child.id), selectedCells: selectedIds.includes(child.id) ? ctSelCells : [], onColResizeStart: startColResize, onRowResizeStart: startRowResize, onCellDragStart: (e, ck) => { e.preventDefault(); e.stopPropagation(); setSelectedIds([child.id]); setIsDraggingCells(true); setCtDragStartCell(ck); setCtSelCells([ck]); setCtActiveCell(ck); }, onCellMouseEnter: (ck) => { if (isDraggingCells && ctDragStartCell) { setCtSelCells(getCellsInRect(ctDragStartCell, ck)); } }, onCellClick: (e, ck) => handleCellClick(e, child.id, ck), onCellDoubleClick: (e, ck) => { e.stopPropagation(); const currentContent = String(child.cells?.[ck]?.content ?? ''); const newContent = window.prompt('Ubah teks cell (ketik \\n untuk baris baru):', currentContent.replace(/\n/g, '\\n')); if (newContent !== null) { const newCells = {...(child.cells||{}), [ck]: {...(child.cells?.[ck]||{}), content: newContent.replace(/\\n/g, '\n')}}; updateElement(child.id, { cells: newCells }); } } })
                                                     : child.type === 'image' ? <img src={child.content} style={{ width: '100%', height: '100%', objectFit: child.objectFit || 'contain', objectPosition: `${child.objectPositionX ?? 50}% ${child.objectPositionY ?? 50}%`, pointerEvents: 'none' }} alt="elemen" />
                                                     : child.type === 'line' ? <div style={{ width: '100%', height: `${child.lineThickness || 2}px`, backgroundColor: child.lineColor || '#000000', pointerEvents: 'none' }} />
                                                     : child.type === 'shape' ? <div style={{ width: '100%', height: '100%', backgroundColor: child.shapeFill || '#000000', borderRadius: `${child.shapeRadius || 0}px`, border: child.shapeBorder ? `${child.shapeBorder}px solid ${child.shapeBorderColor || '#000000'}` : 'none', pointerEvents: 'none' }} />
@@ -6533,8 +5860,7 @@ const LayoutBuilder = () => {
                                                 </div>
                                             ))}
                                         </div>
-                                    ) : el.type === 'table_grades' ? renderDynamicTable(el, data, mockStudentGrades, mockClassAverages, false, 'raport', classesData, 0) 
-                                    : el.type === 'table_custom' ? renderCustomTable(el, s=>s, { allElements: elements, isEditable: selectedIds.includes(el.id), selectedCells: selectedIds.includes(el.id) ? ctSelCells : [], onColResizeStart: startColResize, onRowResizeStart: startRowResize, onCellDragStart: (e, ck) => { e.preventDefault(); e.stopPropagation(); setSelectedIds([el.id]); setIsDraggingCells(true); setCtDragStartCell(ck); setCtSelCells([ck]); setCtActiveCell(ck); }, onCellMouseEnter: (ck) => { if (isDraggingCells && ctDragStartCell) { setCtSelCells(getCellsInRect(ctDragStartCell, ck)); } }, onCellClick: (e, ck) => handleCellClick(e, el.id, ck), onCellDoubleClick: (e, ck) => { e.stopPropagation(); const currentContent = String(el.cells?.[ck]?.content ?? ''); const newContent = window.prompt('Ubah teks cell (ketik \\n untuk baris baru):', currentContent.replace(/\n/g, '\\n')); if (newContent !== null) { const newCells = {...(el.cells||{}), [ck]: {...(el.cells?.[ck]||{}), content: newContent.replace(/\\n/g, '\n')}}; updateElement(el.id, { cells: newCells }); } } })
+                                    ) : el.type === 'table_custom' ? renderCustomTable(el, s=>s, { allElements: elements, isEditable: selectedIds.includes(el.id), selectedCells: selectedIds.includes(el.id) ? ctSelCells : [], onColResizeStart: startColResize, onRowResizeStart: startRowResize, onCellDragStart: (e, ck) => { e.preventDefault(); e.stopPropagation(); setSelectedIds([el.id]); setIsDraggingCells(true); setCtDragStartCell(ck); setCtSelCells([ck]); setCtActiveCell(ck); }, onCellMouseEnter: (ck) => { if (isDraggingCells && ctDragStartCell) { setCtSelCells(getCellsInRect(ctDragStartCell, ck)); } }, onCellClick: (e, ck) => handleCellClick(e, el.id, ck), onCellDoubleClick: (e, ck) => { e.stopPropagation(); const currentContent = String(el.cells?.[ck]?.content ?? ''); const newContent = window.prompt('Ubah teks cell (ketik \\n untuk baris baru):', currentContent.replace(/\n/g, '\\n')); if (newContent !== null) { const newCells = {...(el.cells||{}), [ck]: {...(el.cells?.[ck]||{}), content: newContent.replace(/\\n/g, '\n')}}; updateElement(el.id, { cells: newCells }); } } })
                                     : el.type === 'image' ? <img src={el.content} style={{ width: '100%', height: '100%', objectFit: el.objectFit || 'contain', objectPosition: `${el.objectPositionX ?? 50}% ${el.objectPositionY ?? 50}%`, pointerEvents: 'none' }} alt="elemen" />
                                     : el.type === 'line' ? <div style={{ width: '100%', height: `${el.lineThickness || 2}px`, backgroundColor: el.lineColor || '#000000', pointerEvents: 'none' }} />
                                     : el.type === 'shape' ? <div style={{ width: '100%', height: '100%', backgroundColor: el.shapeFill || '#000000', borderRadius: `${el.shapeRadius || 0}px`, border: el.shapeBorder ? `${el.shapeBorder}px solid ${el.shapeBorderColor || '#000000'}` : 'none', pointerEvents: 'none' }} />
@@ -7636,7 +6962,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
             textAlign: el.textAlign || 'left',
         };
 
-        if (el.type === 'table_grades' || el.type === 'table_custom') {
+        if (el.type === 'table_custom') {
             return (
                 <div style={{
                     ...baseStyle,
@@ -7646,10 +6972,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                     background: el.isTransparent ? 'transparent' : 'white',
                     overflow: 'visible',
                 }}>
-                    {el.type === 'table_grades' 
-                        ? renderDynamicTable(el, data, sGrades, classAverages, useKatrol, mode, classesData, studentsInClass.length)
-                        : renderCustomTable(el, replaceVariables, { allElements: activeLayout })
-                    }
+                    {renderCustomTable(el, replaceVariables, { allElements: activeLayout })}
                 </div>
             );
         }
@@ -7682,10 +7005,9 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                             zIndex: child.zIndex ?? 1,
                             opacity: child.opacity ?? 1,
                             width: child.width ? `${child.width}px` : 'auto',
-                            height: (child.type === 'image' || child.type === 'table_grades' || child.type === 'table_custom' || child.type === 'shape') ? (child.height ? `${child.height}px` : 'auto') : child.type === 'line' ? `${child.lineThickness || 2}px` : 'auto',
-                            padding: (child.type === 'image' || child.type === 'table_grades' || child.type === 'table_custom' || child.type === 'shape' || child.type === 'line') ? 0 : '2px',
+                            height: (child.type === 'image' || child.type === 'table_custom' || child.type === 'shape') ? (child.height ? `${child.height}px` : 'auto') : child.type === 'line' ? `${child.lineThickness || 2}px` : 'auto',
+                            padding: (child.type === 'image' || child.type === 'table_custom' || child.type === 'shape' || child.type === 'line') ? 0 : '2px',
                         };
-                        if (child.type === 'table_grades') return <div key={child.id} style={{...childStyle, background: child.isTransparent ? 'transparent' : 'white', overflow:'visible'}}>{renderDynamicTable(child, data, sGrades, classAverages, useKatrol, mode, classesData, studentsInClass.length)}</div>;
                         if (child.type === 'table_custom') return <div key={child.id} style={{...childStyle, background: child.isTransparent ? 'transparent' : 'white', overflow:'visible'}}>{renderCustomTable(child, replaceVariables, { allElements: activeLayout })}</div>;
                         if (child.type === 'image') return <img key={child.id} src={child.content} style={{...childStyle, objectFit: child.objectFit||'contain', objectPosition:`${child.objectPositionX??50}% ${child.objectPositionY??50}%`}} alt="c" />;
                         if (child.type === 'line') return <div key={child.id} style={{...childStyle, backgroundColor: child.lineColor || '#000000'}} />;
