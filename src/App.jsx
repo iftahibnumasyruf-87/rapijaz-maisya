@@ -5313,7 +5313,16 @@ const LayoutBuilder = () => {
                             )}
                             {activeEl.type === 'image' && (
                                 <div className="bg-white p-2 rounded border space-y-2">
-                                    <label className="block text-xs font-semibold text-gray-700">Upload Ulang Gambar:</label>
+                                    <label className="block text-xs font-semibold text-gray-700">Tempel URL Gambar:</label>
+                                    <input 
+                                        type="text" 
+                                        placeholder="https://... (contoh dari Supabase)" 
+                                        className="text-xs w-full p-1.5 border rounded" 
+                                        value={activeEl.content?.startsWith('http') ? activeEl.content : ''} 
+                                        onChange={e => updateElement(selectedElementId, { content: e.target.value })} 
+                                    />
+                                    <div className="text-[10px] text-center text-gray-400 font-bold uppercase">Atau</div>
+                                    <label className="block text-xs font-semibold text-gray-700">Upload dari Komputer:</label>
                                     <input type="file" accept="image/*" className="text-xs w-full" onChange={handleImageUpload} />
                                 </div>
                             )}
