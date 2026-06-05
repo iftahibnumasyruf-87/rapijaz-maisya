@@ -2953,20 +2953,22 @@ const renderCellContent = (htmlContent, cellAlign) => {
                     alignItems: 'center',
                     width: '100%',
                     gap: '12px',
-                    lineHeight: '1.2'
+                    lineHeight: '1.1'
                 }}>
                     <span style={{ 
                         textAlign: 'left',
                         direction: 'ltr',
                         wordBreak: 'break-word',
-                        flex: 1
+                        flex: 1,
+                        lineHeight: '1.1'
                     }}>{splitted.latin}</span>
                     <span style={{ 
                         textAlign: 'right',
                         direction: 'rtl',
                         fontFamily: '"Amiri", "Cairo", "Scheherazade New", serif',
                         wordBreak: 'break-word',
-                        flex: 1
+                        flex: 1,
+                        lineHeight: '1.1'
                     }}>{splitted.arabic}</span>
                 </div>
             );
@@ -2975,7 +2977,8 @@ const renderCellContent = (htmlContent, cellAlign) => {
                 <div key={lineIdx} style={{ 
                     width: '100%',
                     textAlign: cellAlign || 'left',
-                    direction: /[\u0600-\u06FF]/.test(cleanLine) ? 'rtl' : 'ltr'
+                    direction: /[\u0600-\u06FF]/.test(cleanLine) ? 'rtl' : 'ltr',
+                    lineHeight: '1.1'
                 }} dangerouslySetInnerHTML={{ __html: line }}></div>
             );
         }
@@ -3028,7 +3031,7 @@ const renderCustomTable = (el, replaceVars = s => s, options = {}) => {
                                     border: bStyle,
                                     outline: isCellSelected ? '2px solid #4f46e5' : 'none',
                                     outlineOffset: -2,
-                                    padding: '5px 6px',
+                                    padding: '3px 6px 6px 6px',
                                     textAlign: cell.align || 'left',
                                     verticalAlign: cell.valign || 'middle',
                                     fontWeight: cell.bold ? 'bold' : 'normal',
@@ -3041,7 +3044,8 @@ const renderCustomTable = (el, replaceVars = s => s, options = {}) => {
                                     wordBreak: 'break-word',
                                     position: 'relative',
                                     cursor: options.onCellDragStart ? 'cell' : 'default',
-                                    lineHeight: '1.3',
+                                    lineHeight: '1.1',
+                                    height: '100%',
                                 }}>
                                     <div style={{
                                         display: 'flex',
@@ -3147,7 +3151,7 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
                         return <th key={idx} style={{width: `${col.width}%`, height: col.height ? `${col.height}px` : 'auto', border: 'none', background: 'transparent'}}>{col.header === 'Kolom Baru' ? '' : col.header}</th>;
                     }
                     return (
-                        <th key={idx} className="bg-gray-100 border border-black p-1 font-bold" style={{width: `${col.width}%`, height: el.headerRowHeight ? `${el.headerRowHeight}px` : (col.height ? `${col.height}px` : 'auto'), fontSize: col.fontSize ? `${col.fontSize}px` : 'inherit', fontFamily: col.fontFamily || 'inherit', fontWeight: col.fontWeight || 'bold', textAlign: col.textAlign || 'center', verticalAlign: 'middle', padding: '5px 6px', lineHeight: '1.3', borderColor: '#b1b1b1'}}>
+                        <th key={idx} className="bg-gray-100 border border-black p-1 font-bold" style={{width: `${col.width}%`, height: el.headerRowHeight ? `${el.headerRowHeight}px` : (col.height ? `${col.height}px` : 'auto'), fontSize: col.fontSize ? `${col.fontSize}px` : 'inherit', fontFamily: col.fontFamily || 'inherit', fontWeight: col.fontWeight || 'bold', textAlign: col.textAlign || 'center', verticalAlign: 'middle', padding: '3px 6px 6px 6px', lineHeight: '1.1', borderColor: '#b1b1b1'}}>
                             {toArabic(col.header)}
                         </th>
                     );
@@ -3159,7 +3163,7 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
     const renderRowCells = (sub, idx) => {
         return columns.map((col, cIdx) => {
             let content = '-';
-            let style = { verticalAlign: 'middle', padding: '5px 6px', lineHeight: '1.3', borderColor: '#b1b1b1' };
+            let style = { verticalAlign: 'middle', padding: '3px 6px 6px 6px', lineHeight: '1.1', borderColor: '#b1b1b1' };
             
             let gradeObj = studentGrades[sub.id];
             let rawGrade = 0;
@@ -3276,7 +3280,7 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
         const { totalRaport, rataRaport, jumlahSantri } = computeFooterValues();
         return columns.map((col, cIdx) => {
             let content = '';
-            let style = { textAlign: 'center', verticalAlign: 'middle', fontWeight: 'bold', padding: '5px 6px', lineHeight: '1.3', borderColor: '#b1b1b1' };
+            let style = { textAlign: 'center', verticalAlign: 'middle', fontWeight: 'bold', padding: '3px 6px 6px 6px', lineHeight: '1.1', borderColor: '#b1b1b1' };
             if (col.height) style.height = `${col.height}px`;
             if (col.fontSize) style.fontSize = `${col.fontSize}px`;
             if (col.fontFamily) style.fontFamily = col.fontFamily;
@@ -3420,8 +3424,8 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
                                                         : (el.disableCatBg 
                                                             ? 'transparent' 
                                                             : (el.catBgColor || '#e5e7eb')),
-                                                    padding: '5px 6px',
-                                                    lineHeight: '1.3',
+                                                    padding: '3px 6px 6px 6px',
+                                                    lineHeight: '1.1',
                                                     borderColor: '#b1b1b1'
                                                 }}
                                             >
