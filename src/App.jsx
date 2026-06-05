@@ -2991,7 +2991,7 @@ const renderCustomTable = (el, replaceVars = s => s, options = {}) => {
     const colWidths = el.colWidths || Array.from({length: cols}, () => Math.round(100/cols));
     const rowHeights = el.rowHeights || Array.from({length: rows}, () => 30);
     const cells = el.cells || {};
-    const bColor = el.borderColor && el.borderColor !== '#000000' ? el.borderColor : '#b1b1b1';
+    const bColor = el.borderColor !== undefined ? el.borderColor : '#b1b1b1';
     const bWidth = el.borderWidth !== undefined ? el.borderWidth : 1;
     const bStyle = bWidth > 0 ? `${bWidth}px solid ${bColor}` : 'none';
     const tBg = el.isTransparent ? 'transparent' : 'white';
@@ -3138,6 +3138,10 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
     const activeSetting = data.settings?.find(s => s.key === 'activeSetting')?.value || {};
     const toArabicNumbers = (val) => String(val).replace(/[0-9]/g, w => ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'][w]);
 
+    const bColor = el.borderColor !== undefined ? el.borderColor : '#b1b1b1';
+    const bWidth = el.borderWidth !== undefined ? el.borderWidth : 1;
+    const bStyle = bWidth > 0 ? 'solid' : 'none';
+
     const columns = el.columns || [];
     if(columns.length === 0) return <div className="p-4 border bg-red-50 text-red-500 text-xs">Tabel belum dikonfigurasi. Silakan edit kolom di panel kiri.</div>;
 
@@ -3151,7 +3155,7 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
                         return <th key={idx} style={{width: `${col.width}%`, height: col.height ? `${col.height}px` : 'auto', border: 'none', background: 'transparent'}}>{col.header === 'Kolom Baru' ? '' : col.header}</th>;
                     }
                     return (
-                        <th key={idx} className="bg-gray-100 border border-black p-1 font-bold" style={{width: `${col.width}%`, height: el.headerRowHeight ? `${el.headerRowHeight}px` : (col.height ? `${col.height}px` : 'auto'), fontSize: col.fontSize ? `${col.fontSize}px` : 'inherit', fontFamily: col.fontFamily || 'inherit', fontWeight: col.fontWeight || 'bold', textAlign: col.textAlign || 'center', verticalAlign: 'middle', padding: '3px 6px 6px 6px', lineHeight: '1.1', borderColor: '#b1b1b1'}}>
+                        <th key={idx} className="bg-gray-100 border border-black p-1 font-bold" style={{width: `${col.width}%`, height: el.headerRowHeight ? `${el.headerRowHeight}px` : (col.height ? `${col.height}px` : 'auto'), fontSize: col.fontSize ? `${col.fontSize}px` : 'inherit', fontFamily: col.fontFamily || 'inherit', fontWeight: col.fontWeight || 'bold', textAlign: col.textAlign || 'center', verticalAlign: 'middle', padding: '3px 6px 6px 6px', lineHeight: '1.1', borderColor: bColor, borderWidth: `${bWidth}px`, borderStyle: bStyle}}>
                             {toArabic(col.header)}
                         </th>
                     );
@@ -3163,7 +3167,7 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
     const renderRowCells = (sub, idx) => {
         return columns.map((col, cIdx) => {
             let content = '-';
-            let style = { verticalAlign: 'middle', padding: '3px 6px 6px 6px', lineHeight: '1.1', borderColor: '#b1b1b1' };
+            let style = { verticalAlign: 'middle', padding: '3px 6px 6px 6px', lineHeight: '1.1', borderColor: bColor, borderWidth: `${bWidth}px`, borderStyle: bStyle };
             
             let gradeObj = studentGrades[sub.id];
             let rawGrade = 0;
@@ -3280,7 +3284,7 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
         const { totalRaport, rataRaport, jumlahSantri } = computeFooterValues();
         return columns.map((col, cIdx) => {
             let content = '';
-            let style = { textAlign: 'center', verticalAlign: 'middle', fontWeight: 'bold', padding: '3px 6px 6px 6px', lineHeight: '1.1', borderColor: '#b1b1b1' };
+            let style = { textAlign: 'center', verticalAlign: 'middle', fontWeight: 'bold', padding: '3px 6px 6px 6px', lineHeight: '1.1', borderColor: bColor, borderWidth: `${bWidth}px`, borderStyle: bStyle };
             if (col.height) style.height = `${col.height}px`;
             if (col.fontSize) style.fontSize = `${col.fontSize}px`;
             if (col.fontFamily) style.fontFamily = col.fontFamily;
@@ -3426,7 +3430,9 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
                                                             : (el.catBgColor || '#e5e7eb')),
                                                     padding: '3px 6px 6px 6px',
                                                     lineHeight: '1.1',
-                                                    borderColor: '#b1b1b1'
+                                                    borderColor: bColor,
+                                                    borderWidth: `${bWidth}px`,
+                                                    borderStyle: bStyle
                                                 }}
                                             >
                                                 {segLabel}
@@ -3933,7 +3939,7 @@ const LayoutBuilder = () => {
             // line/shape specific
             ...(isLine ? { lineColor: '#000000', lineThickness: 2 } : {}),
             ...(isShape ? { shapeFill: '#000000', shapeRadius: 0, shapeBorder: 0, shapeBorderColor: '#000000' } : {}),
-            ...(elementType === 'table_grades' ? { columns: [...defaultTableColumns], groupByCategory: false, filterClass: '', headerRowHeight: undefined, dataRowHeight: undefined, catRowHeight: undefined } : {}),
+            ...(elementType === 'table_grades' ? { columns: [...defaultTableColumns], groupByCategory: false, filterClass: '', headerRowHeight: undefined, dataRowHeight: undefined, catRowHeight: undefined, borderColor: '#b1b1b1', borderWidth: 1 } : {}),
             ...(isCustomTable ? { tableRows: defaultCTRows, tableCols: defaultCTCols, colWidths: [33,33,34], rowHeights: [35,35,35], cells: defaultCells, borderColor: '#b1b1b1', borderWidth: 1, headerBg: '#e5e7eb', isRtl: false, isTransparent: false } : {})
         };
         setPast(p => [...p, elements]);
@@ -4838,6 +4844,11 @@ const LayoutBuilder = () => {
                                                 <input type="number" placeholder="Auto" className="w-full p-1 border rounded text-xs outline-none bg-white" value={activeEl.catRowHeight || ''} onChange={e => updateElement(selectedElementId, { catRowHeight: e.target.value ? Number(e.target.value) : undefined })} disabled={!activeEl.groupByCategory} title={!activeEl.groupByCategory ? "Aktifkan 'Kelompokkan per Kategori Pelajaran' terlebih dahulu" : ""} />
                                             </div>
                                         </div>
+                                    </div>
+                                    <div className="flex gap-2 items-center bg-gray-50 border border-gray-200 p-2 rounded-lg">
+                                        <label className="text-xs font-semibold text-gray-700 whitespace-nowrap">Warna Border</label>
+                                        <input type="color" className="w-10 h-8 p-0 border-0 rounded cursor-pointer" value={activeEl.borderColor || '#b1b1b1'} onChange={e => updateElement(selectedElementId, { borderColor: e.target.value }, false)} onBlur={e => updateElement(selectedElementId, { borderColor: e.target.value })}/>
+                                        <input type="number" min="0" max="10" className="w-16 p-1.5 border rounded text-sm ml-2" value={activeEl.borderWidth !== undefined ? activeEl.borderWidth : 1} onChange={e => updateElement(selectedElementId, { borderWidth: Number(e.target.value) })} title="Tebal Border (px)"/> px
                                     </div>
                                     <div>
                                         <label className="text-[10px] text-gray-500 font-bold uppercase">Filter Kelas</label>
