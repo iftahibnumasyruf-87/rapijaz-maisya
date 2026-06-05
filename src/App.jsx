@@ -3178,7 +3178,7 @@ const renderCustomTable = (el, replaceVars = s => s, options = {}) => {
                                         };
                                     })()}>
                                     {renderCellContent((() => {
-                                        let contentStr = cell.content || '';
+                                        let contentStr = cell.content !== undefined && cell.content !== null ? String(cell.content) : '';
                                         if (contentStr.startsWith('=')) {
                                             const match = contentStr.match(/^=([a-zA-Z0-9_-]+)\.([0-9]+_[0-9]+)$/);
                                             if (match && options.allElements) {
@@ -3195,7 +3195,8 @@ const renderCustomTable = (el, replaceVars = s => s, options = {}) => {
                                                 };
                                                 const targetEl = findElById(options.allElements, match[1]);
                                                 if (targetEl && targetEl.cells && targetEl.cells[match[2]]) {
-                                                    contentStr = targetEl.cells[match[2]].content || '';
+                                                    const rawVal = targetEl.cells[match[2]].content;
+                                                    contentStr = rawVal !== undefined && rawVal !== null ? String(rawVal) : '';
                                                 } else if (targetEl) {
                                                     contentStr = ''; // elemen ada tapi sel kosong
                                                 } else {
@@ -3732,6 +3733,32 @@ const LayoutBuilder = () => {
     const [ctActiveCell, setCtActiveCell] = useState(null); // last clicked cell key
     const [ctDrag, setCtDrag] = useState(null); // {type:'col'|'row', idx, startX, startY, startVals}
     const ctDragRef = useRef(null);
+
+    const findElementById = (els, id) => {
+        for (const el of els) {
+            if (el.id === id) return el;
+            if (el.type === 'group' && el.children) {
+                const found = findElementById(el.children, id);
+                if (found) return found;
+            }
+        }
+        return null;
+    };
+
+    const updateElement = (id, changes, commit = true) => {
+        if (commit) {
+            setPast(p => [...p, elements]);
+            setFuture([]);
+        }
+        setElements(prev => {
+            const deepUpdate = (els) => els.map(el => {
+                if (el.id === id) return { ...el, ...(typeof changes === 'function' ? changes(el) : changes) };
+                if (el.type === 'group' && el.children) return { ...el, children: deepUpdate(el.children) };
+                return el;
+            });
+            return deepUpdate(prev);
+        });
+    };
 
     // Helper: get all cell keys in rectangular area between two corner cells
     const getCellsInRect = (startCk, endCk) => {
@@ -4320,32 +4347,6 @@ const LayoutBuilder = () => {
         setFuture([]);
         setElements([...elements, newEl]);
         setSelectedIds([newEl.id]);
-    };
-
-    const findElementById = (els, id) => {
-        for (const el of els) {
-            if (el.id === id) return el;
-            if (el.type === 'group' && el.children) {
-                const found = findElementById(el.children, id);
-                if (found) return found;
-            }
-        }
-        return null;
-    };
-
-    const updateElement = (id, changes, commit = true) => {
-        if (commit) {
-            setPast(p => [...p, elements]);
-            setFuture([]);
-        }
-        setElements(prev => {
-            const deepUpdate = (els) => els.map(el => {
-                if (el.id === id) return { ...el, ...(typeof changes === 'function' ? changes(el) : changes) };
-                if (el.type === 'group' && el.children) return { ...el, children: deepUpdate(el.children) };
-                return el;
-            });
-            return deepUpdate(prev);
-        });
     };
 
     const removeElement = (id) => {
@@ -6352,7 +6353,7 @@ const LayoutBuilder = () => {
                                                     zIndex: child.zIndex ?? 1, opacity: child.opacity ?? 1
                                                 }}>
                                                     {child.type === 'table_grades' ? renderDynamicTable(child, data, mockStudentGrades, mockClassAverages, false, 'raport', classesData, 0) 
-                                                    : child.type === 'table_custom' ? renderCustomTable(child, s=>s, { allElements: elements, isEditable: selectedIds.includes(child.id), selectedCells: selectedIds.includes(child.id) ? ctSelCells : [], onColResizeStart: startColResize, onRowResizeStart: startRowResize, onCellDragStart: (e, ck) => { e.preventDefault(); e.stopPropagation(); setSelectedIds([child.id]); setIsDraggingCells(true); setCtDragStartCell(ck); setCtSelCells([ck]); setCtActiveCell(ck); }, onCellMouseEnter: (ck) => { if (isDraggingCells && ctDragStartCell) { setCtSelCells(getCellsInRect(ctDragStartCell, ck)); } }, onCellClick: (e, ck) => handleCellClick(e, child.id, ck), onCellDoubleClick: (e, ck) => { e.stopPropagation(); const currentContent = child.cells?.[ck]?.content || ''; const newContent = window.prompt('Ubah teks cell (ketik \\n untuk baris baru):', currentContent.replace(/\n/g, '\\n')); if (newContent !== null) { const newCells = {...(child.cells||{}), [ck]: {...(child.cells?.[ck]||{}), content: newContent.replace(/\\n/g, '\n')}}; updateElement(child.id, { cells: newCells }); } } })
+                                                    : child.type === 'table_custom' ? renderCustomTable(child, s=>s, { allElements: elements, isEditable: selectedIds.includes(child.id), selectedCells: selectedIds.includes(child.id) ? ctSelCells : [], onColResizeStart: startColResize, onRowResizeStart: startRowResize, onCellDragStart: (e, ck) => { e.preventDefault(); e.stopPropagation(); setSelectedIds([child.id]); setIsDraggingCells(true); setCtDragStartCell(ck); setCtSelCells([ck]); setCtActiveCell(ck); }, onCellMouseEnter: (ck) => { if (isDraggingCells && ctDragStartCell) { setCtSelCells(getCellsInRect(ctDragStartCell, ck)); } }, onCellClick: (e, ck) => handleCellClick(e, child.id, ck), onCellDoubleClick: (e, ck) => { e.stopPropagation(); const currentContent = String(child.cells?.[ck]?.content ?? ''); const newContent = window.prompt('Ubah teks cell (ketik \\n untuk baris baru):', currentContent.replace(/\n/g, '\\n')); if (newContent !== null) { const newCells = {...(child.cells||{}), [ck]: {...(child.cells?.[ck]||{}), content: newContent.replace(/\\n/g, '\n')}}; updateElement(child.id, { cells: newCells }); } } })
                                                     : child.type === 'image' ? <img src={child.content} style={{ width: '100%', height: '100%', objectFit: child.objectFit || 'contain', objectPosition: `${child.objectPositionX ?? 50}% ${child.objectPositionY ?? 50}%`, pointerEvents: 'none' }} alt="elemen" />
                                                     : child.type === 'line' ? <div style={{ width: '100%', height: `${child.lineThickness || 2}px`, backgroundColor: child.lineColor || '#000000', pointerEvents: 'none' }} />
                                                     : child.type === 'shape' ? <div style={{ width: '100%', height: '100%', backgroundColor: child.shapeFill || '#000000', borderRadius: `${child.shapeRadius || 0}px`, border: child.shapeBorder ? `${child.shapeBorder}px solid ${child.shapeBorderColor || '#000000'}` : 'none', pointerEvents: 'none' }} />
@@ -6361,7 +6362,7 @@ const LayoutBuilder = () => {
                                             ))}
                                         </div>
                                     ) : el.type === 'table_grades' ? renderDynamicTable(el, data, mockStudentGrades, mockClassAverages, false, 'raport', classesData, 0) 
-                                    : el.type === 'table_custom' ? renderCustomTable(el, s=>s, { allElements: elements, isEditable: selectedIds.includes(el.id), selectedCells: selectedIds.includes(el.id) ? ctSelCells : [], onColResizeStart: startColResize, onRowResizeStart: startRowResize, onCellDragStart: (e, ck) => { e.preventDefault(); e.stopPropagation(); setSelectedIds([el.id]); setIsDraggingCells(true); setCtDragStartCell(ck); setCtSelCells([ck]); setCtActiveCell(ck); }, onCellMouseEnter: (ck) => { if (isDraggingCells && ctDragStartCell) { setCtSelCells(getCellsInRect(ctDragStartCell, ck)); } }, onCellClick: (e, ck) => handleCellClick(e, el.id, ck), onCellDoubleClick: (e, ck) => { e.stopPropagation(); const currentContent = el.cells?.[ck]?.content || ''; const newContent = window.prompt('Ubah teks cell (ketik \\n untuk baris baru):', currentContent.replace(/\n/g, '\\n')); if (newContent !== null) { const newCells = {...(el.cells||{}), [ck]: {...(el.cells?.[ck]||{}), content: newContent.replace(/\\n/g, '\n')}}; updateElement(el.id, { cells: newCells }); } } })
+                                    : el.type === 'table_custom' ? renderCustomTable(el, s=>s, { allElements: elements, isEditable: selectedIds.includes(el.id), selectedCells: selectedIds.includes(el.id) ? ctSelCells : [], onColResizeStart: startColResize, onRowResizeStart: startRowResize, onCellDragStart: (e, ck) => { e.preventDefault(); e.stopPropagation(); setSelectedIds([el.id]); setIsDraggingCells(true); setCtDragStartCell(ck); setCtSelCells([ck]); setCtActiveCell(ck); }, onCellMouseEnter: (ck) => { if (isDraggingCells && ctDragStartCell) { setCtSelCells(getCellsInRect(ctDragStartCell, ck)); } }, onCellClick: (e, ck) => handleCellClick(e, el.id, ck), onCellDoubleClick: (e, ck) => { e.stopPropagation(); const currentContent = String(el.cells?.[ck]?.content ?? ''); const newContent = window.prompt('Ubah teks cell (ketik \\n untuk baris baru):', currentContent.replace(/\n/g, '\\n')); if (newContent !== null) { const newCells = {...(el.cells||{}), [ck]: {...(el.cells?.[ck]||{}), content: newContent.replace(/\\n/g, '\n')}}; updateElement(el.id, { cells: newCells }); } } })
                                     : el.type === 'image' ? <img src={el.content} style={{ width: '100%', height: '100%', objectFit: el.objectFit || 'contain', objectPosition: `${el.objectPositionX ?? 50}% ${el.objectPositionY ?? 50}%`, pointerEvents: 'none' }} alt="elemen" />
                                     : el.type === 'line' ? <div style={{ width: '100%', height: `${el.lineThickness || 2}px`, backgroundColor: el.lineColor || '#000000', pointerEvents: 'none' }} />
                                     : el.type === 'shape' ? <div style={{ width: '100%', height: '100%', backgroundColor: el.shapeFill || '#000000', borderRadius: `${el.shapeRadius || 0}px`, border: el.shapeBorder ? `${el.shapeBorder}px solid ${el.shapeBorderColor || '#000000'}` : 'none', pointerEvents: 'none' }} />
