@@ -4129,8 +4129,8 @@ const LayoutBuilder = () => {
             // line/shape specific
             ...(isLine ? { lineColor: '#000000', lineThickness: 2 } : {}),
             ...(isShape ? { shapeFill: '#000000', shapeRadius: 0, shapeBorder: 0, shapeBorderColor: '#000000' } : {}),
-            ...(elementType === 'table_grades' ? { columns: [...defaultTableColumns], groupByCategory: false, filterClass: '', headerRowHeight: undefined, dataRowHeight: undefined, catRowHeight: undefined, borderColor: '#b1b1b1', borderWidth: 1 } : {}),
-            ...(isCustomTable ? { tableRows: defaultCTRows, tableCols: defaultCTCols, colWidths: [33,33,34], rowHeights: [35,35,35], cells: defaultCells, borderColor: '#b1b1b1', borderWidth: 1, headerBg: '#e5e7eb', isRtl: false, isTransparent: false } : {})
+            ...(elementType === 'table_grades' ? { columns: [...defaultTableColumns], groupByCategory: false, filterClass: '', headerRowHeight: undefined, dataRowHeight: undefined, catRowHeight: undefined, borderColor: '#000000', borderWidth: 1 } : {}),
+            ...(isCustomTable ? { tableRows: defaultCTRows, tableCols: defaultCTCols, colWidths: [33,33,34], rowHeights: [35,35,35], cells: defaultCells, borderColor: '#000000', borderWidth: 1, headerBg: '#e5e7eb', isRtl: false, isTransparent: false } : {})
         };
         setPast(p => [...p, elements]);
         setFuture([]);
