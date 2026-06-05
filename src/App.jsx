@@ -6861,57 +6861,20 @@ const CetakDokumen = ({ mode = 'raport' }) => {
         const ns = studentData.nama.replace(/\s+/g, '_');
         
         const filename = mode === 'raport' 
-            ? `raport_${ns}_${ts}_${ss}.pdf` 
-            : `ijazah_${ns}_${ts}.pdf`;
+            ? `raport_${ns}_${ts}_${ss}` 
+            : `ijazah_${ns}_${ts}`;
             
         addLog(`Menyimpan ${mode} sebagai PDF untuk ${studentData.nama}`);
         
-        const oldZoom = previewZoom;
-        setPreviewZoom(1.0);
-        setIsExporting(true);
+        alert("INFO: Untuk hasil PDF yang rapi dan presisi, sistem menggunakan fitur cetak bawaan browser.\n\nSilakan pilih 'Save as PDF' (Simpan sebagai PDF) pada kolom Tujuan/Destination di jendela cetak yang akan muncul.");
         
-        // Wait for re-render at scale 1.0 with no gaps
-        await new Promise(r => setTimeout(r, 600));
+        const oldTitle = document.title;
+        document.title = filename;
+        window.print();
         
-        const pageContainers = document.querySelectorAll('.print-container');
-        if (!pageContainers || pageContainers.length === 0) {
-            setPreviewZoom(oldZoom);
-            setIsExporting(false);
-            return;
-        }
-        
-        // Determine PDF page size in mm
-        const isF4 = layoutPageSize === 'F4';
-        const isLandscape = layoutOrientation === 'landscape';
-        const pdfW = isF4 ? (isLandscape ? 330.2 : 215.9) : (isLandscape ? 297 : 210);
-        const pdfH = isF4 ? (isLandscape ? 215.9 : 330.2) : (isLandscape ? 210 : 297);
-        
-        const pdf = new jsPDF({ unit: 'mm', format: [pdfW, pdfH], orientation: layoutOrientation });
-        
-        for (let i = 0; i < pageContainers.length; i++) {
-            const container = pageContainers[i];
-            const canvas = await html2canvas(container, {
-                scale: 2,
-                useCORS: true,
-                logging: false,
-                backgroundColor: '#ffffff',
-                width: container.offsetWidth,
-                height: container.offsetHeight,
-                scrollX: 0,
-                scrollY: 0,
-                x: 0,
-                y: 0,
-            });
-            
-            if (i > 0) pdf.addPage([pdfW, pdfH], layoutOrientation);
-            
-            const imgData = canvas.toDataURL('image/jpeg', 0.98);
-            pdf.addImage(imgData, 'JPEG', 0, 0, pdfW, pdfH);
-        }
-        
-        pdf.save(filename);
-        setPreviewZoom(oldZoom);
-        setIsExporting(false);
+        setTimeout(() => {
+            document.title = oldTitle;
+        }, 1000);
     };
 
     const handleWA = () => {
@@ -6988,58 +6951,24 @@ const CetakDokumen = ({ mode = 'raport' }) => {
         const ss = activeSetting.semester || '1';
         const ks = getClassNameFromValue(classesData, selectedClass).replace(/\s+/g, '_');
         const filename = mode === 'raport' 
-            ? `raport_masal_${ks}_${start}-${end}_${ts}_${ss}.pdf` 
-            : `ijazah_masal_${ks}_${start}-${end}_${ts}.pdf`;
+            ? `raport_masal_${ks}_${start}-${end}_${ts}_${ss}` 
+            : `ijazah_masal_${ks}_${start}-${end}_${ts}`;
 
         addLog(`Menyimpan massal ${mode} sbg PDF untuk kelas ${ks} (${start}-${end})`);
         
+        alert("INFO: Untuk hasil PDF yang rapi dan presisi, sistem menggunakan fitur cetak bawaan browser.\n\nSilakan pilih 'Save as PDF' (Simpan sebagai PDF) pada kolom Tujuan/Destination di jendela cetak yang akan muncul.");
+        
         setIsBatchMode(true);
-        const oldZoom = previewZoom;
-        setPreviewZoom(1.0);
-        setIsExporting(true);
-        
-        await new Promise(r => setTimeout(r, 800)); // wait for render
-        
-        const pageContainers = document.querySelectorAll('.print-container');
-        if (!pageContainers || pageContainers.length === 0) {
-            setPreviewZoom(oldZoom);
-            setIsExporting(false);
-            setIsBatchMode(false);
-            return;
-        }
-        
-        const isF4 = layoutPageSize === 'F4';
-        const isLandscape = layoutOrientation === 'landscape';
-        const pdfW = isF4 ? (isLandscape ? 330.2 : 215.9) : (isLandscape ? 297 : 210);
-        const pdfH = isF4 ? (isLandscape ? 215.9 : 330.2) : (isLandscape ? 210 : 297);
-        
-        const pdf = new jsPDF({ unit: 'mm', format: [pdfW, pdfH], orientation: layoutOrientation });
-        
-        for (let i = 0; i < pageContainers.length; i++) {
-            const container = pageContainers[i];
-            const canvas = await html2canvas(container, {
-                scale: 1.5,
-                useCORS: true,
-                logging: false,
-                backgroundColor: '#ffffff',
-                width: container.offsetWidth,
-                height: container.offsetHeight,
-                scrollX: 0,
-                scrollY: 0,
-                x: 0,
-                y: 0,
-            });
+        setTimeout(() => {
+            const oldTitle = document.title;
+            document.title = filename;
+            window.print();
             
-            if (i > 0) pdf.addPage([pdfW, pdfH], layoutOrientation);
-            
-            const imgData = canvas.toDataURL('image/jpeg', 0.90);
-            pdf.addImage(imgData, 'JPEG', 0, 0, pdfW, pdfH);
-        }
-        
-        pdf.save(filename);
-        setPreviewZoom(oldZoom);
-        setIsExporting(false);
-        setIsBatchMode(false);
+            setTimeout(() => {
+                document.title = oldTitle;
+                setIsBatchMode(false);
+            }, 2000);
+        }, 1000);
     };
 
     const getStyles = (el) => ({ position: 'absolute', left: `${el.x}px`, top: `${el.y}px`, fontSize: `${el.fontSize}px`, fontFamily: el.fontFamily || 'Arial, sans-serif', fontWeight: el.fontWeight, color: 'black', textAlign: el.textAlign || 'left' });
