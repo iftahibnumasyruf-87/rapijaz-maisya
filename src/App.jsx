@@ -3931,8 +3931,20 @@ const LayoutBuilder = () => {
                     if (el && el.type === 'table_custom' && ctSelCells && ctSelCells.length > 0) {
                         e.preventDefault();
                         const cellsData = ctSelCells.map(ck => ({ key: ck, data: el.cells?.[ck] || {} }));
-                        setClipboardCells(cellsData);
+                        setClipboardCells({ cells: cellsData, isCut: false, srcElId: el.id });
                         showNotification(`📋 ${cellsData.length} sel disalin`);
+                        return;
+                    }
+                }
+
+                // Custom Table Cut (Ctrl+X sel dalam tabel)
+                if (e.key.toLowerCase() === 'x' && selectedIds.length === 1) {
+                    const el = elements.find(el => el.id === selectedIds[0]);
+                    if (el && el.type === 'table_custom' && ctSelCells && ctSelCells.length > 0) {
+                        e.preventDefault();
+                        const cellsData = ctSelCells.map(ck => ({ key: ck, data: el.cells?.[ck] || {} }));
+                        setClipboardCells({ cells: cellsData, isCut: true, srcElId: el.id });
+                        showNotification(`✂️ ${cellsData.length} sel dipotong — klik sel tujuan lalu Ctrl+V`);
                         return;
                     }
                 }
@@ -3964,12 +3976,15 @@ const LayoutBuilder = () => {
                     const el = elements.find(el => el.id === selectedIds[0]);
                     if (el && el.type === 'table_custom' && ctSelCells && ctSelCells.length > 0) {
                         e.preventDefault();
+                        const cbCells = clipboardCells.cells || clipboardCells; // backward compat
+                        const isCellCut = clipboardCells.isCut;
+                        const srcElId = clipboardCells.srcElId;
                         const targetAnchor = ctSelCells[0];
                         const [anchorR, anchorC] = targetAnchor.split('_').map(Number);
-                        const [srcAnchorR, srcAnchorC] = clipboardCells[0].key.split('_').map(Number);
+                        const [srcAnchorR, srcAnchorC] = cbCells[0].key.split('_').map(Number);
                         
                         const newCells = { ...(el.cells || {}) };
-                        clipboardCells.forEach(copied => {
+                        cbCells.forEach(copied => {
                             const [r, c] = copied.key.split('_').map(Number);
                             const targetR = anchorR + (r - srcAnchorR);
                             const targetC = anchorC + (c - srcAnchorC);
@@ -3978,8 +3993,20 @@ const LayoutBuilder = () => {
                                 newCells[newKey] = { ...copied.data };
                             }
                         });
+                        
+                        // Jika cut dari elemen yang sama, hapus isi sel sumber
+                        if (isCellCut && srcElId === el.id) {
+                            cbCells.forEach(copied => { 
+                                if (newCells[copied.key] && !ctSelCells.includes(copied.key)) {
+                                    newCells[copied.key] = { ...(newCells[copied.key] || {}), content: '' };
+                                }
+                            });
+                            setClipboardCells(null);
+                        }
+                        
                         setPast(p => [...p, elements]); setFuture([]);
                         setElements(prev => prev.map(e => e.id === el.id ? { ...e, cells: newCells } : e));
+                        showNotification(isCellCut ? `✂️ Sel dipindahkan` : `📋 Sel ditempel`);
                         return;
                     }
                 }
@@ -4030,6 +4057,22 @@ const LayoutBuilder = () => {
             }
 
             if (selectedIds.length === 0) return;
+
+            // Delete isi sel tabel kustom yang dipilih (jangan hapus elemen)
+            if (e.key === 'Delete' && ctSelCells && ctSelCells.length > 0) {
+                const el = elements.find(el => el.id === selectedIds[0]);
+                if (el && el.type === 'table_custom') {
+                    e.preventDefault();
+                    const newCells = { ...(el.cells || {}) };
+                    ctSelCells.forEach(ck => {
+                        newCells[ck] = { ...(newCells[ck] || {}), content: '' };
+                    });
+                    setPast(p => [...p, elements]); setFuture([]);
+                    setElements(prev => prev.map(e => e.id === el.id ? { ...e, cells: newCells } : e));
+                    showNotification(`🗑️ ${ctSelCells.length} sel dikosongkan`);
+                    return;
+                }
+            }
 
             // Delete selected elements
             if (e.key === 'Delete') {
