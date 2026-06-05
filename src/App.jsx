@@ -2936,7 +2936,7 @@ const renderCustomTable = (el, replaceVars = s => s, options = {}) => {
                                     border: bStyle,
                                     outline: isCellSelected ? '2px solid #4f46e5' : 'none',
                                     outlineOffset: -2,
-                                    padding: '2px 4px',
+                                    padding: '5px 6px',
                                     textAlign: cell.align || 'left',
                                     verticalAlign: cell.valign || 'middle',
                                     fontWeight: cell.bold ? 'bold' : 'normal',
@@ -2949,6 +2949,7 @@ const renderCustomTable = (el, replaceVars = s => s, options = {}) => {
                                     wordBreak: 'break-word',
                                     position: 'relative',
                                     cursor: options.onCellDragStart ? 'cell' : 'default',
+                                    lineHeight: '1.3',
                                 }}>
                                     <span style={{whiteSpace:'pre-wrap'}} dangerouslySetInnerHTML={{ __html: (() => {
                                         let contentStr = cell.content || '';
@@ -3044,7 +3045,7 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
                         return <th key={idx} style={{width: `${col.width}%`, height: col.height ? `${col.height}px` : 'auto', border: 'none', background: 'transparent'}}>{col.header === 'Kolom Baru' ? '' : col.header}</th>;
                     }
                     return (
-                        <th key={idx} className="bg-gray-100 border border-black p-1 font-bold" style={{width: `${col.width}%`, height: el.headerRowHeight ? `${el.headerRowHeight}px` : (col.height ? `${col.height}px` : 'auto'), fontSize: col.fontSize ? `${col.fontSize}px` : 'inherit', fontFamily: col.fontFamily || 'inherit', fontWeight: col.fontWeight || 'bold', textAlign: col.textAlign || 'center', verticalAlign: 'middle'}}>
+                        <th key={idx} className="bg-gray-100 border border-black p-1 font-bold" style={{width: `${col.width}%`, height: el.headerRowHeight ? `${el.headerRowHeight}px` : (col.height ? `${col.height}px` : 'auto'), fontSize: col.fontSize ? `${col.fontSize}px` : 'inherit', fontFamily: col.fontFamily || 'inherit', fontWeight: col.fontWeight || 'bold', textAlign: col.textAlign || 'center', verticalAlign: 'middle', padding: '5px 6px', lineHeight: '1.3'}}>
                             {toArabic(col.header)}
                         </th>
                     );
@@ -3056,7 +3057,7 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
     const renderRowCells = (sub, idx) => {
         return columns.map((col, cIdx) => {
             let content = '-';
-            let style = { verticalAlign: 'middle' };
+            let style = { verticalAlign: 'middle', padding: '5px 6px', lineHeight: '1.3' };
             
             let gradeObj = studentGrades[sub.id];
             let rawGrade = 0;
@@ -3140,7 +3141,7 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
             if (col.type === 'SPASI_KOSONG') {
                 return <td key={cIdx} style={{...style, border: 'none', background: 'transparent', padding: 0}}></td>;
             }
-            return <td key={cIdx} className="border border-black p-1" style={style}>{content}</td>
+            return <td key={cIdx} className="border border-black" style={style}>{content}</td>
         });
     };
 
@@ -3173,7 +3174,7 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
         const { totalRaport, rataRaport, jumlahSantri } = computeFooterValues();
         return columns.map((col, cIdx) => {
             let content = '';
-            let style = { textAlign: 'center', verticalAlign: 'middle', fontWeight: 'bold' };
+            let style = { textAlign: 'center', verticalAlign: 'middle', fontWeight: 'bold', padding: '5px 6px', lineHeight: '1.3' };
             if (col.height) style.height = `${col.height}px`;
             if (col.fontSize) style.fontSize = `${col.fontSize}px`;
             if (col.fontFamily) style.fontFamily = col.fontFamily;
@@ -3214,7 +3215,7 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
                     }
                     break;
             }
-            return <td key={cIdx} className="border border-black p-1" style={style}>{content}</td>;
+            return <td key={cIdx} className="border border-black" style={style}>{content}</td>;
         });
     };
 
@@ -3307,7 +3308,7 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
                                             <td 
                                                 key={`data-${segIdx}`} 
                                                 colSpan={seg.count} 
-                                                className="border border-black p-1 font-bold" 
+                                                className="border border-black font-bold" 
                                                 style={{ 
                                                     textAlign: segTextAlign, 
                                                     fontFamily: segFontFamily, 
@@ -3316,7 +3317,9 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
                                                         ? 'transparent' 
                                                         : (el.disableCatBg 
                                                             ? 'transparent' 
-                                                            : (el.catBgColor || '#e5e7eb'))
+                                                            : (el.catBgColor || '#e5e7eb')),
+                                                    padding: '5px 6px',
+                                                    lineHeight: '1.3'
                                                 }}
                                             >
                                                 {segLabel}
