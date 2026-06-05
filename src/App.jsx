@@ -2316,6 +2316,87 @@ const MasterData = ({ activeTab }) => {
 
   const renderFullTable = () => {
     switch (activeTab) {
+      case 'variables_list': {
+          const globalCodes = getGlobalSubjectShortCodes(data.masterSubjects || []);
+          return (
+              <div className="space-y-6 pb-8">
+                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                      <h4 className="font-bold text-blue-800 mb-2">Panduan Penggunaan Variabel</h4>
+                      <p className="text-sm text-blue-700">Gunakan kode variabel di bawah ini dengan mengapitnya menggunakan kurung kurawal ganda, contoh: <b>{'{{nama_santri}}'}</b>. Variabel ini akan otomatis digantikan dengan data asli saat Anda mencetak raport atau dokumen lainnya melalui tabel kustom.</p>
+                      <p className="text-sm text-blue-700 mt-1">Anda dapat menyalin teks variabel secara langsung dengan memblok teksnya, atau klik ganda lalu <b>Ctrl+C</b>.</p>
+                  </div>
+                  
+                  <div>
+                      <h4 className="font-bold text-gray-800 mb-3 border-b pb-2">Variabel Data Santri & Raport</h4>
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                          {[
+                              { code: 'nama_santri', label: 'Nama Santri' },
+                              { code: 'nama_santri_ar', label: 'Nama Santri (Arab)' },
+                              { code: 'nis', label: 'NIS' },
+                              { code: 'nisn', label: 'NISN' },
+                              { code: 'kelas', label: 'Kelas' },
+                              { code: 'kelas_ar', label: 'Kelas (Arab)' },
+                              { code: 'total_raport', label: 'Total Nilai Raport' },
+                              { code: 'total_raport_ar', label: 'Total Nilai Raport (Arab)' },
+                              { code: 'rata_rata_raport', label: 'Rata-rata Nilai Raport' },
+                              { code: 'rata_rata_raport_ar', label: 'Rata-rata Nilai (Arab)' },
+                              { code: 'jumlah_santri', label: 'Jumlah Santri di Kelas' },
+                              { code: 'jumlah_santri_ar', label: 'Jumlah Santri (Arab)' },
+                              { code: 'tahun_ajaran', label: 'Tahun Ajaran' },
+                              { code: 'tahun_ajaran_ar', label: 'Tahun Ajaran (Arab)' },
+                              { code: 'semester', label: 'Semester' },
+                              { code: 'semester_ar', label: 'Semester (Arab)' },
+                          ].map(v => (
+                              <div key={v.code} className="flex flex-col bg-gray-50 border rounded p-3 hover:bg-gray-100 transition">
+                                  <span className="font-mono text-indigo-700 font-bold mb-1 select-all cursor-text text-[13px]">{'{{'}{v.code}{'}}'}</span>
+                                  <span className="text-xs text-gray-600">{v.label}</span>
+                              </div>
+                          ))}
+                      </div>
+                  </div>
+
+                  <div>
+                      <h4 className="font-bold text-gray-800 mb-3 border-b pb-2">Variabel Pelajaran (Berdasarkan Master Data)</h4>
+                      {(!data.masterSubjects || data.masterSubjects.length === 0) ? (
+                          <div className="text-sm text-gray-500 italic">Belum ada pelajaran di Master Data.</div>
+                      ) : (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                              {data.masterSubjects.map(m => {
+                                  const sc = globalCodes[m.id] || 'XX';
+                                  return (
+                                      <div key={m.id} className="bg-white border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition">
+                                          <div className="bg-gray-100 px-3 py-2 border-b font-bold text-gray-800 text-sm whitespace-nowrap overflow-hidden text-ellipsis" title={m.nameId}>{m.nameId}</div>
+                                          <div className="p-3 space-y-2">
+                                              <div className="flex justify-between items-center text-xs">
+                                                  <span className="text-gray-600">Nama Indonesia:</span>
+                                                  <span className="font-mono font-bold text-indigo-700 select-all cursor-text">{'{{'}{sc}I{'}}'}</span>
+                                              </div>
+                                              <div className="flex justify-between items-center text-xs">
+                                                  <span className="text-gray-600">Nama Arab:</span>
+                                                  <span className="font-mono font-bold text-indigo-700 select-all cursor-text">{'{{'}{sc}A{'}}'}</span>
+                                              </div>
+                                              <div className="flex justify-between items-center text-xs pt-1 border-t">
+                                                  <span className="text-gray-600">Nilai:</span>
+                                                  <span className="font-mono font-bold text-emerald-700 select-all cursor-text">{'{{'}{sc}N{'}}'}</span>
+                                              </div>
+                                              <div className="flex justify-between items-center text-xs">
+                                                  <span className="text-gray-600">KKM:</span>
+                                                  <span className="font-mono font-bold text-orange-700 select-all cursor-text">{'{{'}{sc}K{'}}'}</span>
+                                              </div>
+                                              <div className="flex justify-between items-center text-xs">
+                                                  <span className="text-gray-600">Rata-rata:</span>
+                                                  <span className="font-mono font-bold text-blue-700 select-all cursor-text">{'{{'}{sc}R{'}}'}</span>
+                                              </div>
+                                          </div>
+                                      </div>
+                                  );
+                              })}
+                          </div>
+                      )}
+                  </div>
+              </div>
+          );
+      }
       case 'backup_restore':
         return <BackupRestorePanel />;
       case 'settings': {
@@ -2871,6 +2952,7 @@ const MasterData = ({ activeTab }) => {
         case 'fonts': return 'Pengaturan Font Kustom';
         case 'users': return 'Pengguna Sistem';
         case 'backup_restore': return 'Backup & Restore';
+        case 'variables_list': return 'Daftar Kode Variabel';
         default: return activeTab;
     }
   }
@@ -2879,7 +2961,7 @@ const MasterData = ({ activeTab }) => {
     <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 flex flex-col h-[85vh]">
       <div className="mb-4 flex justify-between items-center shrink-0 border-b pb-4">
         <h3 className="text-xl font-bold text-gray-800 capitalize">Data {getTitle()}</h3>
-        {activeTab !== 'backup_restore' && (
+        {activeTab !== 'backup_restore' && activeTab !== 'variables_list' && (
           <button onClick={() => handleOpenModal()} className="bg-emerald-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-emerald-700 shadow-sm transition"><Plus size={18} /> Tambah Data</button>
         )}
       </div>
@@ -7812,6 +7894,7 @@ const Dashboard = () => {
     { id: 'students', label: 'Data Santri' },
     { id: 'fonts', label: 'Font Kustom' }, 
     { id: 'users', label: 'Pengguna Sistem' },
+    { id: 'variables_list', label: 'Daftar Variabel' },
     { id: 'backup_restore', label: 'Backup & Restore' }
   ];
 
