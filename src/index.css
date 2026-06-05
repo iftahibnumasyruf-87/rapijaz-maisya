@@ -25,3 +25,32 @@ input[placeholder*="Arab"]::placeholder {
     print-color-adjust: exact !important;
   }
 }
+
+/* =============================================
+   TABEL RAPORT & TABEL KUSTOM - VERTICAL ALIGN
+   Mengatasi Tailwind base reset yang mengatur
+   vertical-align: baseline pada td/th
+   ============================================= */
+
+/* Paksa vertical-align middle pada SEMUA td/th 
+   dalam tabel raport dan tabel kustom */
+table td,
+table th {
+  vertical-align: middle !important;
+}
+
+/* Pastikan line-height cukup untuk teks Arab + Latin */
+.print-container table td,
+.print-container table th {
+  vertical-align: middle !important;
+  line-height: 1.25 !important;
+}
+
+/* Saat cetak, pastikan tetap berlaku */
+@media print {
+  table td,
+  table th {
+    vertical-align: middle !important;
+    line-height: 1.25 !important;
+  }
+}

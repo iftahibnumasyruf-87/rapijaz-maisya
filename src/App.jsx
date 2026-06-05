@@ -6100,7 +6100,8 @@ const LayoutBuilder = () => {
                 .print-wrapper, .print-wrapper * { visibility: visible; } 
                 .print-wrapper { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; margin: 0 !important; padding: 0 !important; } 
                 .print-container { position: relative !important; margin: 0 !important; padding: 0 !important; box-shadow: none !important; border: none !important; transform: scale(1) !important; left: 0 !important; top: 0 !important; } 
-                @page { size: ${pageSize === 'F4' ? '215.9mm 330.2mm' : 'A4'} ${orientation}; margin: 0 !important; } 
+                @page { size: ${pageSize === 'F4' ? '215.9mm 330.2mm' : 'A4'} ${orientation}; margin: 0 !important; }
+                table td, table th { vertical-align: middle !important; line-height: 1.25 !important; }
             }
             `}</style>
             <style>{`.custom-scrollbar::-webkit-scrollbar { width: 6px; } .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }`}</style>
@@ -7408,6 +7409,13 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                 } 
                 .print-container { position: relative !important; padding: 0 !important; box-shadow: none !important; border: none !important; transform: none !important; left: 0 !important; top: 0 !important; margin: 0 !important; } 
                 @page { size: ${cssPageSize}; margin: 0 !important; } 
+
+                /* FIX: Paksa vertical-align middle pada semua sel tabel saat cetak
+                   (mengatasi Tailwind base reset yang mengatur vertical-align: baseline) */
+                table td, table th {
+                    vertical-align: middle !important;
+                    line-height: 1.25 !important;
+                }
             }
             `}</style>
         </div>
