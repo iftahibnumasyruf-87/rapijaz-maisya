@@ -3031,7 +3031,7 @@ const renderCustomTable = (el, replaceVars = s => s, options = {}) => {
                                     border: bStyle,
                                     outline: isCellSelected ? '2px solid #4f46e5' : 'none',
                                     outlineOffset: -2,
-                                    padding: '3px 6px 6px 6px',
+                                    padding: '5px 6px',
                                     textAlign: cell.align || 'left',
                                     verticalAlign: cell.valign || 'middle',
                                     fontWeight: cell.bold ? 'bold' : 'normal',
@@ -3044,42 +3044,33 @@ const renderCustomTable = (el, replaceVars = s => s, options = {}) => {
                                     wordBreak: 'break-word',
                                     position: 'relative',
                                     cursor: options.onCellDragStart ? 'cell' : 'default',
-                                    lineHeight: '1.1',
+                                    lineHeight: '1.25',
                                     height: '100%',
+                                    display: 'table-cell'
                                 }}>
-                                    <div style={{
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        justifyContent: 'center',
-                                        alignItems: 'stretch',
-                                        width: '100%',
-                                        height: '100%',
-                                        minHeight: '100%'
-                                    }}>
-                                        {renderCellContent((() => {
-                                            let contentStr = cell.content || '';
-                                            if (contentStr.startsWith('=')) {
-                                                const match = contentStr.match(/^=([a-zA-Z0-9_-]+)\.([0-9]+_[0-9]+)$/);
-                                                if (match && options.allElements) {
-                                                    const targetEl = options.allElements.find(e => e.id === match[1]);
-                                                    if (targetEl && targetEl.cells && targetEl.cells[match[2]]) {
-                                                        contentStr = targetEl.cells[match[2]].content || '';
-                                                    } else {
-                                                        contentStr = '#REF!';
-                                                    }
+                                    {renderCellContent((() => {
+                                        let contentStr = cell.content || '';
+                                        if (contentStr.startsWith('=')) {
+                                            const match = contentStr.match(/^=([a-zA-Z0-9_-]+)\.([0-9]+_[0-9]+)$/);
+                                            if (match && options.allElements) {
+                                                const targetEl = options.allElements.find(e => e.id === match[1]);
+                                                if (targetEl && targetEl.cells && targetEl.cells[match[2]]) {
+                                                    contentStr = targetEl.cells[match[2]].content || '';
+                                                } else {
+                                                    contentStr = '#REF!';
                                                 }
                                             }
-                                            let html = replaceVars(contentStr).replace(/\n/g, '<br/>');
-                                            if (contentStr === '=') html = '<span style="color:#4f46e5;font-size:10px;animation: pulse 1.5s infinite;">Pilih Sel...</span>';
-                                            if (cell.isArabicDigits || el.isArabicDigits) {
-                                                html = html.split(/(<[^>]*>)/).map(part => {
-                                                    if (part.startsWith('<') && part.endsWith('>')) return part;
-                                                    return part.replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[d]);
-                                                }).join('');
-                                            }
-                                            return html;
-                                        })(), cell.align)}
-                                    </div>
+                                        }
+                                        let html = replaceVars(contentStr).replace(/\n/g, '<br/>');
+                                        if (contentStr === '=') html = '<span style="color:#4f46e5;font-size:10px;animation: pulse 1.5s infinite;">Pilih Sel...</span>';
+                                        if (cell.isArabicDigits || el.isArabicDigits) {
+                                            html = html.split(/(<[^>]*>)/).map(part => {
+                                                if (part.startsWith('<') && part.endsWith('>')) return part;
+                                                return part.replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[d]);
+                                            }).join('');
+                                        }
+                                        return html;
+                                    })(), cell.align)}
                                     
                                     {isEditable && targetColIdx < cols - 1 && (
                                         <div 
@@ -3155,7 +3146,7 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
                         return <th key={idx} style={{width: `${col.width}%`, height: col.height ? `${col.height}px` : 'auto', border: 'none', background: 'transparent'}}>{col.header === 'Kolom Baru' ? '' : col.header}</th>;
                     }
                     return (
-                        <th key={idx} className="bg-gray-100 border border-black p-1 font-bold" style={{width: `${col.width}%`, height: el.headerRowHeight ? `${el.headerRowHeight}px` : (col.height ? `${col.height}px` : 'auto'), fontSize: col.fontSize ? `${col.fontSize}px` : 'inherit', fontFamily: col.fontFamily || 'inherit', fontWeight: col.fontWeight || 'bold', textAlign: col.textAlign || 'center', verticalAlign: 'middle', padding: '3px 6px 6px 6px', lineHeight: '1.1', borderColor: bColor, borderWidth: `${bWidth}px`, borderStyle: bStyle}}>
+                        <th key={idx} className="bg-gray-100 border border-black p-1 font-bold" style={{width: `${col.width}%`, height: el.headerRowHeight ? `${el.headerRowHeight}px` : (col.height ? `${col.height}px` : 'auto'), fontSize: col.fontSize ? `${col.fontSize}px` : 'inherit', fontFamily: col.fontFamily || 'inherit', fontWeight: col.fontWeight || 'bold', textAlign: col.textAlign || 'center', verticalAlign: 'middle', padding: '5px 6px', lineHeight: '1.25', borderColor: bColor, borderWidth: `${bWidth}px`, borderStyle: bStyle}}>
                             {toArabic(col.header)}
                         </th>
                     );
@@ -3167,7 +3158,7 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
     const renderRowCells = (sub, idx) => {
         return columns.map((col, cIdx) => {
             let content = '-';
-            let style = { verticalAlign: 'middle', padding: '3px 6px 6px 6px', lineHeight: '1.1', borderColor: bColor, borderWidth: `${bWidth}px`, borderStyle: bStyle };
+            let style = { verticalAlign: 'middle' };
             
             let gradeObj = studentGrades[sub.id];
             let rawGrade = 0;
@@ -3242,6 +3233,14 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
                         style={verticalAlign: 'middle'};
                     }
             }
+            style = {
+                padding: '5px 6px',
+                lineHeight: '1.25',
+                borderColor: bColor,
+                borderWidth: `${bWidth}px`,
+                borderStyle: bStyle,
+                ...style
+            };
             if (col.height) style.height = `${col.height}px`;
             if (col.fontSize) style.fontSize = `${col.fontSize}px`;
             if (col.fontFamily) style.fontFamily = col.fontFamily;
@@ -3284,7 +3283,7 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
         const { totalRaport, rataRaport, jumlahSantri } = computeFooterValues();
         return columns.map((col, cIdx) => {
             let content = '';
-            let style = { textAlign: 'center', verticalAlign: 'middle', fontWeight: 'bold', padding: '3px 6px 6px 6px', lineHeight: '1.1', borderColor: bColor, borderWidth: `${bWidth}px`, borderStyle: bStyle };
+            let style = { textAlign: 'center', verticalAlign: 'middle', fontWeight: 'bold', padding: '5px 6px', lineHeight: '1.25', borderColor: bColor, borderWidth: `${bWidth}px`, borderStyle: bStyle };
             if (col.height) style.height = `${col.height}px`;
             if (col.fontSize) style.fontSize = `${col.fontSize}px`;
             if (col.fontFamily) style.fontFamily = col.fontFamily;
@@ -3428,8 +3427,8 @@ const renderDynamicTable = (el, data, studentGrades, classAverages = {}, isKatro
                                                         : (el.disableCatBg 
                                                             ? 'transparent' 
                                                             : (el.catBgColor || '#e5e7eb')),
-                                                    padding: '3px 6px 6px 6px',
-                                                    lineHeight: '1.1',
+                                                    padding: '5px 6px',
+                                                    lineHeight: '1.25',
                                                     borderColor: bColor,
                                                     borderWidth: `${bWidth}px`,
                                                     borderStyle: bStyle
