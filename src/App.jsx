@@ -387,19 +387,47 @@ const makeShortKey = (name, usedKeys) => {
     return key;
 };
 
+// Generate stable 2-char codes for subjects globally to ensure exact 3-char variable names
+const getGlobalSubjectShortCodes = (subjects) => {
+    const sorted = [...(subjects||[])].sort((a,b) => (a.nameId||a.id||'').localeCompare(b.nameId||b.id||''));
+    const usedKeys = new Set();
+    const map = {}; // id -> 2-char code
+    sorted.forEach(s => {
+        const clean = (s.nameId || s.name || '').trim();
+        const words = clean.split(/\s+/).filter(Boolean);
+        let key = words.map(w => (w.match(/[a-zA-Z0-9]/) ? w.match(/[a-zA-Z0-9]/)[0] : w[0] || '')).join('').toUpperCase().replace(/[^A-Z0-9]/g, '');
+        if (key.length === 0) key = clean.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 2) || 'XX';
+        if (key.length > 2) key = key.slice(0, 2);
+        if (usedKeys.has(key)) { const fb = clean.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 2); if (!usedKeys.has(fb)) key = fb; }
+        if (usedKeys.has(key)) { const base = key.slice(0,1) || 'X'; let i = 1; while(usedKeys.has(`${base}${i}`) && i<=9) i++; if(i<=9) key = `${base}${i}`; else { i=10; while(usedKeys.has(`X${i}`)) i++; key=`X${i}`; } }
+        usedKeys.add(key);
+        map[s.id] = key;
+    });
+    return map;
+};
+
 // Build map: shortKey -> { id, type } for subjects/presences/characterTraits/extracurriculars
-const buildShortKeyMap = (subjects = [], presences = [], characterTraits = [], extracurriculars = []) => {
+const buildShortKeyMap = (subjects = [], presences = [], characterTraits = [], extracurriculars = [], globalShortCodes = {}) => {
     const usedKeys = new Set();
     const map = {}; // shortKey -> { realId, dataType }
     subjects.forEach(sub => {
+        // Legacy support
         const sk = makeShortKey(sub.nameId || sub.name || sub.id, usedKeys);
         map[sk] = { realId: sub.id, dataType: 'subject' };
-        // Also register _UTS and _UAS variants
         map[`${sk}_u`] = { realId: sub.id, dataType: 'subject_uts' };
         map[`${sk}_a`] = { realId: sub.id, dataType: 'subject_uas' };
         map[`${sk}_nilai`] = { realId: sub.id, dataType: 'subject_nilai' };
         map[`${sk}_kkm`] = { realId: sub.id, dataType: 'subject_kkm' };
         map[`${sk}_rata`] = { realId: sub.id, dataType: 'subject_rata' };
+
+        // New exact 3-char support
+        const sk2 = globalShortCodes[sub.id];
+        if (sk2) {
+            // map[`${sk2}I`] is handled by name replacement, not grades. Same for A.
+            map[`${sk2}N`] = { realId: sub.id, dataType: 'subject_nilai' };
+            map[`${sk2}K`] = { realId: sub.id, dataType: 'subject_kkm' };
+            map[`${sk2}R`] = { realId: sub.id, dataType: 'subject_rata' };
+        }
     });
     presences.forEach(p => {
         const sk = makeShortKey(p.name || p.id, usedKeys);
@@ -3526,27 +3554,16 @@ const VariablesHelp = ({ onInsert, masterSubjects = [] }) => {
                 {masterSubjects.length > 0 && (
                     <optgroup label="Daftar Pelajaran (Master)">
                         {(() => {
-                            const usedKeys2 = new Set();
-                            const getKey2 = (nameId) => {
-                                const clean = (nameId || '').trim();
-                                const words = clean.split(/\s+/).filter(Boolean);
-                                let key = words.map(w => (w.match(/[a-zA-Z]/) ? w.match(/[a-zA-Z]/)[0] : w[0] || '')).join('').toLowerCase().replace(/[^a-z0-9]/g, '');
-                                if (key.length === 0) key = clean.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 3) || 'x';
-                                if (key.length > 3) key = key.slice(0, 3);
-                                if (usedKeys2.has(key)) { const fb = clean.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0,4); if (!usedKeys2.has(fb)) key = fb; }
-                                if (usedKeys2.has(key)) { const base = key; let i = 2; while(usedKeys2.has(`${base}${i}`)) i++; key = `${base}${i}`; }
-                                usedKeys2.add(key);
-                                return key;
-                            };
+                            const globalCodes = getGlobalSubjectShortCodes(masterSubjects);
                             return masterSubjects.map(m => {
-                                const varName = m.shortCode || getKey2(m.nameId);
+                                const sc = globalCodes[m.id] || 'XX';
                                 return (
                                     <React.Fragment key={m.id}>
-                                        <option value={`{{${varName}}}`}>Nama Indo: {m.nameId}</option>
-                                        <option value={`{{${varName}_arb}}`}>Nama Arab: {m.nameId}</option>
-                                        <option value={`{{${varName}_nilai}}`}>Nilai: {m.nameId}</option>
-                                        <option value={`{{${varName}_kkm}}`}>KKM: {m.nameId}</option>
-                                        <option value={`{{${varName}_rata}}`}>Rata-rata: {m.nameId}</option>
+                                        <option value={`{{${sc}I}}`} title={`Nama Indo: ${m.nameId}`}>[{sc}I] Nama Indo: {m.nameId}</option>
+                                        <option value={`{{${sc}A}}`} title={`Nama Arab: ${m.nameId}`}>[{sc}A] Nama Arab: {m.nameId}</option>
+                                        <option value={`{{${sc}N}}`} title={`Nilai: ${m.nameId}`}>[{sc}N] Nilai: {m.nameId}</option>
+                                        <option value={`{{${sc}K}}`} title={`KKM: ${m.nameId}`}>[{sc}K] KKM: {m.nameId}</option>
+                                        <option value={`{{${sc}R}}`} title={`Rata-rata: ${m.nameId}`}>[{sc}R] Rata-rata: {m.nameId}</option>
                                     </React.Fragment>
                                 );
                             });
@@ -6281,9 +6298,10 @@ const InputNilai = ({ activeInputTab }) => {
     const gradeDocId = getGradeDocId(selectedClass, classesData, activeSetting, data.grades);
 
     // Build short key map: shortKey -> { realId, dataType }
-    const shortKeyMap = useMemo(() => buildShortKeyMap(
-        subjectsInClass, data.presences, data.characterTraits, data.extracurriculars
-    ), [subjectsInClass, data.presences, data.characterTraits, data.extracurriculars]);
+    const shortKeyMap = useMemo(() => {
+        const globalShortCodes = getGlobalSubjectShortCodes(data.masterSubjects || data.subjects);
+        return buildShortKeyMap(subjectsInClass, data.presences, data.characterTraits, data.extracurriculars, globalShortCodes);
+    }, [subjectsInClass, data.presences, data.characterTraits, data.extracurriculars, data.masterSubjects, data.subjects]);
     // Build reverse map: realId -> shortKey (for display in headers)
     const idToShortKey = useMemo(() => {
         const reverse = {};
@@ -6992,7 +7010,8 @@ const CetakDokumen = ({ mode = 'raport' }) => {
 
         // Build short key map once per student render (deterministic, same order as InputNilai)
         const subjectsForClass = sortSubjectsByCategory(filterSubjectsByClass(data.subjects, selectedClass, classesData), data.subjectCategories);
-        const shortKeyMapRender = buildShortKeyMap(subjectsForClass, data.presences, data.characterTraits, data.extracurriculars);
+        const globalShortCodes = getGlobalSubjectShortCodes(data.masterSubjects || data.subjects);
+        const shortKeyMapRender = buildShortKeyMap(subjectsForClass, data.presences, data.characterTraits, data.extracurriculars, globalShortCodes);
         
         const replaceVariables = (str) => {
             if (typeof str !== 'string') return str;
@@ -7042,33 +7061,32 @@ const CetakDokumen = ({ mode = 'raport' }) => {
             //   {{shortCode}} / {{shortCode_arb}} (new short format)
             //   {{nameId}} / {{nameId_arb}} (legacy full-name format)
             if (data.masterSubjects && data.masterSubjects.length > 0) {
-                const usedAutoKeys3 = new Set();
-                const getAutoKey3 = (nameId) => {
-                    const clean3 = (nameId || '').trim();
-                    const words3 = clean3.split(/\s+/).filter(Boolean);
-                    let k = words3.map(w => (w.match(/[a-zA-Z]/) ? w.match(/[a-zA-Z]/)[0] : w[0] || '')).join('').toLowerCase().replace(/[^a-z0-9]/g, '');
-                    if (k.length === 0) k = clean3.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 3) || 'x';
-                    if (k.length > 3) k = k.slice(0, 3);
-                    if (usedAutoKeys3.has(k)) { const fb = clean3.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0,4); if(!usedAutoKeys3.has(fb)) k = fb; }
-                    if (usedAutoKeys3.has(k)) { const base = k; let i = 2; while(usedAutoKeys3.has(`${base}${i}`)) i++; k = `${base}${i}`; }
-                    usedAutoKeys3.add(k);
-                    return k;
-                };
-
+                const globalCodes = getGlobalSubjectShortCodes(data.masterSubjects);
                 data.masterSubjects.forEach(m => {
                     if (!m || !m.nameId) return; // guard: skip jika nameId undefined/null
                     const mapelAr = m.nameAr || m.nameId;
-                    const shortVar = m.shortCode || getAutoKey3(m.nameId);
+                    
+                    // Legacy support
+                    const shortVar = m.shortCode || makeShortKey(m.nameId, new Set()); // rough fallback, actual replace relies on regex later for _nilai etc
 
                     // Escape for use in RegExp
                     const escapeRe = (s) => (s != null ? String(s) : '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-                    // 1) Replace short/custom key  {{alq}} → nameId, {{alq_arb}} → nameAr
-                    if (!shortVar) return; // skip jika shortVar kosong
-                    const safeShort = escapeRe(shortVar);
-                    replaced = replaced
-                        .replace(new RegExp(`\\{\\{${safeShort}\\}\\}`, 'gi'), m.nameId)
-                        .replace(new RegExp(`\\{\\{${safeShort}_arb\\}\\}`, 'gi'), mapelAr);
+                    // 1) Replace legacy short/custom key  {{alq}} → nameId, {{alq_arb}} → nameAr
+                    if (shortVar) {
+                        const safeShort = escapeRe(shortVar);
+                        replaced = replaced
+                            .replace(new RegExp(`\\{\\{${safeShort}\\}\\}`, 'gi'), m.nameId)
+                            .replace(new RegExp(`\\{\\{${safeShort}_arb\\}\\}`, 'gi'), mapelAr);
+                    }
+                    
+                    // NEW 1b) Replace 3-char short code
+                    const sc = globalCodes[m.id];
+                    if (sc) {
+                        replaced = replaced
+                            .replace(new RegExp(`\\{\\{${sc}I\\}\\}`, 'gi'), m.nameId)
+                            .replace(new RegExp(`\\{\\{${sc}A\\}\\}`, 'gi'), mapelAr);
+                    }
 
                     // 2) Replace full nameId key (backward compat) {{Al-Qur'an}} → nameId
                     if (shortVar !== m.nameId) {
