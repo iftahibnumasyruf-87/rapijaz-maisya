@@ -4222,7 +4222,14 @@ const LayoutBuilder = () => {
             setPast(p => [...p, elements]);
             setFuture([]);
         }
-        setElements(elements.map(el => el.id === id ? { ...el, ...changes } : el));
+        setElements(prev => {
+            const deepUpdate = (els) => els.map(el => {
+                if (el.id === id) return { ...el, ...(typeof changes === 'function' ? changes(el) : changes) };
+                if (el.type === 'group' && el.children) return { ...el, children: deepUpdate(el.children) };
+                return el;
+            });
+            return deepUpdate(prev);
+        });
     };
 
     const removeElement = (id) => {
@@ -4391,10 +4398,11 @@ const LayoutBuilder = () => {
     };
 
     const handleElementMouseDown = (e, el) => {
+        if (el.locked || isSpacePressed) return;
+        
         e.stopPropagation();
-
+        
         if (e.shiftKey) {
-            // Shift+Klik: toggle elemen masuk/keluar dari seleksi
             setSelectedIds(prev => prev.includes(el.id) ? prev.filter(id => id !== el.id) : [...prev, el.id]);
             return;
         }
@@ -6171,31 +6179,7 @@ const LayoutBuilder = () => {
                                                     zIndex: child.zIndex ?? 1, opacity: child.opacity ?? 1
                                                 }}>
                                                     {child.type === 'table_grades' ? renderDynamicTable(child, data, mockStudentGrades, mockClassAverages, false, 'raport', classesData, 0) 
-                                                    : child.type === 'table_custom' ? renderCustomTable(child, s=>s, { allElements: elements, isEditable: selectedIds.includes(child.id), selectedCells: selectedIds.includes(child.id) ? ctSelCells : [], onColResizeStart: startColResize, onRowResizeStart: startRowResize, onCellDragStart: (e, ck) => { e.preventDefault(); e.stopPropagation(); setSelectedIds([child.id]); setIsDraggingCells(true); setCtDragStartCell(ck); setCtSelCells([ck]); setCtActiveCell(ck); }, onCellMouseEnter: (ck) => { if (isDraggingCells && ctDragStartCell) { setCtSelCells(getCellsInRect(ctDragStartCell, ck)); } }, onCellClick: (e, ck) => {
-                                                        e.stopPropagation();
-                                                        console.log('Cell Clicked!', { linkingCell, ck, childId: child.id });
-                                                        if (linkingCell) {
-                                                            console.log('Inside linkingCell logic!', linkingCell);
-                                                            const targetElId = linkingCell.elId;
-                                                            setPast(p => { const newP = [...p, elements]; return newP; }); setFuture([]);
-                                                            setElements(prev => prev.map(el => {
-                                                                if (el.id === targetElId) {
-                                                                    const newCells = { ...(el.cells || {}) };
-                                                                    newCells[linkingCell.cellKey] = { ...(newCells[linkingCell.cellKey] || {}), content: `=${child.id}.${ck}` };
-                                                                    return { ...el, cells: newCells };
-                                                                }
-                                                                return el;
-                                                            }));
-                                                            setLinkingCell(null);
-                                                            return;
-                                                        }
-                                                        setSelectedIds([child.id]);
-                                                        if (e.shiftKey) {
-                                                            setCtSelCells(prev => prev.includes(ck) ? prev.filter(k=>k!==ck) : [...prev, ck]);
-                                                        } else {
-                                                            setCtSelCells([ck]); setCtActiveCell(ck);
-                                                        }
-                                                    }, onCellDoubleClick: (e, ck) => { e.stopPropagation(); const currentContent = child.cells?.[ck]?.content || ''; const newContent = window.prompt('Ubah teks cell (ketik \\n untuk baris baru):', currentContent.replace(/\n/g, '\\n')); if (newContent !== null) { const newCells = {...(child.cells||{}), [ck]: {...(child.cells?.[ck]||{}), content: newContent.replace(/\\n/g, '\n')}}; updateElement(child.id, { cells: newCells }); } } })
+                                                    : child.type === 'table_custom' ? renderCustomTable(child, s=>s, { allElements: elements, isEditable: selectedIds.includes(child.id), selectedCells: selectedIds.includes(child.id) ? ctSelCells : [], onColResizeStart: startColResize, onRowResizeStart: startRowResize, onCellDragStart: (e, ck) => { e.preventDefault(); e.stopPropagation(); setSelectedIds([child.id]); setIsDraggingCells(true); setCtDragStartCell(ck); setCtSelCells([ck]); setCtActiveCell(ck); }, onCellMouseEnter: (ck) => { if (isDraggingCells && ctDragStartCell) { setCtSelCells(getCellsInRect(ctDragStartCell, ck)); } }, onCellClick: (e, ck) => handleCellClick(e, child.id, ck), onCellDoubleClick: (e, ck) => { e.stopPropagation(); const currentContent = child.cells?.[ck]?.content || ''; const newContent = window.prompt('Ubah teks cell (ketik \\n untuk baris baru):', currentContent.replace(/\n/g, '\\n')); if (newContent !== null) { const newCells = {...(child.cells||{}), [ck]: {...(child.cells?.[ck]||{}), content: newContent.replace(/\\n/g, '\n')}}; updateElement(child.id, { cells: newCells }); } } })
                                                     : child.type === 'image' ? <img src={child.content} style={{ width: '100%', height: '100%', objectFit: child.objectFit || 'contain', objectPosition: `${child.objectPositionX ?? 50}% ${child.objectPositionY ?? 50}%`, pointerEvents: 'none' }} alt="elemen" />
                                                     : child.type === 'line' ? <div style={{ width: '100%', height: `${child.lineThickness || 2}px`, backgroundColor: child.lineColor || '#000000', pointerEvents: 'none' }} />
                                                     : child.type === 'shape' ? <div style={{ width: '100%', height: '100%', backgroundColor: child.shapeFill || '#000000', borderRadius: `${child.shapeRadius || 0}px`, border: child.shapeBorder ? `${child.shapeBorder}px solid ${child.shapeBorderColor || '#000000'}` : 'none', pointerEvents: 'none' }} />
@@ -6204,7 +6188,7 @@ const LayoutBuilder = () => {
                                             ))}
                                         </div>
                                     ) : el.type === 'table_grades' ? renderDynamicTable(el, data, mockStudentGrades, mockClassAverages, false, 'raport', classesData, 0) 
-                                    : el.type === 'table_custom' ? renderCustomTable(el, s=>s, { allElements: elements, isEditable: selectedIds.includes(el.id), selectedCells: selectedIds.includes(el.id) ? ctSelCells : [], onColResizeStart: startColResize, onRowResizeStart: startRowResize, onCellDragStart: (e, ck) => { e.preventDefault(); e.stopPropagation(); setSelectedIds([el.id]); setIsDraggingCells(true); setCtDragStartCell(ck); setCtSelCells([ck]); setCtActiveCell(ck); }, onCellMouseEnter: (ck) => { if (isDraggingCells && ctDragStartCell) { setCtSelCells(getCellsInRect(ctDragStartCell, ck)); } }, onCellClick: (e, ck) => { e.stopPropagation(); setSelectedIds([el.id]); if (e.shiftKey) { setCtSelCells(prev => prev.includes(ck) ? prev.filter(k=>k!==ck) : [...prev, ck]); } else { setCtSelCells([ck]); setCtActiveCell(ck); } }, onCellDoubleClick: (e, ck) => { e.stopPropagation(); const currentContent = el.cells?.[ck]?.content || ''; const newContent = window.prompt('Ubah teks cell (ketik \\n untuk baris baru):', currentContent.replace(/\n/g, '\\n')); if (newContent !== null) { const newCells = {...(el.cells||{}), [ck]: {...(el.cells?.[ck]||{}), content: newContent.replace(/\\n/g, '\n')}}; updateElement(el.id, { cells: newCells }); } } })
+                                    : el.type === 'table_custom' ? renderCustomTable(el, s=>s, { allElements: elements, isEditable: selectedIds.includes(el.id), selectedCells: selectedIds.includes(el.id) ? ctSelCells : [], onColResizeStart: startColResize, onRowResizeStart: startRowResize, onCellDragStart: (e, ck) => { e.preventDefault(); e.stopPropagation(); setSelectedIds([el.id]); setIsDraggingCells(true); setCtDragStartCell(ck); setCtSelCells([ck]); setCtActiveCell(ck); }, onCellMouseEnter: (ck) => { if (isDraggingCells && ctDragStartCell) { setCtSelCells(getCellsInRect(ctDragStartCell, ck)); } }, onCellClick: (e, ck) => handleCellClick(e, el.id, ck), onCellDoubleClick: (e, ck) => { e.stopPropagation(); const currentContent = el.cells?.[ck]?.content || ''; const newContent = window.prompt('Ubah teks cell (ketik \\n untuk baris baru):', currentContent.replace(/\n/g, '\\n')); if (newContent !== null) { const newCells = {...(el.cells||{}), [ck]: {...(el.cells?.[ck]||{}), content: newContent.replace(/\\n/g, '\n')}}; updateElement(el.id, { cells: newCells }); } } })
                                     : el.type === 'image' ? <img src={el.content} style={{ width: '100%', height: '100%', objectFit: el.objectFit || 'contain', objectPosition: `${el.objectPositionX ?? 50}% ${el.objectPositionY ?? 50}%`, pointerEvents: 'none' }} alt="elemen" />
                                     : el.type === 'line' ? <div style={{ width: '100%', height: `${el.lineThickness || 2}px`, backgroundColor: el.lineColor || '#000000', pointerEvents: 'none' }} />
                                     : el.type === 'shape' ? <div style={{ width: '100%', height: '100%', backgroundColor: el.shapeFill || '#000000', borderRadius: `${el.shapeRadius || 0}px`, border: el.shapeBorder ? `${el.shapeBorder}px solid ${el.shapeBorderColor || '#000000'}` : 'none', pointerEvents: 'none' }} />
