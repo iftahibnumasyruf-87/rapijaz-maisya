@@ -686,13 +686,15 @@ const AppProvider = ({ children }) => {
         addLog(customLogMsg || `Menyimpan data di menu ${colName}`);
       }
       
-      // Only refetch the specific collection that was modified
-      const { data: items } = await supabase.from(colName).select('*');
-      if (items) {
-        setAllData(prev => ({
-          ...prev,
-          [colName]: sortDataItems(items.map(item => ({ ...item.payload, id: item.id })))
-        }));
+      // Only refetch the specific collection if not silent and not layouts/grades to prevent extreme lag
+      if (!silent && colName !== 'layouts' && colName !== 'grades') {
+        const { data: items } = await supabase.from(colName).select('*');
+        if (items) {
+          setAllData(prev => ({
+            ...prev,
+            [colName]: sortDataItems(items.map(item => ({ ...item.payload, id: item.id })))
+          }));
+        }
       }
     } catch (err) {
       console.error('saveToDb error:', err);
@@ -3705,6 +3707,7 @@ const LayoutBuilder = () => {
     const [clipboardCells, setClipboardCells] = useState(null);
     const [elementClipboard, setElementClipboard] = useState(null); // { items: [], isCut: bool }
     const [linkingCell, setLinkingCell] = useState(null);
+    const [isManualSaving, setIsManualSaving] = useState(false);
     const [pageSize, setPageSize] = useState('A4');
     const [guides, setGuides] = useState({ h: [], v: [] });
     const [selectedIds, setSelectedIds] = useState([]);
@@ -4399,7 +4402,24 @@ const LayoutBuilder = () => {
         setSelectedIds([]);
     };
 
-    const saveLayout = () => saveToDb('layouts', activeLayout, { name: data.layouts.find(l => l.id === activeLayout)?.name || activeLayout, elements, pageSize, orientation, guides, margins }, false, `Menyimpan desain layout ${activeLayout}`);
+    const saveLayout = async () => {
+        if (isManualSaving) return;
+        setIsManualSaving(true);
+        try {
+            await saveToDb('layouts', activeLayout, { 
+                name: data.layouts.find(l => l.id === activeLayout)?.name || activeLayout, 
+                elements, 
+                pageSize, 
+                orientation, 
+                guides, 
+                margins 
+            }, false, `Menyimpan desain layout ${activeLayout}`);
+        } catch (err) {
+            console.error('saveLayout error:', err);
+        } finally {
+            setIsManualSaving(false);
+        }
+    };
 
     const createNewLayout = () => {
         if (!newLayoutName.trim()) {
@@ -6091,7 +6111,25 @@ const LayoutBuilder = () => {
                     {isBottomMenuExpanded && (
                         <div className="p-4 space-y-2">
                             <p className="text-[10px] text-gray-500 text-center leading-tight">Tarik garis gelap (Atas/Kiri kanvas) untuk Garis Bantu. D-click garis untuk hapus.</p>
-                            <button onClick={saveLayout} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition"><Save size={18}/> Simpan Layout</button>
+                            <button 
+                                onClick={saveLayout} 
+                                disabled={isManualSaving} 
+                                className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition"
+                            >
+                                {isManualSaving ? (
+                                    <>
+                                        <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        Menyimpan...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Save size={18}/> Simpan Layout
+                                    </>
+                                )}
+                            </button>
                             <button onClick={() => setShowToolbar(!showToolbar)} className="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 py-2 rounded-lg font-bold flex items-center justify-center gap-2 transition text-sm mt-2">
                                 {showToolbar ? <EyeOff size={16}/> : <Eye size={16}/>} {showToolbar ? 'Sembunyikan Menu' : 'Tampilkan Menu'}
                             </button>
