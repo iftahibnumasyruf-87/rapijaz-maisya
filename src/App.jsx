@@ -4956,6 +4956,20 @@ const LayoutBuilder = () => {
                             <div className="flex flex-col"><label className="text-[10px] text-indigo-600 mb-1 font-bold">Kanan</label><input type="number" value={margins.right} onChange={e=>setMargins({...margins, right: Number(e.target.value)})} className="w-full p-1.5 border border-indigo-200 rounded text-xs" /></div>
                         </div>
                     </div>
+                    {elements.some(el => (el.type === 'image' && el.content?.startsWith('data:image')) || (el.type === 'group' && el.children?.some(c => c.type === 'image' && c.content?.startsWith('data:image')))) && (
+                        <div className="flex flex-col gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-800">
+                            <div className="flex items-center gap-2">
+                                <AlertCircle size={16} className="text-amber-600 shrink-0" />
+                                <span className="text-xs font-bold uppercase tracking-wider text-amber-700">Peringatan Kinerja</span>
+                            </div>
+                            <p className="text-[10px] leading-relaxed">
+                                Terdeteksi gambar berukuran besar yang tersimpan dalam format <strong>Base64</strong> di layout ini. Ini adalah penyebab utama proses penyimpanan menjadi sangat lambat/lama.
+                            </p>
+                            <p className="text-[10px] leading-relaxed font-semibold">
+                                Solusi: Buat bucket bernama <strong>"layout-images"</strong> di menu <strong>Storage Supabase</strong> Anda dan atur menjadi <strong>Public</strong>. Setelah itu, hapus elemen gambar lama di layout ini, lalu unggah kembali agar disimpan sebagai tautan web ringan.
+                            </p>
+                        </div>
+                    )}
                     <button onClick={() => { setSelectedIds([]); setTimeout(() => { document.title = "Print_Preview_Layout"; window.print(); }, 100); }} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-lg font-bold flex justify-center items-center gap-2 transition shadow-sm"><Printer size={16}/> Print Preview</button>
                     {showNewLayoutForm && (
                         <div className="border-t pt-3 space-y-2">
