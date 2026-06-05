@@ -3708,6 +3708,10 @@ const LayoutBuilder = () => {
     const [elementClipboard, setElementClipboard] = useState(null); // { items: [], isCut: bool }
     const [linkingCell, setLinkingCell] = useState(null);
     const [isManualSaving, setIsManualSaving] = useState(false);
+    const [showImageManager, setShowImageManager] = useState(false);
+    const [storageImages, setStorageImages] = useState([]);
+    const [isUploadingImage, setIsUploadingImage] = useState(false);
+    const [isLoadingImages, setIsLoadingImages] = useState(false);
     const [pageSize, setPageSize] = useState('A4');
     const [guides, setGuides] = useState({ h: [], v: [] });
     const [selectedIds, setSelectedIds] = useState([]);
@@ -4784,23 +4788,34 @@ const LayoutBuilder = () => {
         setDraggingType('selection');
     };
 
+    const loadStorageImages = async () => {
+        setIsLoadingImages(true);
+        try {
+            const { data: files, error } = await supabase.storage.from('layout-images').list('', { sortBy: { column: 'created_at', order: 'desc' }, limit: 100 });
+            if (error) throw error;
+            const urls = (files || []).filter(f => !f.name.startsWith('.')).map(f => ({
+                name: f.name,
+                url: supabase.storage.from('layout-images').getPublicUrl(f.name).data?.publicUrl,
+            }));
+            setStorageImages(urls);
+        } catch (err) {
+            if (err?.message?.includes('does not exist') || err?.statusCode === '404') {
+                showNotification('Bucket "layout-images" belum dibuat di Supabase Storage. Silakan buat terlebih dahulu melalui dashboard Supabase.', 'error');
+            } else {
+                showNotification('Gagal memuat daftar gambar: ' + (err?.message || ''), 'error');
+            }
+            setStorageImages([]);
+        } finally {
+            setIsLoadingImages(false);
+        }
+    };
+
     const handleImageUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
 
-        // Jika ukuran file < 200KB, boleh pakai base64 (aman untuk DB)
-        // Jika lebih besar, upload ke Supabase Storage agar tidak gagal simpan
-        const MAX_BASE64_SIZE = 200 * 1024; // 200KB
-
-        if (file.size <= MAX_BASE64_SIZE) {
-            const reader = new FileReader();
-            reader.onload = (ev) => updateElement(selectedElementId, { content: ev.target.result });
-            reader.readAsDataURL(file);
-            return;
-        }
-
-        // Upload ke Supabase Storage
-        showNotification('Mengupload gambar, mohon tunggu...', 'info');
+        setIsUploadingImage(true);
+        showNotification('Mengupload gambar ke Storage...', 'info');
         try {
             const ext = file.name.split('.').pop();
             const fileName = `layout_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
@@ -4816,14 +4831,22 @@ const LayoutBuilder = () => {
 
             if (!urlData?.publicUrl) throw new Error('Gagal mendapatkan URL gambar');
 
-            updateElement(selectedElementId, { content: urlData.publicUrl });
-            showNotification('Gambar berhasil diupload!');
+            if (selectedElementId) updateElement(selectedElementId, { content: urlData.publicUrl });
+            setStorageImages(prev => [{ name: fileName, url: urlData.publicUrl }, ...prev]);
+            showNotification('Gambar berhasil diupload ke Storage!');
         } catch (err) {
-            // Fallback: jika storage gagal (bucket belum dibuat), paksa base64
-            showNotification('Storage tidak tersedia, menggunakan metode lain...', 'warning');
-            const reader = new FileReader();
-            reader.onload = (ev) => updateElement(selectedElementId, { content: ev.target.result });
-            reader.readAsDataURL(file);
+            // Jika bucket belum ada, fallback ke base64 hanya untuk gambar kecil
+            const MAX_BASE64_SIZE = 200 * 1024;
+            if (file.size <= MAX_BASE64_SIZE) {
+                showNotification('Storage tidak tersedia. Menggunakan Base64 (hanya untuk gambar kecil ≤200KB). Buat bucket "layout-images" di Supabase Storage untuk menghindari ini.', 'warning');
+                const reader = new FileReader();
+                reader.onload = (ev) => { if (selectedElementId) updateElement(selectedElementId, { content: ev.target.result }); };
+                reader.readAsDataURL(file);
+            } else {
+                showNotification('Gagal upload! Bucket "layout-images" belum ada di Supabase Storage Anda. Buat bucket tersebut di dashboard Supabase, lalu coba lagi.', 'error');
+            }
+        } finally {
+            setIsUploadingImage(false);
         }
     };
 
@@ -4963,13 +4986,101 @@ const LayoutBuilder = () => {
                                 <span className="text-xs font-bold uppercase tracking-wider text-amber-700">Peringatan Kinerja</span>
                             </div>
                             <p className="text-[10px] leading-relaxed">
-                                Terdeteksi gambar berukuran besar yang tersimpan dalam format <strong>Base64</strong> di layout ini. Ini adalah penyebab utama proses penyimpanan menjadi sangat lambat/lama.
+                                Terdeteksi gambar besar dalam format <strong>Base64</strong> — penyebab simpan lambat.
                             </p>
-                            <p className="text-[10px] leading-relaxed font-semibold">
-                                Solusi: Buat bucket bernama <strong>"layout-images"</strong> di menu <strong>Storage Supabase</strong> Anda dan atur menjadi <strong>Public</strong>. Setelah itu, hapus elemen gambar lama di layout ini, lalu unggah kembali agar disimpan sebagai tautan web ringan.
-                            </p>
+                            <button
+                                onClick={() => { setShowImageManager(true); loadStorageImages(); }}
+                                className="w-full bg-amber-500 hover:bg-amber-600 text-white py-1.5 rounded text-xs font-bold flex items-center justify-center gap-2 transition"
+                            >
+                                <ImageIcon size={14}/> Buka Manajer Gambar → Upload Ulang
+                            </button>
                         </div>
                     )}
+                    {/* IMAGE MANAGER PANEL */}
+                    <div className="border rounded-lg overflow-hidden">
+                        <button
+                            onClick={() => { setShowImageManager(v => !v); if (!showImageManager) loadStorageImages(); }}
+                            className="w-full flex items-center justify-between px-3 py-2.5 bg-purple-50 hover:bg-purple-100 transition text-left"
+                        >
+                            <span className="text-xs font-bold text-purple-700 uppercase tracking-wide flex items-center gap-2">
+                                <ImageIcon size={13}/> Manajer Gambar (Storage)
+                            </span>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{transform: showImageManager ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s'}}><polyline points="6 9 12 15 18 9"/></svg>
+                        </button>
+                        {showImageManager && (
+                            <div className="p-3 space-y-3">
+                                <p className="text-[10px] text-gray-500 leading-relaxed">
+                                    Upload gambar ke <strong>Supabase Storage</strong>. Gambar akan disimpan sebagai URL web — <strong>tidak membebani database</strong>.
+                                    Klik gambar di bawah untuk langsung ditempelkan ke elemen yang dipilih di kanvas.
+                                </p>
+
+                                {/* Upload baru */}
+                                <label className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-lg border-2 border-dashed cursor-pointer transition text-sm font-bold ${
+                                    isUploadingImage
+                                        ? 'border-purple-300 bg-purple-50 text-purple-400 cursor-not-allowed'
+                                        : 'border-purple-300 bg-purple-50 hover:bg-purple-100 text-purple-700'
+                                }`}>
+                                    {isUploadingImage ? (
+                                        <><svg className="animate-spin h-4 w-4 text-purple-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Mengupload...</>
+                                    ) : (
+                                        <><Upload size={16}/> Pilih & Upload Gambar Baru</>
+                                    )}
+                                    <input type="file" accept="image/*" className="hidden" disabled={isUploadingImage} onChange={handleImageUpload} />
+                                </label>
+
+                                {!selectedElementId && (
+                                    <p className="text-[10px] text-orange-600 bg-orange-50 border border-orange-200 rounded p-2">
+                                        ⚠️ <strong>Pilih elemen gambar di kanvas terlebih dahulu</strong> agar gambar yang diklik dari galeri langsung terpasang.
+                                    </p>
+                                )}
+
+                                {/* Galeri */}
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[10px] font-bold text-gray-600 uppercase">Galeri ({storageImages.length} gambar)</span>
+                                    <button onClick={loadStorageImages} className="text-[10px] text-purple-600 hover:underline flex items-center gap-1" disabled={isLoadingImages}>
+                                        <RefreshCw size={10} className={isLoadingImages ? 'animate-spin' : ''}/> Muat Ulang
+                                    </button>
+                                </div>
+
+                                {isLoadingImages ? (
+                                    <div className="flex items-center justify-center py-6 text-gray-400 text-xs gap-2">
+                                        <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                        Memuat gambar...
+                                    </div>
+                                ) : storageImages.length === 0 ? (
+                                    <div className="text-center py-6 text-gray-400 text-xs">
+                                        <ImageIcon size={28} className="mx-auto mb-2 opacity-30" />
+                                        <p>Belum ada gambar di Storage.</p>
+                                        <p className="mt-1 text-[10px]">Jika bucket belum dibuat, buat bucket bernama <strong>layout-images</strong> (Public) di dashboard Supabase Anda.</p>
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-3 gap-1.5 max-h-48 overflow-y-auto custom-scrollbar">
+                                        {storageImages.map((img) => (
+                                            <div
+                                                key={img.name}
+                                                title={`Klik untuk pasang ke elemen: ${img.name}`}
+                                                onClick={() => {
+                                                    if (!selectedElementId) {
+                                                        showNotification('Pilih elemen gambar di kanvas terlebih dahulu!', 'warning');
+                                                        return;
+                                                    }
+                                                    updateElement(selectedElementId, { content: img.url });
+                                                    showNotification('Gambar dipasang ke elemen!');
+                                                }}
+                                                className="relative cursor-pointer rounded overflow-hidden border-2 border-transparent hover:border-purple-500 transition group"
+                                                style={{ aspectRatio: '1/1' }}
+                                            >
+                                                <img src={img.url} alt={img.name} className="w-full h-full object-cover" loading="lazy" />
+                                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition flex items-center justify-center">
+                                                    <span className="opacity-0 group-hover:opacity-100 text-white text-[9px] font-bold text-center px-1">Pasang</span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
                     <button onClick={() => { setSelectedIds([]); setTimeout(() => { document.title = "Print_Preview_Layout"; window.print(); }, 100); }} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-lg font-bold flex justify-center items-center gap-2 transition shadow-sm"><Printer size={16}/> Print Preview</button>
                     {showNewLayoutForm && (
                         <div className="border-t pt-3 space-y-2">
