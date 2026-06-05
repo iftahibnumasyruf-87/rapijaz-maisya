@@ -3055,27 +3055,46 @@ const renderCustomTable = (el, replaceVars = s => s, options = {}) => {
                                     onMouseEnter={() => {
                                         if (options.onCellMouseEnter) options.onCellMouseEnter(ck);
                                     }}
-                                    style={{
-                                    border: bStyle,
-                                    outline: isCellSelected ? '2px solid #4f46e5' : 'none',
-                                    outlineOffset: -2,
-                                    padding: '5px 6px',
-                                    textAlign: cell.align || 'left',
-                                    verticalAlign: cell.valign || 'middle',
-                                    fontWeight: cell.bold ? 'bold' : 'normal',
-                                    fontFamily: cell.fontFamily || el.fontFamily || 'Arial, sans-serif',
-                                    fontSize: cell.fontSize ? `${cell.fontSize}px` : 'inherit',
-                                    color: cell.color || 'inherit',
-                                    backgroundColor: cellBg,
-                                    direction: cell.isRtl ? 'rtl' : (el.isRtl ? 'rtl' : 'ltr'),
-                                    overflow: 'hidden',
-                                    wordBreak: 'break-word',
-                                    position: 'relative',
-                                    cursor: options.onCellDragStart ? 'cell' : 'default',
-                                    lineHeight: '1.25',
-                                    height: '100%',
-                                    display: 'table-cell'
-                                }}>
+                                    style={(() => {
+                                        // Per-cell border override
+                                        let borderTopStyle, borderRightStyle, borderBottomStyle, borderLeftStyle;
+                                        if (cell.cellBorder) {
+                                            const cb = cell.cellBorder;
+                                            const cbW = cb.width !== undefined ? cb.width : bWidth;
+                                            const cbC = cb.color || bColor;
+                                            const makeSide = (active) => active === false ? 'none' : cbW > 0 ? `${cbW}px solid ${cbC}` : 'none';
+                                            borderTopStyle = makeSide(cb.top);
+                                            borderRightStyle = makeSide(cb.right);
+                                            borderBottomStyle = makeSide(cb.bottom);
+                                            borderLeftStyle = makeSide(cb.left);
+                                        }
+                                        return {
+                                        ...(cell.cellBorder ? {
+                                            borderTop: borderTopStyle,
+                                            borderRight: borderRightStyle,
+                                            borderBottom: borderBottomStyle,
+                                            borderLeft: borderLeftStyle,
+                                        } : { border: bStyle }),
+                                        outline: isCellSelected ? '2px solid #4f46e5' : 'none',
+                                        outlineOffset: -2,
+                                        padding: '5px 6px',
+                                        textAlign: cell.align || 'left',
+                                        verticalAlign: cell.valign || 'middle',
+                                        fontWeight: cell.bold ? 'bold' : 'normal',
+                                        fontFamily: cell.fontFamily || el.fontFamily || 'Arial, sans-serif',
+                                        fontSize: cell.fontSize ? `${cell.fontSize}px` : 'inherit',
+                                        color: cell.color || 'inherit',
+                                        backgroundColor: cellBg,
+                                        direction: cell.isRtl ? 'rtl' : (el.isRtl ? 'rtl' : 'ltr'),
+                                        overflow: 'hidden',
+                                        wordBreak: 'break-word',
+                                        position: 'relative',
+                                        cursor: options.onCellDragStart ? 'cell' : 'default',
+                                        lineHeight: '1.25',
+                                        height: '100%',
+                                        display: 'table-cell'
+                                        };
+                                    })()}>
                                     {renderCellContent((() => {
                                         let contentStr = cell.content || '';
                                         if (contentStr.startsWith('=')) {
@@ -5694,6 +5713,78 @@ const LayoutBuilder = () => {
                                                             }}>+</button>
                                                         </div>
                                                     </div>
+                                                </div>
+
+                                                {/* Per-Cell Border Settings */}
+                                                <div className="mt-2 border border-orange-200 rounded-lg overflow-hidden">
+                                                    <div className="bg-orange-50 px-2 py-1 flex items-center justify-between">
+                                                        <span className="text-[10px] font-bold text-orange-700 uppercase tracking-wide">🖊 Border Sel Ini</span>
+                                                        <button
+                                                            onClick={() => {
+                                                                const newCells = {...activeEl.cells};
+                                                                ctSelCells.forEach(ck => {
+                                                                    const cur = newCells[ck]?.cellBorder;
+                                                                    if (cur) {
+                                                                        const nc = {...(newCells[ck]||{})};
+                                                                        delete nc.cellBorder;
+                                                                        newCells[ck] = nc;
+                                                                    } else {
+                                                                        newCells[ck] = {...(newCells[ck]||{}), cellBorder: { top: true, right: true, bottom: true, left: true, width: activeEl.borderWidth ?? 1, color: activeEl.borderColor || '#000000' }};
+                                                                    }
+                                                                });
+                                                                updateElement(selectedElementId, { cells: newCells });
+                                                            }}
+                                                            className={`text-[9px] px-2 py-0.5 rounded font-bold transition ${activeEl.cells?.[ctSelCells[0]]?.cellBorder ? 'bg-orange-500 text-white' : 'bg-white text-orange-600 border border-orange-300 hover:bg-orange-100'}`}
+                                                        >
+                                                            {activeEl.cells?.[ctSelCells[0]]?.cellBorder ? '✓ Aktif (Klik Reset)' : 'Aktifkan Override'}
+                                                        </button>
+                                                    </div>
+                                                    {activeEl.cells?.[ctSelCells[0]]?.cellBorder && (() => {
+                                                        const cb = activeEl.cells[ctSelCells[0]].cellBorder;
+                                                        const updateCB = (patch) => {
+                                                            const newCells = {...activeEl.cells};
+                                                            ctSelCells.forEach(ck => {
+                                                                newCells[ck] = {...(newCells[ck]||{}), cellBorder: {...(newCells[ck]?.cellBorder || {}), ...patch}};
+                                                            });
+                                                            updateElement(selectedElementId, { cells: newCells });
+                                                        };
+                                                        return (
+                                                            <div className="p-2 space-y-2">
+                                                                {/* Warna & Lebar */}
+                                                                <div className="flex gap-2 items-center">
+                                                                    <label className="text-[10px] text-gray-600 w-12 shrink-0">Warna</label>
+                                                                    <input type="color" className="w-8 h-7 p-0 border-0 rounded cursor-pointer" value={cb.color || '#000000'} onChange={e => updateCB({ color: e.target.value })} />
+                                                                    <label className="text-[10px] text-gray-600 shrink-0">Tebal</label>
+                                                                    <input type="number" min="0" max="10" className="w-12 p-1 border rounded text-xs text-center" value={cb.width !== undefined ? cb.width : 1} onChange={e => updateCB({ width: Number(e.target.value) })} />
+                                                                    <span className="text-[10px] text-gray-500">px</span>
+                                                                </div>
+                                                                {/* Sisi Border */}
+                                                                <div className="flex flex-col gap-1">
+                                                                    <span className="text-[10px] text-gray-500 font-bold">Sisi yang tampil:</span>
+                                                                    <div className="grid grid-cols-2 gap-1">
+                                                                        {[
+                                                                            { key: 'top',    label: '↑ Atas' },
+                                                                            { key: 'right',  label: '→ Kanan' },
+                                                                            { key: 'bottom', label: '↓ Bawah' },
+                                                                            { key: 'left',   label: '← Kiri' },
+                                                                        ].map(side => {
+                                                                            const isOn = cb[side.key] !== false;
+                                                                            return (
+                                                                                <button key={side.key}
+                                                                                    onClick={() => updateCB({ [side.key]: !isOn })}
+                                                                                    className={`py-1 rounded text-[10px] font-bold border transition ${isOn ? 'bg-orange-500 text-white border-orange-500' : 'bg-white text-gray-400 border-gray-300 hover:bg-gray-50'}`}
+                                                                                >{side.label}</button>
+                                                                            );
+                                                                        })}
+                                                                    </div>
+                                                                    <div className="grid grid-cols-2 gap-1 mt-1">
+                                                                        <button onClick={() => updateCB({ top: true, right: true, bottom: true, left: true })} className="py-1 rounded text-[9px] font-bold bg-gray-100 hover:bg-gray-200 border border-gray-300 text-gray-600">⬜ Semua ON</button>
+                                                                        <button onClick={() => updateCB({ top: false, right: false, bottom: false, left: false })} className="py-1 rounded text-[9px] font-bold bg-gray-100 hover:bg-gray-200 border border-gray-300 text-gray-600">✕ Semua OFF</button>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })()}
                                                 </div>
 
                                                 {/* Insert / Delete Row & Column */}
