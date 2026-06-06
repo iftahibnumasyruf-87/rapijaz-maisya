@@ -4213,7 +4213,7 @@ const LayoutBuilder = () => {
     };
 
     const handleElementMouseDown = (e, el) => {
-        if (el.locked || isSpacePressed) return;
+        if (el.locked) return;
         
         e.stopPropagation();
         
