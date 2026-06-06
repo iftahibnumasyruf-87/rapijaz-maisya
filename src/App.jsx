@@ -437,10 +437,11 @@ const buildShortKeyMap = (subjects = [], presences = [], characterTraits = [], e
         const sk = makeShortKey(p.name || p.id, usedKeys);
         map[sk] = { realId: p.id, dataType: 'trait' };
     });
-    extracurriculars.forEach(p => {
-        const sk = makeShortKey(p.name || p.id, usedKeys);
-        map[sk] = { realId: p.id, dataType: 'ekskul' };
-    });
+    // Ekskul: 2 slot tetap per siswa
+    map['ekskul1_nama']  = { realId: 'ekskul1_nama',  dataType: 'ekskul_fixed' };
+    map['ekskul1_nilai'] = { realId: 'ekskul1_nilai', dataType: 'ekskul_fixed' };
+    map['ekskul2_nama']  = { realId: 'ekskul2_nama',  dataType: 'ekskul_fixed' };
+    map['ekskul2_nilai'] = { realId: 'ekskul2_nilai', dataType: 'ekskul_fixed' };
     map['cw'] = { realId: 'catatan_wali', dataType: 'catatan' };
     return map;
 };
@@ -3098,22 +3099,26 @@ const renderCellContent = (htmlContent, cellAlign) => {
 };
 
 const renderCustomTable = (el, replaceVars = s => s, options = {}) => {
+    const baseWidth = el.baseWidth || 500;
+    const scaleRatio = el.width ? el.width / baseWidth : 1;
+
     const rows = el.tableRows || 3;
     const cols = el.tableCols || 3;
     const colWidths = el.colWidths || Array.from({length: cols}, () => Math.round(100/cols));
-    const rowHeights = el.rowHeights || Array.from({length: rows}, () => 30);
+    const rowHeights = (el.rowHeights || Array.from({length: rows}, () => 30)).map(h => h * scaleRatio);
     const cells = el.cells || {};
+    const baseFontSize = (el.fontSize || 12) * scaleRatio;
     const bColor = el.borderColor !== undefined ? el.borderColor : '#b1b1b1';
-    const bWidth = el.borderWidth !== undefined ? el.borderWidth : 1;
+    const bWidth = (el.borderWidth !== undefined ? el.borderWidth : 1) * scaleRatio;
     const bStyle = bWidth > 0 ? `${bWidth}px solid ${bColor}` : 'none';
     const tBg = el.isTransparent ? 'transparent' : 'white';
 
     return (
-        <table style={{ borderCollapse: 'collapse', width: '100%', tableLayout: 'fixed', direction: el.isRtl ? 'rtl' : 'ltr', fontSize: `${el.fontSize || 12}px`, fontFamily: el.fontFamily || 'Arial, sans-serif', background: tBg }}>
+        <table style={{ borderCollapse: 'collapse', width: '100%', tableLayout: 'fixed', direction: el.isRtl ? 'rtl' : 'ltr', fontSize: `${baseFontSize}px`, fontFamily: el.fontFamily || 'Arial, sans-serif', background: tBg }}>
             <colgroup>{colWidths.map((w, i) => <col key={i} style={{width:`${w}%`}}/>)}</colgroup>
             <tbody>
                 {Array.from({length: rows}, (_, r) => (
-                    <tr key={r} style={{height:`${rowHeights[r] || 30}px`}}>
+                    <tr key={r} style={{height:`${rowHeights[r] || (30 * scaleRatio)}px`}}>
                         {Array.from({length: cols}, (_, c) => {
                             const ck = `${r}_${c}`;
                             const cell = cells[ck] || {};
@@ -3166,7 +3171,7 @@ const renderCustomTable = (el, replaceVars = s => s, options = {}) => {
                                         verticalAlign: cell.valign || 'middle',
                                         fontWeight: cell.bold ? 'bold' : 'normal',
                                         fontFamily: cell.fontFamily || el.fontFamily || 'Arial, sans-serif',
-                                        fontSize: cell.fontSize ? `${cell.fontSize}px` : 'inherit',
+                                        fontSize: cell.fontSize ? `${cell.fontSize * scaleRatio}px` : 'inherit',
                                         color: cell.color || 'inherit',
                                         backgroundColor: cellBg,
                                         direction: cell.isRtl ? 'rtl' : (el.isRtl ? 'rtl' : 'ltr'),
@@ -3244,7 +3249,7 @@ const renderCustomTable = (el, replaceVars = s => s, options = {}) => {
                                             onMouseDown={(e) => {
                                                 e.stopPropagation();
                                                 e.preventDefault();
-                                                if (options.onRowResizeStart) options.onRowResizeStart(el.id, targetRowIdx, e);
+                                                if (options.onRowResizeStart) options.onRowResizeStart(el.id, targetRowIdx, e, scaleRatio);
                                             }}
                                             style={{
                                                 position: 'absolute',
@@ -3585,7 +3590,7 @@ const LayoutBuilder = () => {
         });
     };
 
-    const startRowResize = (elId, rowIdx, e) => {
+    const startRowResize = (elId, rowIdx, e, scaleRatio = 1) => {
         const el = elements.find(item => item.id === elId);
         if (!el) return;
         setCtDrag({
@@ -3595,7 +3600,8 @@ const LayoutBuilder = () => {
             startX: e.clientX,
             startY: e.clientY,
             startRowHeights: [...(el.rowHeights || Array.from({length: el.tableRows || 3}, () => 30))],
-            startTableHeight: el.height || 90
+            startTableHeight: el.height || 90,
+            scaleRatio: scaleRatio
         });
     };
 
@@ -3998,7 +4004,7 @@ const LayoutBuilder = () => {
             // line/shape specific
             ...(isLine ? { lineColor: '#000000', lineThickness: 2 } : {}),
             ...(isShape ? { shapeFill: '#000000', shapeRadius: 0, shapeBorder: 0, shapeBorderColor: '#000000' } : {}),
-            ...(isCustomTable ? { tableRows: defaultCTRows, tableCols: defaultCTCols, colWidths: [33,33,34], rowHeights: [35,35,35], cells: defaultCells, borderColor: '#000000', borderWidth: 1, headerBg: '#e5e7eb', isRtl: false, isTransparent: false } : {})
+            ...(isCustomTable ? { baseWidth: 500, tableRows: defaultCTRows, tableCols: defaultCTCols, colWidths: [33,33,34], rowHeights: [35,35,35], cells: defaultCells, borderColor: '#000000', borderWidth: 1, headerBg: '#e5e7eb', isRtl: false, isTransparent: false } : {})
         };
         setPast(p => [...p, elements]);
         setFuture([]);
@@ -4297,7 +4303,7 @@ const LayoutBuilder = () => {
             } else if (ctDrag.type === 'row') {
                 const r = ctDrag.idx;
                 const newRowHeights = [...ctDrag.startRowHeights];
-                let newH = ctDrag.startRowHeights[r] + scaledDy;
+                let newH = ctDrag.startRowHeights[r] + (scaledDy / (ctDrag.scaleRatio || 1));
                 if (newH < 10) newH = 10;
                 newRowHeights[r] = Math.round(newH);
                 
@@ -4550,36 +4556,6 @@ const LayoutBuilder = () => {
         setSelectedIds(ungrouped.map(el => el.id));
     };
 
-    const alignMultiple = (direction) => {
-        if (selectedIds.length < 2) return;
-        const selected = elements.filter(el => selectedIds.includes(el.id));
-        const updMap = {};
-        if (direction === 'left') {
-            const minX = Math.min(...selected.map(el => el.x || 0));
-            selected.forEach(el => { updMap[el.id] = { x: minX }; });
-        } else if (direction === 'right') {
-            const maxX = Math.max(...selected.map(el => (el.x || 0) + (el.width || 200)));
-            selected.forEach(el => { updMap[el.id] = { x: maxX - (el.width || 200) }; });
-        } else if (direction === 'center') {
-            const minX = Math.min(...selected.map(el => el.x || 0));
-            const maxX = Math.max(...selected.map(el => (el.x || 0) + (el.width || 200)));
-            const cx = (minX + maxX) / 2;
-            selected.forEach(el => { updMap[el.id] = { x: cx - (el.width || 200) / 2 }; });
-        } else if (direction === 'top') {
-            const minY = Math.min(...selected.map(el => el.y || 0));
-            selected.forEach(el => { updMap[el.id] = { y: minY }; });
-        } else if (direction === 'bottom') {
-            const maxY = Math.max(...selected.map(el => (el.y || 0) + (el.height || 30)));
-            selected.forEach(el => { updMap[el.id] = { y: maxY - (el.height || 30) }; });
-        } else if (direction === 'middle') {
-            const minY = Math.min(...selected.map(el => el.y || 0));
-            const maxY = Math.max(...selected.map(el => (el.y || 0) + (el.height || 30)));
-            const cy = (minY + maxY) / 2;
-            selected.forEach(el => { updMap[el.id] = { y: cy - (el.height || 30) / 2 }; });
-        }
-        setPast(p => [...p, elements]); setFuture([]);
-        setElements(elements.map(el => selectedIds.includes(el.id) ? { ...el, ...(updMap[el.id] || {}) } : el));
-    };
     
     // Memberikan objek dummy default agar tidak crash saat proses desain layout
 
@@ -4971,6 +4947,24 @@ const LayoutBuilder = () => {
                                 <div className="w-1/2"><label className="text-[10px] text-gray-500 font-bold uppercase">Posisi X</label><input type="number" className="w-full p-1.5 border rounded text-sm" value={Math.round(activeEl.x || 0)} onChange={e => updateElement(selectedElementId, { x: Number(e.target.value) })}/></div>
                                 <div className="w-1/2"><label className="text-[10px] text-gray-500 font-bold uppercase">Posisi Y</label><input type="number" className="w-full p-1.5 border rounded text-sm" value={Math.round(activeEl.y || 0)} onChange={e => updateElement(selectedElementId, { y: Number(e.target.value) })}/></div>
                             </div>
+                            {(activeEl.type === 'image' || activeEl.type === 'table_custom') && (
+                                <div className="flex flex-col gap-2 mt-2">
+                                    <div className="flex items-center gap-2">
+                                        <label className="text-[10px] text-gray-500 font-bold uppercase w-1/2">Ubah Ukuran</label>
+                                        <input type="number" placeholder="Lebar" className="w-1/4 p-1 border rounded text-xs" value={activeEl.width || ''} onChange={e => updateElement(selectedElementId, { width: Number(e.target.value) })}/>
+                                        <input type="number" placeholder="Tinggi" className="w-1/4 p-1 border rounded text-xs" value={activeEl.height || ''} onChange={e => updateElement(selectedElementId, { height: Number(e.target.value) })} disabled={activeEl.type === 'table_custom'} title={activeEl.type === 'table_custom' ? "Tinggi tabel kustom otomatis mengikuti skala & konten" : ""}/>
+                                    </div>
+                                    {activeEl.type === 'table_custom' && (
+                                        <div className="flex flex-col gap-1 p-2 bg-indigo-50 rounded border border-indigo-100">
+                                            <div className="flex items-center gap-2">
+                                                <label className="text-[10px] text-indigo-800 font-bold uppercase w-1/2">Skala Auto (%)</label>
+                                                <input type="number" placeholder="%" className="w-1/2 p-1 border border-indigo-200 rounded text-xs font-bold text-indigo-700 bg-white" value={Math.round((activeEl.width / (activeEl.baseWidth || 500)) * 100) || 100} onChange={e => updateElement(selectedElementId, { width: (activeEl.baseWidth || 500) * (Number(e.target.value) / 100) })}/>
+                                            </div>
+                                            <p className="text-[9px] text-indigo-600 leading-tight">Tabel, baris, font, dll otomatis mengikuti skala lebar ini. Bisa juga ubah via handle drag di ujung tabel.</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                             <div className="flex gap-2 mt-1">
                                 <button onClick={() => updateElement(selectedElementId, { x: (canvasWidth - (activeEl.width || 200)) / 2 })} className="w-1/2 bg-slate-100 hover:bg-slate-200 text-slate-600 py-1 rounded text-[10px] font-bold transition">Tengah Horiz</button>
                                 <button onClick={() => updateElement(selectedElementId, { y: (canvasHeight - (activeEl.height || 30)) / 2 })} className="w-1/2 bg-slate-100 hover:bg-slate-200 text-slate-600 py-1 rounded text-[10px] font-bold transition">Tengah Vertikal</button>
@@ -4980,7 +4974,7 @@ const LayoutBuilder = () => {
                                 <div className="w-1/2"><label className="text-[10px] text-gray-500 font-bold uppercase" title="0 = transparan penuh, 1 = tidak transparan">Transparansi (0-1)</label><input type="number" step="0.1" min="0" max="1" className="w-full p-1.5 border rounded text-sm" value={activeEl.opacity ?? 1} onChange={e => updateElement(selectedElementId, { opacity: Number(e.target.value) })}/></div>
                             </div>
 
-                            {activeEl.type !== 'image' && activeEl.type !== 'group' && activeEl.type !== 'line' && activeEl.type !== 'shape' && (
+                            {activeEl.type !== 'image' && activeEl.type !== 'group' && activeEl.type !== 'line' && activeEl.type !== 'shape' && activeEl.type !== 'table_custom' && (
                                 <>
                                     <div>
                                         <label className="text-[10px] text-gray-500 font-bold uppercase">Jenis Font</label>
@@ -5018,7 +5012,7 @@ const LayoutBuilder = () => {
                             )}
 
                             {(activeEl.type === 'image' || activeEl.type === 'table_custom') && (
-                                <div className="flex flex-col gap-2">
+                                <>
                                     <div className="flex gap-2">
                                         <div className="w-1/2"><label className="text-[10px] text-gray-500 font-bold uppercase">Lebar (Width)</label><input type="number" className="w-full p-1.5 border rounded text-sm" value={activeEl.width} onChange={e => updateElement(selectedElementId, { width: Number(e.target.value) })}/></div>
                                         <div className="w-1/2"><label className="text-[10px] text-gray-500 font-bold uppercase">Tinggi (Height)</label><input type="number" className="w-full p-1.5 border rounded text-sm" value={activeEl.height || ''} onChange={e => updateElement(selectedElementId, { height: Number(e.target.value) })}/></div>
@@ -5037,17 +5031,20 @@ const LayoutBuilder = () => {
                                                 </select>
                                             </div>
                                             {activeEl.objectFit === 'cover' && (
-                                                <div>
-                                                    <label className="text-[10px] text-gray-500 font-bold uppercase mb-1 block">Geser Posisi Potong</label>
-                                                    <div className="flex gap-2">
-                                                        <div className="w-1/2 flex flex-col"><span className="text-[9px] text-gray-400">Horizontal</span><input type="range" min="0" max="100" className="w-full" value={activeEl.objectPositionX !== undefined ? activeEl.objectPositionX : 50} onChange={e => updateElement(selectedElementId, { objectPositionX: Number(e.target.value) })} /></div>
-                                                        <div className="w-1/2 flex flex-col"><span className="text-[9px] text-gray-400">Vertikal</span><input type="range" min="0" max="100" className="w-full" value={activeEl.objectPositionY !== undefined ? activeEl.objectPositionY : 50} onChange={e => updateElement(selectedElementId, { objectPositionY: Number(e.target.value) })} /></div>
+                                                <div className="flex gap-2">
+                                                    <div className="w-1/2">
+                                                        <label className="text-[10px] text-gray-500 font-bold uppercase">Fokus X (%)</label>
+                                                        <input type="number" min="0" max="100" className="w-full p-1.5 border rounded text-xs" value={activeEl.objectPositionX ?? 50} onChange={e => updateElement(selectedElementId, { objectPositionX: Number(e.target.value) })}/>
+                                                    </div>
+                                                    <div className="w-1/2">
+                                                        <label className="text-[10px] text-gray-500 font-bold uppercase">Fokus Y (%)</label>
+                                                        <input type="number" min="0" max="100" className="w-full p-1.5 border rounded text-xs" value={activeEl.objectPositionY ?? 50} onChange={e => updateElement(selectedElementId, { objectPositionY: Number(e.target.value) })}/>
                                                     </div>
                                                 </div>
                                             )}
                                         </div>
                                     )}
-                                </div>
+                                </>
                             )}
 
                             {activeEl.type === 'table_custom' && (
@@ -5836,7 +5833,7 @@ const LayoutBuilder = () => {
                                 <div key={el.id} data-element-id={el.id} onMouseDown={(e) => handleElementMouseDown(e, el)}
                                     style={{
                                         position: 'absolute', left: `${el.x}px`, top: `${el.y}px`, fontSize: `${el.fontSize}px`, fontFamily: el.fontFamily || 'Arial, sans-serif', fontWeight: el.fontWeight,
-                                        width: el.width ? `${el.width}px` : 'auto', height: (el.type === 'image' || el.type === 'table_custom') ? (el.height ? `${el.height}px` : 'auto') : 'auto',
+                                        width: el.width ? `${el.width}px` : 'auto', height: el.type === 'image' ? (el.height ? `${el.height}px` : 'auto') : el.type === 'table_custom' ? 'auto' : 'auto',
                                         cursor: isDraggingThis ? 'grabbing' : 'grab', outline: isSelected ? '2px dashed #059669' : 'none', padding: (el.type === 'image' || el.type === 'table_custom') ? '0' : '2px',
                                         zIndex: isSelected ? 20 : (el.zIndex ?? 1), opacity: el.opacity ?? 1,
                                         pointerEvents: el.locked ? 'none' : 'auto'
@@ -5848,7 +5845,7 @@ const LayoutBuilder = () => {
                                             {(el.children || []).map(child => (
                                                 <div key={child.id} style={{
                                                     position: 'absolute', left: `${child.x}px`, top: `${child.y}px`, fontSize: `${child.fontSize}px`, fontFamily: child.fontFamily || 'Arial, sans-serif', fontWeight: child.fontWeight,
-                                                    width: child.width ? `${child.width}px` : 'auto', height: (child.type === 'image' || child.type === 'shape' || child.type === 'table_custom') ? `${child.height}px` : 'auto',
+                                                    width: child.width ? `${child.width}px` : 'auto', height: (child.type === 'image' || child.type === 'shape') ? `${child.height}px` : child.type === 'table_custom' ? 'auto' : 'auto',
                                                     padding: (child.type === 'image' || child.type === 'table_custom' || child.type === 'shape' || child.type === 'line') ? '0' : '2px',
                                                     zIndex: child.zIndex ?? 1, opacity: child.opacity ?? 1
                                                 }}>
@@ -5935,7 +5932,8 @@ const exportGradesToExcel = (grades, studentsInClass, subjectsInClass, className
     } else if (activeInputTab === 'sikap') {
         data.characterTraits.forEach(p => { headers.push(p.name); cols.push(p.id); });
     } else if (activeInputTab === 'ekskul') {
-        data.extracurriculars.forEach(p => { headers.push(p.name); cols.push(p.id); });
+        headers.push('Ekskul 1 Nama', 'Ekskul 1 Nilai', 'Ekskul 2 Nama', 'Ekskul 2 Nilai');
+        cols.push('ekskul1_nama', 'ekskul1_nilai', 'ekskul2_nama', 'ekskul2_nilai');
     } else if (activeInputTab === 'catatan_wali') {
         headers.push('Catatan Wali Kelas');
         cols.push('catatan_wali');
@@ -6042,9 +6040,15 @@ const importGradesFromExcel = async (file, studentsInClass, subjectsInClass, act
                             if (valKey && row[valKey]) importedGrades[student.id][p.id] = String(row[valKey]).trim();
                         });
                     } else if (activeInputTab === 'ekskul') {
-                        data.extracurriculars.forEach(p => {
-                            const valKey = Object.keys(row).find(k => k.toLowerCase().includes(p.name.toLowerCase()));
-                            if (valKey && row[valKey]) importedGrades[student.id][p.id] = String(row[valKey]).trim();
+                        const ekskulImportMap = [
+                            { namaCol: 'ekskul 1 nama', nilaiCol: 'ekskul 1 nilai', namaKey: 'ekskul1_nama', nilaiKey: 'ekskul1_nilai' },
+                            { namaCol: 'ekskul 2 nama', nilaiCol: 'ekskul 2 nilai', namaKey: 'ekskul2_nama', nilaiKey: 'ekskul2_nilai' },
+                        ];
+                        ekskulImportMap.forEach(({ namaCol, nilaiCol, namaKey, nilaiKey }) => {
+                            const namaValKey = Object.keys(row).find(k => k.toLowerCase().includes(namaCol));
+                            const nilaiValKey = Object.keys(row).find(k => k.toLowerCase().includes(nilaiCol));
+                            if (namaValKey && row[namaValKey]) importedGrades[student.id][namaKey] = String(row[namaValKey]).trim();
+                            if (nilaiValKey && row[nilaiValKey]) importedGrades[student.id][nilaiKey] = String(row[nilaiValKey]).trim();
                         });
                     } else if (activeInputTab === 'catatan_wali') {
                         const valKey = Object.keys(row).find(k => k.toLowerCase().includes('catatan wali'));
@@ -6432,6 +6436,10 @@ const InputNilai = ({ activeInputTab }) => {
         }
 
         if (activeInputTab === 'ekskul') {
+            const ekskulSlots = [
+                { namaKey: 'ekskul1_nama', nilaiKey: 'ekskul1_nilai', label: 'Ekskul 1' },
+                { namaKey: 'ekskul2_nama', nilaiKey: 'ekskul2_nilai', label: 'Ekskul 2' },
+            ];
             return (
                 <table className="w-full text-left border-collapse whitespace-nowrap">
                     <thead className="sticky top-0 z-20">
@@ -6439,11 +6447,25 @@ const InputNilai = ({ activeInputTab }) => {
                             <th className="p-3 border-b border-r border-orange-600 text-center w-12 sticky left-0 z-30 bg-orange-800">No</th>
                             <th className="p-3 border-b border-r border-orange-600 text-center w-20 bg-orange-800">NIS</th>
                             <th className="p-3 border-b border-r border-orange-600 sticky left-12 z-30 bg-orange-800">Nama Santri</th>
-                            {data.extracurriculars.map(p => (
-                                <th key={p.id} className="p-3 border-b border-r border-orange-600 text-center min-w-[120px]">
-                                    <div className="font-bold">{p.name}</div>
-                                    <div className="text-[10px] text-orange-300 mt-1 hover:text-orange-100 cursor-pointer transition-colors" title={`Klik untuk menyalin: {{${idToShortKey[p.id]||p.id}}}`} onClick={() => {navigator.clipboard.writeText(`{{${idToShortKey[p.id]||p.id}}}`); showNotification(`Disalin: {{${idToShortKey[p.id]||p.id}}}`);}}>{`{{${idToShortKey[p.id]||p.id}}}`}</div>
+                            {ekskulSlots.map(slot => (
+                                <th key={slot.namaKey} colSpan={2} className="p-3 border-b border-r border-orange-600 text-center min-w-[260px]">
+                                    <div className="font-bold">{slot.label}</div>
+                                    <div className="flex gap-1 text-[10px] text-orange-300 mt-1">
+                                        <span className="flex-1 text-center cursor-pointer hover:text-orange-100" title={`Klik salin variabel nama`} onClick={() => { navigator.clipboard.writeText(`{{${slot.namaKey}}}`); showNotification(`Disalin: {{${slot.namaKey}}}`); }}>{`{{${slot.namaKey}}}`}</span>
+                                        <span className="flex-1 text-center cursor-pointer hover:text-orange-100" title={`Klik salin variabel nilai`} onClick={() => { navigator.clipboard.writeText(`{{${slot.nilaiKey}}}`); showNotification(`Disalin: {{${slot.nilaiKey}}}`); }}>{`{{${slot.nilaiKey}}}`}</span>
+                                    </div>
                                 </th>
+                            ))}
+                        </tr>
+                        <tr className="bg-orange-600 text-white text-xs">
+                            <th className="p-2 border-b border-r border-orange-500 sticky left-0 bg-orange-700"></th>
+                            <th className="p-2 border-b border-r border-orange-500 bg-orange-700"></th>
+                            <th className="p-2 border-b border-r border-orange-500 sticky left-12 bg-orange-700"></th>
+                            {ekskulSlots.map(slot => (
+                                <React.Fragment key={slot.namaKey + '_fragment'}>
+                                    <th className="p-2 border-b border-r border-orange-500 text-center min-w-[160px]">Nama Ekskul</th>
+                                    <th className="p-2 border-b border-r border-orange-500 text-center min-w-[80px]">Nilai</th>
+                                </React.Fragment>
                             ))}
                         </tr>
                     </thead>
@@ -6453,11 +6475,32 @@ const InputNilai = ({ activeInputTab }) => {
                                 <td className="p-3 text-center text-gray-500 sticky left-0 bg-white border-r z-10">{idx + 1}</td>
                                 <td className="p-3 text-center bg-white border-r font-semibold">{st.nis || '-'}</td>
                                 <td className="p-3 font-semibold sticky left-12 bg-white border-r shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] z-10">{st.nama}</td>
-                                {data.extracurriculars.map(p => (
-                                    <td key={p.id} className="p-2 border-r bg-white hover:bg-orange-50">
-                                        <input type="text" dir="auto" title="Ketik nilai (A/B/C atau angka Arab/Latin)" className="w-full p-2 border rounded text-center font-bold outline-none focus:border-orange-500 text-orange-900"
-                                            value={localGrades[st.id]?.[p.id] || ''} onChange={e => handleGradeChange(st.id, p.id, e.target.value)} placeholder="A/B/C" />
-                                    </td>
+                                {ekskulSlots.map(slot => (
+                                    <React.Fragment key={slot.namaKey + '_body'}>
+                                        <td className="p-2 border-r bg-white hover:bg-orange-50">
+                                            <select
+                                                className="w-full p-2 border rounded text-sm outline-none focus:border-orange-500 bg-white text-gray-800"
+                                                value={localGrades[st.id]?.[slot.namaKey] || ''}
+                                                onChange={e => handleGradeChange(st.id, slot.namaKey, e.target.value)}
+                                            >
+                                                <option value="">-- Pilih Ekskul --</option>
+                                                {data.extracurriculars.map(ekskul => (
+                                                    <option key={ekskul.id} value={ekskul.name}>{ekskul.name}</option>
+                                                ))}
+                                            </select>
+                                        </td>
+                                        <td className="p-2 border-r bg-white hover:bg-orange-50">
+                                            <input
+                                                type="text"
+                                                dir="auto"
+                                                title="Ketik nilai (A/B/C atau angka)"
+                                                className="w-full p-2 border rounded text-center font-bold outline-none focus:border-orange-500 text-orange-900"
+                                                value={localGrades[st.id]?.[slot.nilaiKey] || ''}
+                                                onChange={e => handleGradeChange(st.id, slot.nilaiKey, e.target.value)}
+                                                placeholder="A/B/C"
+                                            />
+                                        </td>
+                                    </React.Fragment>
                                 ))}
                             </tr>
                         ))}
@@ -6917,7 +6960,10 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                          const g = sGrades[realId];
                          return (g && typeof g === 'object') ? (g.uas || '') : '';
                      }
-                     if (dataType === 'presence' || dataType === 'trait' || dataType === 'ekskul') {
+                     if (dataType === 'presence' || dataType === 'trait') {
+                         return sGrades[realId] !== undefined ? sGrades[realId] : '';
+                     }
+                     if (dataType === 'ekskul_fixed') {
                          return sGrades[realId] !== undefined ? sGrades[realId] : '';
                      }
                      if (dataType === 'catatan') {
@@ -6967,7 +7013,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                 <div style={{
                     ...baseStyle,
                     width: el.width ? `${el.width}px` : 'auto',
-                    height: el.height ? `${el.height}px` : 'auto',
+                    height: 'auto',
                     padding: 0,
                     background: el.isTransparent ? 'transparent' : 'white',
                     overflow: 'visible',
@@ -7005,7 +7051,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                             zIndex: child.zIndex ?? 1,
                             opacity: child.opacity ?? 1,
                             width: child.width ? `${child.width}px` : 'auto',
-                            height: (child.type === 'image' || child.type === 'table_custom' || child.type === 'shape') ? (child.height ? `${child.height}px` : 'auto') : child.type === 'line' ? `${child.lineThickness || 2}px` : 'auto',
+                            height: (child.type === 'image' || child.type === 'shape') ? (child.height ? `${child.height}px` : 'auto') : child.type === 'table_custom' ? 'auto' : child.type === 'line' ? `${child.lineThickness || 2}px` : 'auto',
                             padding: (child.type === 'image' || child.type === 'table_custom' || child.type === 'shape' || child.type === 'line') ? 0 : '2px',
                         };
                         if (child.type === 'table_custom') return <div key={child.id} style={{...childStyle, background: child.isTransparent ? 'transparent' : 'white', overflow:'visible'}}>{renderCustomTable(child, replaceVariables, { allElements: activeLayout })}</div>;
