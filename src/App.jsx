@@ -6663,25 +6663,45 @@ const InputIjazah = () => {
     const debounceTimers = useRef({});
 
     const activeSetting = data.settings.find(s => s.isActive);
+
+    // Gunakan allData agar tidak terkena filter semester-specific, filter by name agar tidak duplikat di dropdown
     const classesData = useMemo(() => {
-        const raw = allData?.classes || data.classes || [];
+        const raw = allData?.classes || [];
         const seen = new Set();
-        return raw.filter(c => { if (seen.has(c.id)) return false; seen.add(c.id); return true; });
-    }, [allData?.classes, data.classes]);
+        return raw.filter(c => { 
+            const name = (c.name || '').toLowerCase().trim();
+            if (seen.has(name)) return false; 
+            seen.add(name); 
+            return true; 
+        });
+    }, [allData?.classes]);
+
+    const allMasterSubjects = useMemo(() => {
+        const raw = allData?.masterSubjects || [];
+        const seen = new Set();
+        return raw.filter(m => { if (seen.has(m.id)) return false; seen.add(m.id); return true; });
+    }, [allData?.masterSubjects]);
+
+    const allSubjects = useMemo(() => {
+        const raw = allData?.subjects || [];
+        const seen = new Set();
+        return raw.filter(s => { if (seen.has(s.id)) return false; seen.add(s.id); return true; });
+    }, [allData?.subjects]);
+
     const activeStudents = getStudentsForYear(data.studentSnapshots, activeSetting, data.students);
     const studentsInClass = getStudentsInClass(activeStudents, classesData, selectedClass);
 
     const subjectsInClass = useMemo(
-        () => filterSubjectsByClass(data.subjects, selectedClass, classesData),
-        [data.subjects, selectedClass, classesData]
+        () => filterSubjectsByClass(allSubjects, selectedClass, classesData),
+        [allSubjects, selectedClass, classesData]
     );
 
     const ijazahSubjects = useMemo(() => {
         return subjectsInClass.filter(sub => {
-            const master = (data.masterSubjects || []).find(m => m.id === sub.masterId);
+            const master = allMasterSubjects.find(m => m.id === sub.masterId);
             return master && master.is_ijazah;
         });
-    }, [subjectsInClass, data.masterSubjects]);
+    }, [subjectsInClass, allMasterSubjects]);
 
     useEffect(() => {
         if (!selectedClass || !activeSetting) { setLocalIjazah({}); return; }
