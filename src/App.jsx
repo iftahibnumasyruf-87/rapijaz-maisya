@@ -402,6 +402,7 @@ const getGlobalSubjectShortCodes = (subjects) => {
         if (usedKeys.has(key)) { const base = key.slice(0,1) || 'X'; let i = 1; while(usedKeys.has(`${base}${i}`) && i<=9) i++; if(i<=9) key = `${base}${i}`; else { i=10; while(usedKeys.has(`X${i}`)) i++; key=`X${i}`; } }
         usedKeys.add(key);
         map[s.id] = key;
+        if (s.nameId) map[s.nameId] = key;
     });
     return map;
 };
@@ -420,8 +421,8 @@ const buildShortKeyMap = (subjects = [], presences = [], characterTraits = [], e
         map[`${sk}_kkm`] = { realId: sub.id, dataType: 'subject_kkm' };
         map[`${sk}_rata`] = { realId: sub.id, dataType: 'subject_rata' };
 
-        // New exact 3-char support: lookup by sub.id first, then fallback to sub.masterId
-        const sk2 = globalShortCodes[sub.id] || globalShortCodes[sub.masterId];
+        // New exact 3-char support: lookup by sub.id first, then fallback to sub.masterId or sub.nameId
+        const sk2 = globalShortCodes[sub.id] || globalShortCodes[sub.masterId] || globalShortCodes[sub.nameId];
         if (sk2) {
             // map[`${sk2}I`] is handled by name replacement, not grades. Same for A.
             map[`${sk2}N`] = { realId: sub.id, dataType: 'subject_nilai' };
@@ -3447,7 +3448,8 @@ const LayoutBuilder = () => {
     const [previewStudentIndex, setPreviewStudentIndex] = useState(0);
 
     // Compute preview data when previewMode is active
-    const previewClassesData = allData?.classes || data.classes || [];
+    // Deduplicate classes by name to avoid duplicate dropdown entries
+    const previewClassesData = Array.from(new Map((data.classes || allData?.classes || []).map(c => [c.name, c])).values());
     const previewActiveSetting = data.settings.find(s => s.isActive);
     const previewAllStudents = useMemo(() => getStudentsForYear(data.studentSnapshots, previewActiveSetting, data.students), [data.studentSnapshots, previewActiveSetting, data.students]);
     const previewStudentsInClass = useMemo(() => getStudentsInClass(previewAllStudents, previewClassesData, previewClass), [previewAllStudents, previewClassesData, previewClass]);
@@ -7276,7 +7278,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
     
     const activeSetting = data.settings.find(s => s.isActive) || {};
     const activeStudents = getStudentsForYear(data.studentSnapshots, activeSetting, data.students);
-    const classesData = allData?.classes || data.classes;
+    const classesData = Array.from(new Map((data.classes || allData?.classes || []).map(c => [c.name, c])).values());
     const studentsInClass = getStudentsInClass(activeStudents, classesData, selectedClass);
     const studentData = activeStudents.find(s => s.id === selectedStudent);
     
