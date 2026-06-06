@@ -388,10 +388,11 @@ const makeShortKey = (name, usedKeys) => {
 };
 
 // Generate stable 2-char codes for subjects globally to ensure exact 3-char variable names
+// Returns map with MULTIPLE keys for same code: by id, by nameId, by nameId.toLowerCase()
 const getGlobalSubjectShortCodes = (subjects) => {
     const sorted = [...(subjects||[])].sort((a,b) => (a.nameId||a.id||'').localeCompare(b.nameId||b.id||''));
     const usedKeys = new Set();
-    const map = {}; // id -> 2-char code
+    const map = {}; // multiple keys -> 2-char code
     sorted.forEach(s => {
         const clean = (s.nameId || s.name || '').trim();
         const words = clean.split(/\s+/).filter(Boolean);
@@ -401,11 +402,30 @@ const getGlobalSubjectShortCodes = (subjects) => {
         if (usedKeys.has(key)) { const fb = clean.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 2); if (!usedKeys.has(fb)) key = fb; }
         if (usedKeys.has(key)) { const base = key.slice(0,1) || 'X'; let i = 1; while(usedKeys.has(`${base}${i}`) && i<=9) i++; if(i<=9) key = `${base}${i}`; else { i=10; while(usedKeys.has(`X${i}`)) i++; key=`X${i}`; } }
         usedKeys.add(key);
+        // Index by ALL possible identifiers
         map[s.id] = key;
-        if (s.nameId) map[String(s.nameId).trim().toLowerCase()] = key;
-        if (s.name) map[String(s.name).trim().toLowerCase()] = key;
+        if (s.nameId) {
+            map[s.nameId] = key;
+            map[String(s.nameId).trim().toLowerCase()] = key;
+        }
+        if (s.name) {
+            map[s.name] = key;
+            map[String(s.name).trim().toLowerCase()] = key;
+        }
     });
     return map;
+};
+
+// Deduplicate master subjects to ensure consistent short codes
+const getDedupedMasterSubjects = (allMasterSubs = [], activeSetting) => {
+    const msMap = new Map();
+    allMasterSubs.forEach(m => {
+        const key = m.nameId || m.id;
+        const existing = msMap.get(key);
+        if (!existing) msMap.set(key, m);
+        else if (activeSetting && m.tahun === activeSetting.tahun && m.semester === activeSetting.semester) msMap.set(key, m);
+    });
+    return Array.from(msMap.values());
 };
 
 // Build map: shortKey -> { id, type } for subjects/presences/characterTraits/extracurriculars
@@ -422,17 +442,22 @@ const buildShortKeyMap = (subjects = [], presences = [], characterTraits = [], e
         map[`${sk}_kkm`] = { realId: sub.id, dataType: 'subject_kkm' };
         map[`${sk}_rata`] = { realId: sub.id, dataType: 'subject_rata' };
 
-        // New exact 3-char support: lookup by sub.id first, then fallback to sub.masterId or sub.nameId
-        let sk2 = globalShortCodes[sub.id] || globalShortCodes[sub.masterId];
-        if (!sk2 && sub.nameId) sk2 = globalShortCodes[String(sub.nameId).trim().toLowerCase()];
-        if (!sk2 && sub.name) sk2 = globalShortCodes[String(sub.name).trim().toLowerCase()];
+        // New exact 3-char support: try all possible identifiers
+        let sk2 = globalShortCodes[sub.id];
+        if (!sk2 && sub.masterId) sk2 = globalShortCodes[sub.masterId];
+        if (!sk2 && sub.nameId) sk2 = globalShortCodes[sub.nameId] || globalShortCodes[String(sub.nameId).trim().toLowerCase()];
+        if (!sk2 && sub.name) sk2 = globalShortCodes[sub.name] || globalShortCodes[String(sub.name).trim().toLowerCase()];
+
         if (sk2) {
             // map[`${sk2}I`] is handled by name replacement, not grades. Same for A.
             map[`${sk2}N`] = { realId: sub.id, dataType: 'subject_nilai' };
             map[`${sk2}K`] = { realId: sub.id, dataType: 'subject_kkm' };
             map[`${sk2}R`] = { realId: sub.id, dataType: 'subject_rata' };
+            map[`${sk2}U`] = { realId: sub.id, dataType: 'subject_uts' };
+            map[`${sk2}A`] = { realId: sub.id, dataType: 'subject_uas' };
         }
     });
+
     presences.forEach(p => {
         const sk = makeShortKey(p.name || p.id, usedKeys);
         map[sk] = { realId: p.id, dataType: 'presence' };
@@ -2339,16 +2364,8 @@ const MasterData = ({ activeTab }) => {
     switch (activeTab) {
       case 'variables_list': {
           const allMasterSubs = allData?.masterSubjects || data.masterSubjects || [];
-          // Deduplicate by nameId, prioritize active semester
           const activeSetting = data.settings.find(s => s.isActive);
-          const msMap = new Map();
-          allMasterSubs.forEach(m => {
-              const key = m.nameId || m.id;
-              const existing = msMap.get(key);
-              if (!existing) msMap.set(key, m);
-              else if (m.tahun === activeSetting?.tahun && m.semester === activeSetting?.semester) msMap.set(key, m);
-          });
-          const dedupedMasterSubs = Array.from(msMap.values());
+          const dedupedMasterSubs = getDedupedMasterSubjects(allMasterSubs, activeSetting);
           const globalCodes = getGlobalSubjectShortCodes(dedupedMasterSubs);
           return (
               <div className="space-y-6 pb-8">
@@ -3484,7 +3501,7 @@ const LayoutBuilder = () => {
         const className = getClassNameFromValue(previewClassesData, previewClass);
         const classDataObj = previewClassesData.find(c => c.id === previewClass);
         const subjectsForClass = sortSubjectsByCategory(filterSubjectsByClass(data.subjects, previewClass, previewClassesData), data.subjectCategories);
-        const activeMasterSubjects = allData?.masterSubjects || data.masterSubjects || data.subjects || [];
+        const activeMasterSubjects = getDedupedMasterSubjects(allData?.masterSubjects || data.masterSubjects || data.subjects || [], previewActiveSetting);
         const globalShortCodes = getGlobalSubjectShortCodes(activeMasterSubjects);
         const shortKeyMapPrev = buildShortKeyMap(subjectsForClass, data.presences, data.characterTraits, data.extracurriculars, globalShortCodes);
 
@@ -3523,7 +3540,7 @@ const LayoutBuilder = () => {
                 .replace(/\{\{jumlah_santri_ar\}\}/gi, toAr(jumlahSantri));
 
             // Master subjects
-            const activeMasterSubjectsForAr = allData?.masterSubjects || data.masterSubjects || [];
+            const activeMasterSubjectsForAr = getDedupedMasterSubjects(allData?.masterSubjects || data.masterSubjects || [], previewActiveSetting);
             if (activeMasterSubjectsForAr.length > 0) {
                 const globalCodes = getGlobalSubjectShortCodes(activeMasterSubjectsForAr);
                 activeMasterSubjectsForAr.forEach(m => {
@@ -7517,7 +7534,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
 
         // Build short key map once per student render (deterministic, same order as InputNilai)
         const subjectsForClass = sortSubjectsByCategory(filterSubjectsByClass(data.subjects, selectedClass, classesData), data.subjectCategories);
-        const activeMasterSubjectsRender = allData?.masterSubjects || data.masterSubjects || data.subjects || [];
+        const activeMasterSubjectsRender = getDedupedMasterSubjects(allData?.masterSubjects || data.masterSubjects || data.subjects || [], activeSetting);
         const globalShortCodes = getGlobalSubjectShortCodes(activeMasterSubjectsRender);
         const shortKeyMapRender = buildShortKeyMap(subjectsForClass, data.presences, data.characterTraits, data.extracurriculars, globalShortCodes);
         
@@ -7605,10 +7622,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
             // ---- END IJAZAH VARIABLES ----
             
             // Replace dynamic variables for Master Subjects
-            // Iterates ALL masterSubjects (not per-class filtered), supports:
-            //   {{shortCode}} / {{shortCode_arb}} (new short format)
-            //   {{nameId}} / {{nameId_arb}} (legacy full-name format)
-            const activeMasterSubjectsForArRender = allData?.masterSubjects || data.masterSubjects || [];
+            const activeMasterSubjectsForArRender = getDedupedMasterSubjects(allData?.masterSubjects || data.masterSubjects || [], activeSetting);
             if (activeMasterSubjectsForArRender.length > 0) {
                 const globalCodes = getGlobalSubjectShortCodes(activeMasterSubjectsForArRender);
                 activeMasterSubjectsForArRender.forEach(m => {
