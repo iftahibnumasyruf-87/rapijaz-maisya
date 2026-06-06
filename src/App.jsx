@@ -3468,7 +3468,7 @@ const LayoutBuilder = () => {
 
     // Compute preview data when previewMode is active
     // Deduplicate classes by name to avoid duplicate dropdown entries
-    const previewClassesData = Array.from(new Map((data.classes || allData?.classes || []).map(c => [c.name, c])).values());
+    const previewClassesData = data.classes || [];
     const previewActiveSetting = data.settings.find(s => s.isActive);
     const previewAllStudents = useMemo(() => getStudentsForYear(data.studentSnapshots, previewActiveSetting, data.students), [data.studentSnapshots, previewActiveSetting, data.students]);
     const previewStudentsInClass = useMemo(() => getStudentsInClass(previewAllStudents, previewClassesData, previewClass), [previewAllStudents, previewClassesData, previewClass]);
@@ -7301,7 +7301,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
     
     const activeSetting = data.settings.find(s => s.isActive) || {};
     const activeStudents = getStudentsForYear(data.studentSnapshots, activeSetting, data.students);
-    const classesData = Array.from(new Map((data.classes || allData?.classes || []).map(c => [c.name, c])).values());
+    const classesData = data.classes || [];
     const studentsInClass = getStudentsInClass(activeStudents, classesData, selectedClass);
     const studentData = activeStudents.find(s => s.id === selectedStudent);
     
