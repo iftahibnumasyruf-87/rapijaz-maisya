@@ -402,7 +402,8 @@ const getGlobalSubjectShortCodes = (subjects) => {
         if (usedKeys.has(key)) { const base = key.slice(0,1) || 'X'; let i = 1; while(usedKeys.has(`${base}${i}`) && i<=9) i++; if(i<=9) key = `${base}${i}`; else { i=10; while(usedKeys.has(`X${i}`)) i++; key=`X${i}`; } }
         usedKeys.add(key);
         map[s.id] = key;
-        if (s.nameId) map[s.nameId] = key;
+        if (s.nameId) map[String(s.nameId).trim().toLowerCase()] = key;
+        if (s.name) map[String(s.name).trim().toLowerCase()] = key;
     });
     return map;
 };
@@ -422,7 +423,9 @@ const buildShortKeyMap = (subjects = [], presences = [], characterTraits = [], e
         map[`${sk}_rata`] = { realId: sub.id, dataType: 'subject_rata' };
 
         // New exact 3-char support: lookup by sub.id first, then fallback to sub.masterId or sub.nameId
-        const sk2 = globalShortCodes[sub.id] || globalShortCodes[sub.masterId] || globalShortCodes[sub.nameId];
+        let sk2 = globalShortCodes[sub.id] || globalShortCodes[sub.masterId];
+        if (!sk2 && sub.nameId) sk2 = globalShortCodes[String(sub.nameId).trim().toLowerCase()];
+        if (!sk2 && sub.name) sk2 = globalShortCodes[String(sub.name).trim().toLowerCase()];
         if (sk2) {
             // map[`${sk2}I`] is handled by name replacement, not grades. Same for A.
             map[`${sk2}N`] = { realId: sub.id, dataType: 'subject_nilai' };
@@ -3481,7 +3484,8 @@ const LayoutBuilder = () => {
         const className = getClassNameFromValue(previewClassesData, previewClass);
         const classDataObj = previewClassesData.find(c => c.id === previewClass);
         const subjectsForClass = sortSubjectsByCategory(filterSubjectsByClass(data.subjects, previewClass, previewClassesData), data.subjectCategories);
-        const globalShortCodes = getGlobalSubjectShortCodes(data.masterSubjects || data.subjects);
+        const activeMasterSubjects = allData?.masterSubjects || data.masterSubjects || data.subjects || [];
+        const globalShortCodes = getGlobalSubjectShortCodes(activeMasterSubjects);
         const shortKeyMapPrev = buildShortKeyMap(subjectsForClass, data.presences, data.characterTraits, data.extracurriculars, globalShortCodes);
 
         const relevantSubjects = data.subjects?.filter(s => isSubjectVisibleInClass(s, previewClass, previewClassesData)) || [];
@@ -3519,9 +3523,10 @@ const LayoutBuilder = () => {
                 .replace(/\{\{jumlah_santri_ar\}\}/gi, toAr(jumlahSantri));
 
             // Master subjects
-            if (data.masterSubjects && data.masterSubjects.length > 0) {
-                const globalCodes = getGlobalSubjectShortCodes(data.masterSubjects);
-                data.masterSubjects.forEach(m => {
+            const activeMasterSubjectsForAr = allData?.masterSubjects || data.masterSubjects || [];
+            if (activeMasterSubjectsForAr.length > 0) {
+                const globalCodes = getGlobalSubjectShortCodes(activeMasterSubjectsForAr);
+                activeMasterSubjectsForAr.forEach(m => {
                     if (!m || !m.nameId) return;
                     const mapelAr = m.nameAr || m.nameId;
                     const sc = globalCodes[m.id];
@@ -7512,7 +7517,8 @@ const CetakDokumen = ({ mode = 'raport' }) => {
 
         // Build short key map once per student render (deterministic, same order as InputNilai)
         const subjectsForClass = sortSubjectsByCategory(filterSubjectsByClass(data.subjects, selectedClass, classesData), data.subjectCategories);
-        const globalShortCodes = getGlobalSubjectShortCodes(data.masterSubjects || data.subjects);
+        const activeMasterSubjectsRender = allData?.masterSubjects || data.masterSubjects || data.subjects || [];
+        const globalShortCodes = getGlobalSubjectShortCodes(activeMasterSubjectsRender);
         const shortKeyMapRender = buildShortKeyMap(subjectsForClass, data.presences, data.characterTraits, data.extracurriculars, globalShortCodes);
         
         const replaceVariables = (str) => {
@@ -7602,9 +7608,10 @@ const CetakDokumen = ({ mode = 'raport' }) => {
             // Iterates ALL masterSubjects (not per-class filtered), supports:
             //   {{shortCode}} / {{shortCode_arb}} (new short format)
             //   {{nameId}} / {{nameId_arb}} (legacy full-name format)
-            if (data.masterSubjects && data.masterSubjects.length > 0) {
-                const globalCodes = getGlobalSubjectShortCodes(data.masterSubjects);
-                data.masterSubjects.forEach(m => {
+            const activeMasterSubjectsForArRender = allData?.masterSubjects || data.masterSubjects || [];
+            if (activeMasterSubjectsForArRender.length > 0) {
+                const globalCodes = getGlobalSubjectShortCodes(activeMasterSubjectsForArRender);
+                activeMasterSubjectsForArRender.forEach(m => {
                     if (!m || !m.nameId) return; // guard: skip jika nameId undefined/null
                     const mapelAr = m.nameAr || m.nameId;
                     
