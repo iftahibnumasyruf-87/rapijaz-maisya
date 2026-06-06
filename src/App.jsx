@@ -6663,7 +6663,11 @@ const InputIjazah = () => {
     const debounceTimers = useRef({});
 
     const activeSetting = data.settings.find(s => s.isActive);
-    const classesData = allData?.classes || data.classes;
+    const classesData = useMemo(() => {
+        const raw = allData?.classes || data.classes || [];
+        const seen = new Set();
+        return raw.filter(c => { if (seen.has(c.id)) return false; seen.add(c.id); return true; });
+    }, [allData?.classes, data.classes]);
     const activeStudents = getStudentsForYear(data.studentSnapshots, activeSetting, data.students);
     const studentsInClass = getStudentsInClass(activeStudents, classesData, selectedClass);
 
