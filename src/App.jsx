@@ -2363,9 +2363,8 @@ const MasterData = ({ activeTab }) => {
   const renderFullTable = () => {
     switch (activeTab) {
       case 'variables_list': {
-          const allMasterSubs = allData?.masterSubjects || data.masterSubjects || [];
-          const activeSetting = data.settings.find(s => s.isActive);
-          const dedupedMasterSubs = getDedupedMasterSubjects(allMasterSubs, activeSetting);
+          // IMPORTANT: use ONLY active semester's masterSubjects to avoid ghost subjects from old semesters
+          const dedupedMasterSubs = data.masterSubjects || [];
           const globalCodes = getGlobalSubjectShortCodes(dedupedMasterSubs);
           return (
               <div className="space-y-6 pb-8">
@@ -3501,7 +3500,8 @@ const LayoutBuilder = () => {
         const className = getClassNameFromValue(previewClassesData, previewClass);
         const classDataObj = previewClassesData.find(c => c.id === previewClass);
         const subjectsForClass = sortSubjectsByCategory(filterSubjectsByClass(data.subjects, previewClass, previewClassesData), data.subjectCategories);
-        const activeMasterSubjects = getDedupedMasterSubjects(allData?.masterSubjects || data.masterSubjects || data.subjects || [], previewActiveSetting);
+        // IMPORTANT: use ONLY active semester's masterSubjects to avoid ghost subjects from old semesters
+        const activeMasterSubjects = data.masterSubjects || [];
         const globalShortCodes = getGlobalSubjectShortCodes(activeMasterSubjects);
         const shortKeyMapPrev = buildShortKeyMap(subjectsForClass, data.presences, data.characterTraits, data.extracurriculars, globalShortCodes);
 
@@ -3540,7 +3540,8 @@ const LayoutBuilder = () => {
                 .replace(/\{\{jumlah_santri_ar\}\}/gi, toAr(jumlahSantri));
 
             // Master subjects
-            const activeMasterSubjectsForAr = getDedupedMasterSubjects(allData?.masterSubjects || data.masterSubjects || [], previewActiveSetting);
+            // IMPORTANT: use ONLY active semester's masterSubjects
+            const activeMasterSubjectsForAr = data.masterSubjects || [];
             if (activeMasterSubjectsForAr.length > 0) {
                 const globalCodes = getGlobalSubjectShortCodes(activeMasterSubjectsForAr);
                 activeMasterSubjectsForAr.forEach(m => {
@@ -7534,7 +7535,8 @@ const CetakDokumen = ({ mode = 'raport' }) => {
 
         // Build short key map once per student render (deterministic, same order as InputNilai)
         const subjectsForClass = sortSubjectsByCategory(filterSubjectsByClass(data.subjects, selectedClass, classesData), data.subjectCategories);
-        const activeMasterSubjectsRender = getDedupedMasterSubjects(allData?.masterSubjects || data.masterSubjects || data.subjects || [], activeSetting);
+        // IMPORTANT: use ONLY active semester's masterSubjects to avoid ghost subjects from old semesters
+        const activeMasterSubjectsRender = data.masterSubjects || [];
         const globalShortCodes = getGlobalSubjectShortCodes(activeMasterSubjectsRender);
         const shortKeyMapRender = buildShortKeyMap(subjectsForClass, data.presences, data.characterTraits, data.extracurriculars, globalShortCodes);
         
@@ -7622,7 +7624,8 @@ const CetakDokumen = ({ mode = 'raport' }) => {
             // ---- END IJAZAH VARIABLES ----
             
             // Replace dynamic variables for Master Subjects
-            const activeMasterSubjectsForArRender = getDedupedMasterSubjects(allData?.masterSubjects || data.masterSubjects || [], activeSetting);
+            // IMPORTANT: use ONLY active semester's masterSubjects
+            const activeMasterSubjectsForArRender = data.masterSubjects || [];
             if (activeMasterSubjectsForArRender.length > 0) {
                 const globalCodes = getGlobalSubjectShortCodes(activeMasterSubjectsForArRender);
                 activeMasterSubjectsForArRender.forEach(m => {
