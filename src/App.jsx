@@ -9,7 +9,7 @@ import {
   Columns, FileSignature, TrendingUp, UserX, Clock, Activity, ChevronDown,
   ZoomIn, ZoomOut, Maximize, Minimize, ChevronUp, Lock, Database, Copy, Undo, Redo, Eye, EyeOff, Scissors,
   AlignLeft, AlignCenter, AlignRight, AlignStartVertical, AlignCenterVertical, AlignEndVertical, BarChart2, AlignJustify, Layers, Calendar,
-  Minus, Square, Grid, Info, RefreshCw
+  Minus, Square, Grid, Info, RefreshCw, Search
 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, AreaChart, Area } from 'recharts';
@@ -1943,6 +1943,7 @@ const MasterData = ({ activeTab }) => {
 
     const [isNumberSortMode, setIsNumberSortMode] = useState(false);
     const [tempSubjectOrders, setTempSubjectOrders] = useState({});
+    const [searchQuery, setSearchQuery] = useState('');
 
   // Default pengurutan tabel berdasarkan menu (alfabetis secara bawaan)
   const getDefaultSortKey = (tab) => {
@@ -1981,6 +1982,19 @@ const MasterData = ({ activeTab }) => {
 
   const sortedData = useMemo(() => {
       let sortableItems = [...(data[activeTab] || [])];
+
+      // Filter by search query for students tab
+      if (activeTab === 'students' && searchQuery && searchQuery.trim() !== '') {
+          const lowerQuery = searchQuery.toLowerCase();
+          sortableItems = sortableItems.filter(st => {
+              return (
+                  (st.nis && String(st.nis).toLowerCase().includes(lowerQuery)) ||
+                  (st.nama && String(st.nama).toLowerCase().includes(lowerQuery)) ||
+                  (st.nama_arab && String(st.nama_arab).toLowerCase().includes(lowerQuery))
+              );
+          });
+      }
+
       if (sortConfig.key) {
           sortableItems.sort((a, b) => {
               let aValue = a[sortConfig.key];
@@ -2652,12 +2666,22 @@ const MasterData = ({ activeTab }) => {
                                 <label className={`bg-emerald-100 text-emerald-700 px-4 py-2 rounded-lg cursor-pointer flex items-center gap-2 hover:bg-emerald-200 ${isBulkProcessing ? 'opacity-50 pointer-events-none' : ''}`}>
                                     <Upload size={18} /> Impor Excel <input type="file" accept=".xlsx,.xls" className="hidden" onChange={(e) => handleImportExcel(e, 'students')} />
                                 </label>
+                                <div className="relative flex-1 min-w-[200px] max-w-xs ml-auto">
+                                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                    <input 
+                                        type="text" 
+                                        placeholder="Cari NIS atau Nama..." 
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        className="w-full pl-9 pr-3 py-2 border rounded-lg focus:outline-none focus:border-emerald-500 bg-white"
+                                    />
+                                </div>
                                 <button
                                     onClick={handleDeleteAllStudents}
                                     disabled={isBulkProcessing}
-                                    className="ml-auto bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm transition font-semibold disabled:opacity-50"
+                                    className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm transition font-semibold disabled:opacity-50"
                                 >
-                                    <Trash2 size={16}/> Hapus Semua Santri ({data.students?.length || 0})
+                                    <Trash2 size={16}/> Hapus Semua ({data.students?.length || 0})
                                 </button>
                             </div>
                             <table className="w-full text-left border-collapse">
