@@ -6679,9 +6679,25 @@ const InputIjazah = () => {
 
     const allMasterSubjects = useMemo(() => {
         const raw = allData?.masterSubjects || [];
-        const seen = new Set();
-        return raw.filter(m => { if (seen.has(m.id)) return false; seen.add(m.id); return true; });
-    }, [allData?.masterSubjects]);
+        const activeTahun = activeSetting?.tahun;
+        const activeSemester = activeSetting?.semester;
+        
+        // Group by nameId to find the most relevant record
+        const map = new Map();
+        raw.forEach(m => {
+            const key = m.nameId || m.id;
+            const existing = map.get(key);
+            // Prioritaskan record dari semester aktif, atau jika belum ada, record yang is_ijazah-nya true
+            if (!existing) {
+                map.set(key, m);
+            } else if (m.tahun === activeTahun && m.semester === activeSemester) {
+                map.set(key, m);
+            } else if (m.is_ijazah && !existing.is_ijazah && existing.tahun !== activeTahun) {
+                map.set(key, m);
+            }
+        });
+        return Array.from(map.values());
+    }, [allData?.masterSubjects, activeSetting]);
 
     const allSubjects = useMemo(() => {
         const raw = allData?.subjects || [];
