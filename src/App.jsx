@@ -6867,7 +6867,7 @@ const InputIjazah = () => {
     );
 
     return (
-        <div className="space-y-5 p-1">
+        <div className="space-y-5 p-1 w-full min-w-0">
             {/* Header */}
             <div className="flex justify-between items-end border-b pb-4">
                 <div>
@@ -8213,7 +8213,7 @@ const Dashboard = () => {
           </div>
         </header>
         
-        <main className="flex-1 overflow-hidden p-4 md:p-6 print:p-0 print:overflow-visible relative flex flex-col print:static">{renderContent()}</main>
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 print:p-0 print:overflow-visible relative flex flex-col print:static">{renderContent()}</main>
       </div>
 
       <Modal isOpen={isLogoutModalOpen} onClose={() => setIsLogoutModalOpen(false)} title="Konfirmasi Keluar">
