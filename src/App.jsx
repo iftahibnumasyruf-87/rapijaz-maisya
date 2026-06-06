@@ -420,8 +420,8 @@ const buildShortKeyMap = (subjects = [], presences = [], characterTraits = [], e
         map[`${sk}_kkm`] = { realId: sub.id, dataType: 'subject_kkm' };
         map[`${sk}_rata`] = { realId: sub.id, dataType: 'subject_rata' };
 
-        // New exact 3-char support
-        const sk2 = globalShortCodes[sub.id];
+        // New exact 3-char support: lookup by sub.id first, then fallback to sub.masterId
+        const sk2 = globalShortCodes[sub.id] || globalShortCodes[sub.masterId];
         if (sk2) {
             // map[`${sk2}I`] is handled by name replacement, not grades. Same for A.
             map[`${sk2}N`] = { realId: sub.id, dataType: 'subject_nilai' };
@@ -2334,7 +2334,18 @@ const MasterData = ({ activeTab }) => {
   const renderFullTable = () => {
     switch (activeTab) {
       case 'variables_list': {
-          const globalCodes = getGlobalSubjectShortCodes(data.masterSubjects || []);
+          const allMasterSubs = allData?.masterSubjects || data.masterSubjects || [];
+          // Deduplicate by nameId, prioritize active semester
+          const activeSetting = data.settings.find(s => s.isActive);
+          const msMap = new Map();
+          allMasterSubs.forEach(m => {
+              const key = m.nameId || m.id;
+              const existing = msMap.get(key);
+              if (!existing) msMap.set(key, m);
+              else if (m.tahun === activeSetting?.tahun && m.semester === activeSetting?.semester) msMap.set(key, m);
+          });
+          const dedupedMasterSubs = Array.from(msMap.values());
+          const globalCodes = getGlobalSubjectShortCodes(dedupedMasterSubs);
           return (
               <div className="space-y-6 pb-8">
                   <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
@@ -2374,11 +2385,11 @@ const MasterData = ({ activeTab }) => {
 
                   <div>
                       <h4 className="font-bold text-gray-800 mb-3 border-b pb-2">Variabel Pelajaran (Berdasarkan Master Data)</h4>
-                      {(!data.masterSubjects || data.masterSubjects.length === 0) ? (
+                      {(!dedupedMasterSubs || dedupedMasterSubs.length === 0) ? (
                           <div className="text-sm text-gray-500 italic">Belum ada pelajaran di Master Data.</div>
                       ) : (
                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                              {data.masterSubjects.map(m => {
+                              {dedupedMasterSubs.map(m => {
                                   const sc = globalCodes[m.id] || 'XX';
                                   return (
                                       <div key={m.id} className="bg-white border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition">
@@ -3429,6 +3440,131 @@ const LayoutBuilder = () => {
     const [ctActiveCell, setCtActiveCell] = useState(null); // last clicked cell key
     const [ctDrag, setCtDrag] = useState(null); // {type:'col'|'row', idx, startX, startY, startVals}
     const ctDragRef = useRef(null);
+
+    // ---- MAIL MERGE PREVIEW STATE ----
+    const [previewMode, setPreviewMode] = useState(false);
+    const [previewClass, setPreviewClass] = useState('');
+    const [previewStudentIndex, setPreviewStudentIndex] = useState(0);
+
+    // Compute preview data when previewMode is active
+    const previewClassesData = allData?.classes || data.classes || [];
+    const previewActiveSetting = data.settings.find(s => s.isActive);
+    const previewAllStudents = useMemo(() => getStudentsForYear(data.studentSnapshots, previewActiveSetting, data.students), [data.studentSnapshots, previewActiveSetting, data.students]);
+    const previewStudentsInClass = useMemo(() => getStudentsInClass(previewAllStudents, previewClassesData, previewClass), [previewAllStudents, previewClassesData, previewClass]);
+    const previewStudent = previewStudentsInClass[previewStudentIndex] || null;
+    const previewGradeDocId = useMemo(() => getGradeDocId(previewClass, previewClassesData, previewActiveSetting, data.grades), [previewClass, previewClassesData, previewActiveSetting, data.grades]);
+    const previewClassGrades = useMemo(() => (data.grades.find(g => g.id === previewGradeDocId)?.data || {}), [data.grades, previewGradeDocId]);
+    const previewClassAverages = useMemo(() => {
+        const avgs = {};
+        if (!previewClass || !previewClassGrades) return avgs;
+        const subs = filterSubjectsByClass(data.subjects, previewClass, previewClassesData);
+        subs.forEach(sub => {
+            let total = 0; let count = 0;
+            Object.values(previewClassGrades).forEach(stGrades => {
+                const g = stGrades[sub.id];
+                let val = null;
+                if (g && typeof g === 'object') { const r = computeRaportScore(g.uts, g.uas); val = r !== '' ? Number(r) : null; }
+                else if (g !== undefined && g !== '' && !isNaN(g)) val = Number(g);
+                if (val !== null) { total += val; count++; }
+            });
+            avgs[sub.id] = count > 0 ? (total / count).toFixed(2) : '';
+        });
+        return avgs;
+    }, [previewClass, previewClassGrades, data.subjects, previewClassesData]);
+
+    // Build a replaceVariables function for the preview student
+    const buildPreviewReplacer = (stdData) => {
+        if (!stdData || !previewClass) return (str) => str;
+        const sGrades = previewClassGrades[stdData.id] || {};
+        const className = getClassNameFromValue(previewClassesData, previewClass);
+        const classDataObj = previewClassesData.find(c => c.id === previewClass);
+        const subjectsForClass = sortSubjectsByCategory(filterSubjectsByClass(data.subjects, previewClass, previewClassesData), data.subjectCategories);
+        const globalShortCodes = getGlobalSubjectShortCodes(data.masterSubjects || data.subjects);
+        const shortKeyMapPrev = buildShortKeyMap(subjectsForClass, data.presences, data.characterTraits, data.extracurriculars, globalShortCodes);
+
+        const relevantSubjects = data.subjects?.filter(s => isSubjectVisibleInClass(s, previewClass, previewClassesData)) || [];
+        let totalVal = 0; let countVal = 0;
+        relevantSubjects.forEach(s => {
+            const g = sGrades[s.id];
+            let num = null;
+            if (g && typeof g === 'object') { const r = computeRaportScore(g.uts, g.uas); num = r !== '' ? Number(r) : null; }
+            else if (g !== undefined && g !== '' && !isNaN(g)) num = Number(g);
+            if (num !== null && !isNaN(num)) { totalVal += num; countVal++; }
+        });
+        const rataRata = countVal > 0 ? (totalVal / countVal).toFixed(2) : '';
+        const totalRaport = countVal > 0 ? totalVal : '';
+        const jumlahSantri = previewStudentsInClass?.length || 0;
+        const toAr = (val) => String(val).replace(/[0-9]/g, w => ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'][w]);
+
+        return (str) => {
+            if (typeof str !== 'string') return str;
+            let replaced = str
+                .replace(/\{\{nama_santri\}\}/gi, stdData.nama || '')
+                .replace(/\{\{nama_santri_ar\}\}/gi, stdData.nama_arab || '')
+                .replace(/\{\{nis\}\}/gi, stdData.nis || '')
+                .replace(/\{\{nisn\}\}/gi, stdData.nisn || '')
+                .replace(/\{\{kelas\}\}/gi, className || '')
+                .replace(/\{\{kelas_ar\}\}/gi, classDataObj?.name_arab || '')
+                .replace(/\{\{tahun_ajaran\}\}/gi, previewActiveSetting?.tahun || '')
+                .replace(/\{\{tahun_ajaran_ar\}\}/gi, previewActiveSetting?.tahun_arab || '')
+                .replace(/\{\{semester\}\}/gi, previewActiveSetting?.semester || '')
+                .replace(/\{\{semester_ar\}\}/gi, previewActiveSetting?.semester_arab || '')
+                .replace(/\{\{total_raport\}\}/gi, String(totalRaport))
+                .replace(/\{\{total_raport_ar\}\}/gi, totalRaport !== '' ? toAr(totalRaport) : '')
+                .replace(/\{\{rata_rata_raport\}\}/gi, rataRata)
+                .replace(/\{\{rata_rata_raport_ar\}\}/gi, rataRata !== '' ? toAr(rataRata) : '')
+                .replace(/\{\{jumlah_santri\}\}/gi, String(jumlahSantri))
+                .replace(/\{\{jumlah_santri_ar\}\}/gi, toAr(jumlahSantri));
+
+            // Master subjects
+            if (data.masterSubjects && data.masterSubjects.length > 0) {
+                const globalCodes = getGlobalSubjectShortCodes(data.masterSubjects);
+                data.masterSubjects.forEach(m => {
+                    if (!m || !m.nameId) return;
+                    const mapelAr = m.nameAr || m.nameId;
+                    const sc = globalCodes[m.id];
+                    if (sc) {
+                        replaced = replaced
+                            .replace(new RegExp(`\\{\\{${sc}I\\}\\}`, 'gi'), m.nameId)
+                            .replace(new RegExp(`\\{\\{${sc}A\\}\\}`, 'gi'), mapelAr);
+                    }
+                });
+            }
+
+            // Short key variables (nilai, kkm, rata)
+            replaced = replaced.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
+                if (stdData[key] !== undefined) return stdData[key];
+                const shortEntry = shortKeyMapPrev[key];
+                if (shortEntry) {
+                    const { realId, dataType } = shortEntry;
+                    if (dataType === 'subject' || dataType === 'subject_nilai') {
+                        const g = sGrades[realId];
+                        if (g && typeof g === 'object') { const r = computeRaportScore(g.uts, g.uas); return r !== '' ? String(r) : ''; }
+                        return g !== undefined ? String(g) : '';
+                    }
+                    if (dataType === 'subject_kkm') {
+                        const subObj = subjectsForClass.find(s => s.id === realId);
+                        return subObj ? String(subObj.kkm || '') : '';
+                    }
+                    if (dataType === 'subject_rata') {
+                        return previewClassAverages[realId] !== undefined ? String(previewClassAverages[realId]) : '';
+                    }
+                    if (dataType === 'subject_uts') { const g = sGrades[realId]; return (g && typeof g === 'object') ? String(g.uts || '') : ''; }
+                    if (dataType === 'subject_uas') { const g = sGrades[realId]; return (g && typeof g === 'object') ? String(g.uas || '') : ''; }
+                }
+                return match; // leave unreplaced
+            });
+            return replaced;
+        };
+    };
+
+    const previewReplacer = useMemo(
+        () => (previewMode && previewStudent) ? buildPreviewReplacer(previewStudent) : null,
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [previewMode, previewStudent, previewClassGrades, previewClassAverages, previewClass]
+    );
+    // ---- END MAIL MERGE PREVIEW STATE ----
+
 
     const findElementById = (els, id) => {
         for (const el of els) {
@@ -5622,6 +5758,12 @@ const LayoutBuilder = () => {
                                     </>
                                 )}
                             </button>
+                            <button 
+                                onClick={() => setPreviewMode(!previewMode)} 
+                                className={`w-full py-2 rounded-lg font-bold flex items-center justify-center gap-2 transition text-sm mt-2 ${previewMode ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'}`}
+                            >
+                                <Eye size={16}/> {previewMode ? 'Matikan Preview Data' : 'Preview Data Asli'}
+                            </button>
                             <button onClick={() => setShowToolbar(!showToolbar)} className="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 py-2 rounded-lg font-bold flex items-center justify-center gap-2 transition text-sm mt-2">
                                 {showToolbar ? <EyeOff size={16}/> : <Eye size={16}/>} {showToolbar ? 'Sembunyikan Menu' : 'Tampilkan Menu'}
                             </button>
@@ -5667,6 +5809,61 @@ const LayoutBuilder = () => {
 
             <div id="canvas-scroll-area" onMouseDown={handleCanvasMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp} className="flex-1 bg-gray-200 rounded-xl overflow-auto p-4 flex flex-col items-center border border-gray-300 relative select-none custom-scrollbar print:bg-white print:p-0 print:border-none print:overflow-visible print:static">
                 
+                {/* MAIL MERGE PREVIEW TOOLBAR */}
+                {previewMode && (
+                    <div className="bg-indigo-50 border-2 border-indigo-500 px-4 py-2 rounded-xl shadow-lg flex flex-wrap items-center gap-3 mb-4 shrink-0 sticky top-0 z-50 animate-fade-in-down w-full max-w-4xl">
+                        <div className="flex items-center gap-2 text-indigo-700 font-bold whitespace-nowrap">
+                            <span className="text-xl">👁️</span> Preview Data Asli
+                        </div>
+                        <div className="w-px h-6 bg-indigo-200 hidden sm:block"></div>
+                        <select
+                            className="p-1.5 border border-indigo-300 rounded bg-white text-sm font-semibold focus:outline-none focus:border-indigo-600 max-w-[150px]"
+                            value={previewClass}
+                            onChange={e => { setPreviewClass(e.target.value); setPreviewStudentIndex(0); }}
+                        >
+                            <option value="">-- Pilih Kelas --</option>
+                            {previewClassesData.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                        
+                        {previewStudentsInClass.length > 0 ? (
+                            <div className="flex items-center gap-2 bg-white border border-indigo-300 rounded px-2 py-1 overflow-hidden">
+                                <button
+                                    onClick={() => setPreviewStudentIndex(prev => Math.max(0, prev - 1))}
+                                    disabled={previewStudentIndex === 0}
+                                    className="p-1 hover:bg-indigo-100 rounded text-indigo-700 disabled:opacity-30 disabled:hover:bg-transparent transition"
+                                >
+                                    <ChevronDown size={16} className="rotate-90"/>
+                                </button>
+                                <span className="text-sm font-bold text-indigo-900 min-w-[150px] max-w-[200px] truncate text-center" title={previewStudent?.nama}>
+                                    {previewStudent?.nama || '...'}
+                                </span>
+                                <button
+                                    onClick={() => setPreviewStudentIndex(prev => Math.min(previewStudentsInClass.length - 1, prev + 1))}
+                                    disabled={previewStudentIndex >= previewStudentsInClass.length - 1}
+                                    className="p-1 hover:bg-indigo-100 rounded text-indigo-700 disabled:opacity-30 disabled:hover:bg-transparent transition"
+                                >
+                                    <ChevronDown size={16} className="-rotate-90"/>
+                                </button>
+                                <div className="text-[10px] text-gray-500 font-medium px-1 border-l ml-1">
+                                    {previewStudentIndex + 1}/{previewStudentsInClass.length}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="text-sm text-indigo-500 italic bg-white px-3 py-1.5 rounded border border-indigo-200">
+                                {previewClass ? 'Belum ada santri di kelas ini' : 'Pilih kelas dulu'}
+                            </div>
+                        )}
+                        
+                        <div className="flex-1"></div>
+                        <button
+                            onClick={() => { setPreviewMode(false); setPreviewClass(''); }}
+                            className="bg-red-50 text-red-600 hover:bg-red-100 px-3 py-1.5 rounded font-bold text-sm border border-red-200 transition"
+                        >
+                            Tutup Preview
+                        </button>
+                    </div>
+                )}
+
                 {showToolbar && (
                     <div className="bg-white px-4 py-2 rounded-full shadow-sm flex items-center gap-4 mb-4 shrink-0 border border-gray-200 sticky top-0 z-50">
                         <button onClick={() => setShowSidebar(!showSidebar)} className="text-gray-500 hover:text-emerald-600 transition" title={showSidebar ? "Sembunyikan Panel Kiri" : "Tampilkan Panel Kiri"}>
@@ -5882,19 +6079,19 @@ const LayoutBuilder = () => {
                                                     padding: (child.type === 'image' || child.type === 'table_custom' || child.type === 'shape' || child.type === 'line') ? '0' : '2px',
                                                     zIndex: child.zIndex ?? 1, opacity: child.opacity ?? 1
                                                 }}>
-                                                    {child.type === 'table_custom' ? renderCustomTable(child, s=>s, { allElements: elements, isEditable: selectedIds.includes(child.id), selectedCells: selectedIds.includes(child.id) ? ctSelCells : [], onColResizeStart: startColResize, onRowResizeStart: startRowResize, onCellDragStart: (e, ck) => { e.preventDefault(); e.stopPropagation(); setSelectedIds([child.id]); setIsDraggingCells(true); setCtDragStartCell(ck); setCtSelCells([ck]); setCtActiveCell(ck); }, onCellMouseEnter: (ck) => { if (isDraggingCells && ctDragStartCell) { setCtSelCells(getCellsInRect(ctDragStartCell, ck)); } }, onCellClick: (e, ck) => handleCellClick(e, child.id, ck), onCellDoubleClick: (e, ck) => { e.stopPropagation(); const currentContent = String(child.cells?.[ck]?.content ?? ''); const newContent = window.prompt('Ubah teks cell (ketik \\n untuk baris baru):', currentContent.replace(/\n/g, '\\n')); if (newContent !== null) { const newCells = {...(child.cells||{}), [ck]: {...(child.cells?.[ck]||{}), content: newContent.replace(/\\n/g, '\n')}}; updateElement(child.id, { cells: newCells }); } } })
+                                                    {child.type === 'table_custom' ? renderCustomTable(child, previewReplacer || (s=>s), { allElements: elements, isEditable: selectedIds.includes(child.id), selectedCells: selectedIds.includes(child.id) ? ctSelCells : [], onColResizeStart: startColResize, onRowResizeStart: startRowResize, onCellDragStart: (e, ck) => { e.preventDefault(); e.stopPropagation(); setSelectedIds([child.id]); setIsDraggingCells(true); setCtDragStartCell(ck); setCtSelCells([ck]); setCtActiveCell(ck); }, onCellMouseEnter: (ck) => { if (isDraggingCells && ctDragStartCell) { setCtSelCells(getCellsInRect(ctDragStartCell, ck)); } }, onCellClick: (e, ck) => handleCellClick(e, child.id, ck), onCellDoubleClick: (e, ck) => { e.stopPropagation(); const currentContent = String(child.cells?.[ck]?.content ?? ''); const newContent = window.prompt('Ubah teks cell (ketik \\n untuk baris baru):', currentContent.replace(/\n/g, '\\n')); if (newContent !== null) { const newCells = {...(child.cells||{}), [ck]: {...(child.cells?.[ck]||{}), content: newContent.replace(/\\n/g, '\n')}}; updateElement(child.id, { cells: newCells }); } } })
                                                     : child.type === 'image' ? <img src={child.content} style={{ width: '100%', height: '100%', objectFit: child.objectFit || 'contain', objectPosition: `${child.objectPositionX ?? 50}% ${child.objectPositionY ?? 50}%`, pointerEvents: 'none' }} alt="elemen" />
                                                     : child.type === 'line' ? <div style={{ width: '100%', height: `${child.lineThickness || 2}px`, backgroundColor: child.lineColor || '#000000', pointerEvents: 'none' }} />
                                                     : child.type === 'shape' ? <div style={{ width: '100%', height: '100%', backgroundColor: child.shapeFill || '#000000', borderRadius: `${child.shapeRadius || 0}px`, border: child.shapeBorder ? `${child.shapeBorder}px solid ${child.shapeBorderColor || '#000000'}` : 'none', pointerEvents: 'none' }} />
-                                                    : <div onDoubleClick={(e) => { e.stopPropagation(); const newContent = window.prompt('Ubah teks (ketik \\n untuk baris baru):', (child.content || '').replace(/\n/g, '\\n')); if (newContent !== null) updateElement(child.id, { content: newContent.replace(/\\n/g, '\n') }); }} style={{ whiteSpace: 'pre-wrap', width: '100%', height: '100%', textAlign: child.textAlign || 'left', direction: child.isRtl ? 'rtl' : 'ltr', cursor: 'text' }}>{child.content}</div>}
+                                                    : <div onDoubleClick={(e) => { e.stopPropagation(); const newContent = window.prompt('Ubah teks (ketik \\n untuk baris baru):', (child.content || '').replace(/\n/g, '\\n')); if (newContent !== null) updateElement(child.id, { content: newContent.replace(/\\n/g, '\n') }); }} style={{ whiteSpace: 'pre-wrap', width: '100%', height: '100%', textAlign: child.textAlign || 'left', direction: child.isRtl ? 'rtl' : 'ltr', cursor: 'text' }}>{previewReplacer ? previewReplacer(child.content) : child.content}</div>}
                                                 </div>
                                             ))}
                                         </div>
-                                    ) : el.type === 'table_custom' ? renderCustomTable(el, s=>s, { allElements: elements, isEditable: selectedIds.includes(el.id), selectedCells: selectedIds.includes(el.id) ? ctSelCells : [], onColResizeStart: startColResize, onRowResizeStart: startRowResize, onCellDragStart: (e, ck) => { e.preventDefault(); e.stopPropagation(); setSelectedIds([el.id]); setIsDraggingCells(true); setCtDragStartCell(ck); setCtSelCells([ck]); setCtActiveCell(ck); }, onCellMouseEnter: (ck) => { if (isDraggingCells && ctDragStartCell) { setCtSelCells(getCellsInRect(ctDragStartCell, ck)); } }, onCellClick: (e, ck) => handleCellClick(e, el.id, ck), onCellDoubleClick: (e, ck) => { e.stopPropagation(); const currentContent = String(el.cells?.[ck]?.content ?? ''); const newContent = window.prompt('Ubah teks cell (ketik \\n untuk baris baru):', currentContent.replace(/\n/g, '\\n')); if (newContent !== null) { const newCells = {...(el.cells||{}), [ck]: {...(el.cells?.[ck]||{}), content: newContent.replace(/\\n/g, '\n')}}; updateElement(el.id, { cells: newCells }); } } })
+                                    ) : el.type === 'table_custom' ? renderCustomTable(el, previewReplacer || (s=>s), { allElements: elements, isEditable: selectedIds.includes(el.id), selectedCells: selectedIds.includes(el.id) ? ctSelCells : [], onColResizeStart: startColResize, onRowResizeStart: startRowResize, onCellDragStart: (e, ck) => { e.preventDefault(); e.stopPropagation(); setSelectedIds([el.id]); setIsDraggingCells(true); setCtDragStartCell(ck); setCtSelCells([ck]); setCtActiveCell(ck); }, onCellMouseEnter: (ck) => { if (isDraggingCells && ctDragStartCell) { setCtSelCells(getCellsInRect(ctDragStartCell, ck)); } }, onCellClick: (e, ck) => handleCellClick(e, el.id, ck), onCellDoubleClick: (e, ck) => { e.stopPropagation(); const currentContent = String(el.cells?.[ck]?.content ?? ''); const newContent = window.prompt('Ubah teks cell (ketik \\n untuk baris baru):', currentContent.replace(/\n/g, '\\n')); if (newContent !== null) { const newCells = {...(el.cells||{}), [ck]: {...(el.cells?.[ck]||{}), content: newContent.replace(/\\n/g, '\n')}}; updateElement(el.id, { cells: newCells }); } } })
                                     : el.type === 'image' ? <img src={el.content} style={{ width: '100%', height: '100%', objectFit: el.objectFit || 'contain', objectPosition: `${el.objectPositionX ?? 50}% ${el.objectPositionY ?? 50}%`, pointerEvents: 'none' }} alt="elemen" />
                                     : el.type === 'line' ? <div style={{ width: '100%', height: `${el.lineThickness || 2}px`, backgroundColor: el.lineColor || '#000000', pointerEvents: 'none' }} />
                                     : el.type === 'shape' ? <div style={{ width: '100%', height: '100%', backgroundColor: el.shapeFill || '#000000', borderRadius: `${el.shapeRadius || 0}px`, border: el.shapeBorder ? `${el.shapeBorder}px solid ${el.shapeBorderColor || '#000000'}` : 'none', pointerEvents: 'none' }} />
-                                    : <div onDoubleClick={(e) => { e.stopPropagation(); const newContent = window.prompt('Ubah teks (ketik \\n untuk baris baru):', (el.content || '').replace(/\n/g, '\\n')); if (newContent !== null) updateElement(el.id, { content: newContent.replace(/\\n/g, '\n') }); }} style={{ whiteSpace: 'pre-wrap', width: '100%', height: '100%', textAlign: el.textAlign || 'left', direction: el.isRtl ? 'rtl' : 'ltr', cursor: 'text' }}>{el.content}</div>}
+                                    : <div onDoubleClick={(e) => { e.stopPropagation(); const newContent = window.prompt('Ubah teks (ketik \\n untuk baris baru):', (el.content || '').replace(/\n/g, '\\n')); if (newContent !== null) updateElement(el.id, { content: newContent.replace(/\\n/g, '\n') }); }} style={{ whiteSpace: 'pre-wrap', width: '100%', height: '100%', textAlign: el.textAlign || 'left', direction: el.isRtl ? 'rtl' : 'ltr', cursor: 'text' }}>{previewReplacer ? previewReplacer(el.content) : el.content}</div>}
                                     
                                     {isSelected && !el.locked && selectedIds.length === 1 && (
                                         <>
