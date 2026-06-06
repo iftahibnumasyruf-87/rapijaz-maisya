@@ -6698,7 +6698,7 @@ const InputIjazah = () => {
 
     const ijazahSubjects = useMemo(() => {
         return subjectsInClass.filter(sub => {
-            const master = allMasterSubjects.find(m => m.id === sub.masterId);
+            const master = allMasterSubjects.find(m => m.id === sub.masterId || m.nameId === sub.nameId);
             return master && master.is_ijazah;
         });
     }, [subjectsInClass, allMasterSubjects]);
@@ -7349,7 +7349,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                 
                 // Per-subject ijazah variables
                 ijazahSubs.forEach(m => {
-                    const subEntry = subjectsForClass.find(s => s.masterId === m.id);
+                    const subEntry = subjectsForClass.find(s => s.masterId === m.id || s.nameId === m.nameId);
                     if (!subEntry) return;
                     const subGrades = stdIjazah[subEntry.id] || {};
                     const sc = m.shortCode || m.id.slice(0, 4);
@@ -7366,7 +7366,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                 let ijazahTotalSum = 0;
                 let ijazahCount = 0;
                 ijazahSubs.forEach(m => {
-                    const subEntry = subjectsForClass.find(s => s.masterId === m.id);
+                    const subEntry = subjectsForClass.find(s => s.masterId === m.id || s.nameId === m.nameId);
                     if (!subEntry) return;
                     const rata = parseFloat((stdIjazah[subEntry.id] || {}).rata);
                     if (!isNaN(rata)) { ijazahTotalSum += rata; ijazahCount++; }
