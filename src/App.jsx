@@ -541,7 +541,7 @@ const AppProvider = ({ children }) => {
   const fetchData = async (skipMigration = false) => {
     // PHASE 1: Load ONLY essential data for fast initial load
     const essentialCollections = ['settings', 'users', 'classes', 'layouts'];
-    const lazyCollections = ['subjectCategories', 'masterSubjects', 'subjects', 'students', 'grades', 'fonts', 'studentFields', 'presences', 'extracurriculars', 'characterTraits', 'logs', 'teachers', 'studentSnapshots'];
+    const lazyCollections = ['subjectCategories', 'masterSubjects', 'subjects', 'students', 'grades', 'fonts', 'studentFields', 'presences', 'extracurriculars', 'characterTraits', 'logs', 'teachers', 'studentSnapshots', 'ijazah_grades'];
     
     let newData = { ...allData };
 
@@ -607,7 +607,7 @@ const AppProvider = ({ children }) => {
   };
 
   const fetchLazyCollections = async (currentData) => {
-    const lazyCollections = ['subjectCategories', 'masterSubjects', 'subjects', 'students', 'grades', 'fonts', 'studentFields', 'presences', 'extracurriculars', 'characterTraits', 'logs', 'teachers', 'studentSnapshots'];
+    const lazyCollections = ['subjectCategories', 'masterSubjects', 'subjects', 'students', 'grades', 'fonts', 'studentFields', 'presences', 'extracurriculars', 'characterTraits', 'logs', 'teachers', 'studentSnapshots', 'ijazah_grades'];
     let newData = { ...currentData };
 
     for (const colName of lazyCollections) {
@@ -2488,6 +2488,7 @@ const MasterData = ({ activeTab }) => {
                 <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm">
                     <SortableHeader label="Pelajaran Utama (Indo)" sortKey="nameId" />
                     <SortableHeader label="Pelajaran Utama (Arab)" sortKey="nameAr" className="text-right" />
+                    <th className="p-3 border-b text-center">Ijazah</th>
                     <th className="p-3 border-b">Var (Latin)</th>
                     <th className="p-3 border-b">Var (Arab)</th>
                     <th className="p-3 border-b text-center">Aksi</th>
@@ -2519,6 +2520,9 @@ const MasterData = ({ activeTab }) => {
                         <tr key={m.id} className="border-b hover:bg-gray-50">
                             <td className="p-3 font-semibold">{m.nameId}</td>
                             <td className="p-3 text-right font-arabic" dir="rtl">{m.nameAr}</td>
+                            <td className="p-3 text-center">
+                                {m.is_ijazah ? <span className="px-2 py-1 bg-emerald-100 text-emerald-700 text-xs rounded-full font-bold">Ya</span> : <span className="px-2 py-1 bg-gray-100 text-gray-500 text-xs rounded-full">Tidak</span>}
+                            </td>
                             <td className="p-3 text-sm text-gray-600 font-mono"><span className="select-all cursor-pointer p-1 bg-indigo-50 border border-indigo-200 rounded hover:bg-indigo-100 transition" title="Klik untuk menyalin">{'{{'}{varName}{'}}'}</span></td>
                             <td className="p-3 text-sm text-gray-600 font-mono"><span className="select-all cursor-pointer p-1 bg-amber-50 border border-amber-200 rounded hover:bg-amber-100 transition" title="Klik untuk menyalin">{'{{'}{varName}_arb{'}}'}</span></td>
                             <td className="p-3 text-center"><button onClick={() => handleOpenModal(m)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('masterSubjects', m.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td>
@@ -2842,6 +2846,10 @@ const MasterData = ({ activeTab }) => {
                 />
                 <input className="w-full p-2 border rounded text-right font-arabic" placeholder="Nama Pelajaran (Arab) - Terisi Otomatis" dir="rtl" value={formData.nameAr || ''} onChange={e => setFormData({...formData, nameAr: e.target.value})} />
                 <input className="w-full p-2 border rounded font-mono text-sm" placeholder="Variabel Singkatan (Opsional) - cth: bing, mtk" value={formData.shortCode || ''} onChange={e => setFormData({...formData, shortCode: e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '')})} />
+                <label className="flex items-center gap-2 p-2 bg-emerald-50 border border-emerald-100 rounded text-emerald-800 font-semibold cursor-pointer">
+                    <input type="checkbox" className="w-4 h-4 text-emerald-600" checked={formData.is_ijazah || false} onChange={e => setFormData({...formData, is_ijazah: e.target.checked})} />
+                    Jadikan sebagai Pelajaran Ijazah
+                </label>
                 <p className="text-[10px] text-gray-500 italic">*Ketik nama pelajaran (Indonesia) dan klik sembarang di luar kotak untuk terjemahan Arab. Anda juga bisa mengisi Variabel Singkatan agar lebih mudah saat disisipkan di tabel kustom (jika dikosongkan, akan otomatis memakai nama mapel).</p>
             </div>
         );
@@ -6633,6 +6641,387 @@ const InputNilai = ({ activeInputTab }) => {
 };
 
 // ==========================================
+// KELOLA NILAI IJAZAH
+// ==========================================
+const calculateIjazahPredicate = (average) => {
+    const val = parseFloat(average);
+    if (isNaN(val) || val === 0) return { ar: '', id: '' };
+    if (val >= 90) return { ar: 'ممتاز', id: 'Mumtaz (Istimewa)' };
+    if (val >= 80) return { ar: 'جيد جدا', id: 'Jayyid Jiddan (Sangat Baik)' };
+    if (val >= 70) return { ar: 'جيد', id: 'Jayyid (Baik)' };
+    if (val >= 60) return { ar: 'مقبول', id: 'Maqbul (Cukup)' };
+    if (val >= 50) return { ar: 'ضعيف', id: "Dha'if (Kurang)" };
+    return { ar: 'راسب', id: 'Rasib (Gagal)' };
+};
+
+const InputIjazah = () => {
+    const { data, allData, saveToDb, showNotification } = useContext(AppContext);
+    const [selectedClass, setSelectedClass] = useState('');
+    const [localIjazah, setLocalIjazah] = useState({});
+    const [isSaving, setIsSaving] = useState(false);
+    const [isPulling, setIsPulling] = useState(false);
+    const debounceTimers = useRef({});
+
+    const activeSetting = data.settings.find(s => s.isActive);
+    const classesData = allData?.classes || data.classes;
+    const activeStudents = getStudentsForYear(data.studentSnapshots, activeSetting, data.students);
+    const studentsInClass = getStudentsInClass(activeStudents, classesData, selectedClass);
+
+    const subjectsInClass = useMemo(
+        () => filterSubjectsByClass(data.subjects, selectedClass, classesData),
+        [data.subjects, selectedClass, classesData]
+    );
+
+    const ijazahSubjects = useMemo(() => {
+        return subjectsInClass.filter(sub => {
+            const master = (data.masterSubjects || []).find(m => m.id === sub.masterId);
+            return master && master.is_ijazah;
+        });
+    }, [subjectsInClass, data.masterSubjects]);
+
+    useEffect(() => {
+        if (!selectedClass || !activeSetting) { setLocalIjazah({}); return; }
+        const initial = {};
+        studentsInClass.forEach(st => {
+            const docId = `ijazah_${st.id}_${activeSetting.tahun}`;
+            const ig = (data.ijazah_grades || []).find(g => g.id === docId);
+            initial[st.id] = ig ? (ig.data || {}) : {};
+        });
+        setLocalIjazah(initial);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedClass, activeSetting, data.ijazah_grades]);
+
+    const debounceSave = (studentId, studentData) => {
+        if (debounceTimers.current[studentId]) clearTimeout(debounceTimers.current[studentId]);
+        setIsSaving(true);
+        debounceTimers.current[studentId] = setTimeout(async () => {
+            const docId = `ijazah_${studentId}_${activeSetting.tahun}`;
+            await saveToDb('ijazah_grades', docId, { tahun: activeSetting.tahun, data: studentData }, true);
+            setIsSaving(false);
+        }, 1200);
+    };
+
+    const handleGradeChange = (studentId, subjectId, field, val) => {
+        setLocalIjazah(prev => {
+            const stData = prev[studentId] || {};
+            const subData = stData[subjectId] || { sem1: '', sem2: '' };
+            const updatedSub = { ...subData, [field]: val };
+            const s1 = parseFloat(updatedSub.sem1);
+            const s2 = parseFloat(updatedSub.sem2);
+            const hasS1 = !isNaN(s1) && updatedSub.sem1 !== '';
+            const hasS2 = !isNaN(s2) && updatedSub.sem2 !== '';
+            if (hasS1 && hasS2) {
+                updatedSub.total = s1 + s2;
+                updatedSub.rata = (s1 + s2) / 2;
+            } else if (hasS1) {
+                updatedSub.total = s1;
+                updatedSub.rata = s1;
+            } else if (hasS2) {
+                updatedSub.total = s2;
+                updatedSub.rata = s2;
+            } else {
+                updatedSub.total = '';
+                updatedSub.rata = '';
+            }
+            const newState = { ...prev, [studentId]: { ...stData, [subjectId]: updatedSub } };
+            debounceSave(studentId, newState[studentId]);
+            return newState;
+        });
+    };
+
+    const tarikNilaiOtomatis = async () => {
+        if (!selectedClass || !activeSetting || ijazahSubjects.length === 0) return;
+        setIsPulling(true);
+
+        const allGrades = data.grades || [];
+        const getDocData = (sem) => {
+            const found = allGrades.find(g =>
+                g.class === selectedClass &&
+                g.tahun === activeSetting.tahun &&
+                g.semester === sem
+            );
+            return found?.data || {};
+        };
+
+        const ganjilData = getDocData('Ganjil');
+        const genapData = getDocData('Genap');
+
+        const newLocal = { ...localIjazah };
+        let count = 0;
+
+        for (const st of studentsInClass) {
+            let stData = { ...(newLocal[st.id] || {}) };
+            let changed = false;
+
+            ijazahSubjects.forEach(sub => {
+                const extractAvg = (semData) => {
+                    const raw = semData[st.id]?.[sub.id];
+                    if (!raw && raw !== 0) return '';
+                    if (typeof raw === 'object' && ('uts' in raw || 'uas' in raw)) {
+                        const uts = parseFloat(raw.uts);
+                        const uas = parseFloat(raw.uas);
+                        const hasUts = !isNaN(uts) && raw.uts !== '';
+                        const hasUas = !isNaN(uas) && raw.uas !== '';
+                        if (hasUts && hasUas) return Math.round((uts + uas) / 2);
+                        if (hasUts) return Math.round(uts);
+                        if (hasUas) return Math.round(uas);
+                        return '';
+                    }
+                    const n = parseFloat(raw);
+                    return isNaN(n) ? '' : Math.round(n);
+                };
+
+                const avgSem1 = extractAvg(ganjilData);
+                const avgSem2 = extractAvg(genapData);
+
+                if (avgSem1 !== '' || avgSem2 !== '') {
+                    changed = true;
+                    const s1 = parseFloat(avgSem1);
+                    const s2 = parseFloat(avgSem2);
+                    const hasS1 = !isNaN(s1) && avgSem1 !== '';
+                    const hasS2 = !isNaN(s2) && avgSem2 !== '';
+                    stData[sub.id] = {
+                        sem1: avgSem1,
+                        sem2: avgSem2,
+                        total: hasS1 && hasS2 ? s1 + s2 : hasS1 ? s1 : hasS2 ? s2 : '',
+                        rata: hasS1 && hasS2 ? (s1 + s2) / 2 : hasS1 ? s1 : hasS2 ? s2 : ''
+                    };
+                }
+            });
+
+            if (changed) {
+                newLocal[st.id] = stData;
+                const docId = `ijazah_${st.id}_${activeSetting.tahun}`;
+                await saveToDb('ijazah_grades', docId, { tahun: activeSetting.tahun, data: stData }, true);
+                count++;
+            }
+        }
+
+        setLocalIjazah(newLocal);
+        setIsPulling(false);
+        showNotification(`Berhasil menarik nilai untuk ${count} santri!`, 'success');
+    };
+
+    const getOverallData = (studentId) => {
+        const stData = localIjazah[studentId] || {};
+        let totalSum = 0;
+        let countValid = 0;
+        ijazahSubjects.forEach(sub => {
+            const rata = parseFloat(stData[sub.id]?.rata);
+            if (!isNaN(rata)) { totalSum += rata; countValid++; }
+        });
+        const rataAll = countValid > 0 ? totalSum / countValid : 0;
+        return {
+            total: countValid > 0 ? totalSum : '',
+            rata: countValid > 0 ? rataAll : '',
+            predikat: countValid > 0 ? calculateIjazahPredicate(rataAll) : { ar: '', id: '' }
+        };
+    };
+
+    if (!activeSetting) return (
+        <div className="p-8 text-center text-gray-500">
+            <AlertCircle className="mx-auto mb-2 text-gray-400" size={32}/>
+            Buat dan aktifkan Tahun Ajaran di Master Data &gt; Pengaturan terlebih dahulu.
+        </div>
+    );
+
+    return (
+        <div className="space-y-5 p-1">
+            {/* Header */}
+            <div className="flex justify-between items-end border-b pb-4">
+                <div>
+                    <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                        <FileSignature className="text-emerald-600"/> Kelola Nilai Ijazah
+                    </h2>
+                    <p className="text-gray-500 text-sm mt-1">
+                        Input nilai Semester Ganjil &amp; Genap untuk keperluan cetak Ijazah Kelulusan.
+                        <span className="ml-2 text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-semibold">
+                            Tahun Ajaran: {activeSetting.tahun}
+                        </span>
+                    </p>
+                </div>
+                {isSaving && (
+                    <span className="text-xs font-bold text-emerald-600 animate-pulse bg-emerald-50 px-3 py-1 rounded-full flex items-center gap-1">
+                        <Save size={14}/> Menyimpan...
+                    </span>
+                )}
+            </div>
+
+            {/* Toolbar */}
+            <div className="bg-white p-4 rounded-xl border shadow-sm">
+                <div className="flex flex-wrap items-end gap-4">
+                    <div className="min-w-[200px]">
+                        <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-1">Pilih Kelas</label>
+                        <select
+                            className="w-full p-2 border rounded-lg focus:outline-none focus:border-emerald-500 font-semibold"
+                            value={selectedClass}
+                            onChange={e => setSelectedClass(e.target.value)}
+                        >
+                            <option value="">-- Pilih Kelas --</option>
+                            {classesData.map(c => (
+                                <option key={c.id} value={c.id}>{c.name}</option>
+                            ))}
+                        </select>
+                    </div>
+                    {selectedClass && (
+                        <button
+                            onClick={tarikNilaiOtomatis}
+                            disabled={isPulling}
+                            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg font-medium shadow flex items-center gap-2 transition"
+                        >
+                            <Download size={18}/>
+                            {isPulling ? 'Menarik Data...' : 'Tarik Nilai Otomatis dari Raport'}
+                        </button>
+                    )}
+                </div>
+            </div>
+
+            {/* Tabel */}
+            {!selectedClass ? (
+                <div className="py-16 text-center bg-gray-50 rounded-xl border border-dashed border-gray-300">
+                    <FileSignature size={40} className="mx-auto text-gray-300 mb-3"/>
+                    <p className="text-gray-500 font-medium">Pilih kelas untuk memulai input nilai ijazah.</p>
+                </div>
+            ) : ijazahSubjects.length === 0 ? (
+                <div className="py-12 text-center bg-red-50 rounded-xl border border-red-200">
+                    <AlertCircle className="mx-auto text-red-400 mb-2" size={36}/>
+                    <p className="text-red-700 font-bold text-lg">Tidak ada Pelajaran Ijazah untuk kelas ini!</p>
+                    <p className="text-sm text-red-600 mt-2 max-w-md mx-auto">
+                        Pastikan sudah ada mata pelajaran yang di-plotting ke kelas ini, dan di <b>Master Data &gt; Master Pelajaran</b> sudah dicentang <b>"Jadikan sebagai Pelajaran Ijazah"</b>.
+                    </p>
+                </div>
+            ) : (
+                <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+                    <div className="overflow-x-auto">
+                        <table className="border-collapse whitespace-nowrap text-sm">
+                            <thead className="sticky top-0 z-20">
+                                {/* Row 1 - Group headers */}
+                                <tr className="bg-emerald-800 text-white">
+                                    <th rowSpan={2} className="p-3 border-b border-r border-emerald-700 text-center w-10 sticky left-0 z-30 bg-emerald-900">No</th>
+                                    <th rowSpan={2} className="p-3 border-b border-r border-emerald-700 sticky left-10 z-30 bg-emerald-900 min-w-[180px]">Nama Santri</th>
+                                    {/* Ringkasan Ijazah */}
+                                    <th colSpan={3} className="p-2 border-b border-r border-emerald-600 text-center bg-emerald-700 text-xs font-bold tracking-wide">
+                                        RINGKASAN IJAZAH
+                                    </th>
+                                    {/* Per mapel */}
+                                    {ijazahSubjects.map(sub => (
+                                        <th key={sub.id} colSpan={4} className="p-2 border-b border-r border-emerald-700 text-center min-w-[260px]">
+                                            <div className="font-bold">{sub.nameId}</div>
+                                            {sub.nameAr && <div className="font-arabic text-emerald-200 text-xs mt-0.5" dir="rtl">{sub.nameAr}</div>}
+                                        </th>
+                                    ))}
+                                </tr>
+                                {/* Row 2 - Sub-headers */}
+                                <tr className="bg-emerald-700 text-white text-xs text-center">
+                                    <th className="p-2 border-b border-r border-emerald-600 w-16">Total</th>
+                                    <th className="p-2 border-b border-r border-emerald-600 w-16">Rata²</th>
+                                    <th className="p-2 border-b border-r border-emerald-600 min-w-[200px]">Predikat</th>
+                                    {ijazahSubjects.map(sub => (
+                                        <React.Fragment key={`${sub.id}_h`}>
+                                            <th className="p-2 border-b border-r border-emerald-600 w-16">Sem 1</th>
+                                            <th className="p-2 border-b border-r border-emerald-600 w-16">Sem 2</th>
+                                            <th className="p-2 border-b border-r border-emerald-600 w-16">Total</th>
+                                            <th className="p-2 border-b border-r border-emerald-600 w-16">Rata²</th>
+                                        </React.Fragment>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {studentsInClass.map((st, idx) => {
+                                    const overall = getOverallData(st.id);
+                                    return (
+                                        <tr key={st.id} className="border-b hover:bg-emerald-50/60 transition-colors">
+                                            <td className="p-3 text-center text-gray-500 sticky left-0 bg-white border-r z-10 text-xs">{idx + 1}</td>
+                                            <td className="p-3 font-semibold sticky left-10 bg-white border-r shadow-[2px_0_6px_-2px_rgba(0,0,0,0.1)] z-10 max-w-[180px] truncate">
+                                                <div>{st.nama}</div>
+                                                {st.nis && <div className="text-xs text-gray-400 font-normal">{st.nis}</div>}
+                                            </td>
+                                            {/* Ringkasan */}
+                                            <td className="p-2 border-r bg-emerald-50 text-center font-bold text-emerald-800">
+                                                {overall.total !== '' ? Number(overall.total).toFixed(1) : ''}
+                                            </td>
+                                            <td className="p-2 border-r bg-emerald-50 text-center font-bold text-emerald-800">
+                                                {overall.rata !== '' ? Number(overall.rata).toFixed(2) : ''}
+                                            </td>
+                                            <td className="p-2 border-r bg-emerald-50/80 text-center">
+                                                {overall.predikat.id && (
+                                                    <div>
+                                                        <div className="text-xs font-bold text-emerald-800">{overall.predikat.id}</div>
+                                                        <div className="font-arabic text-sm mt-0.5 text-emerald-700" dir="rtl">{overall.predikat.ar}</div>
+                                                    </div>
+                                                )}
+                                            </td>
+                                            {/* Per mapel */}
+                                            {ijazahSubjects.map(sub => {
+                                                const subG = localIjazah[st.id]?.[sub.id] || { sem1: '', sem2: '', total: '', rata: '' };
+                                                return (
+                                                    <React.Fragment key={sub.id}>
+                                                        <td className="p-1 border-r">
+                                                            <input
+                                                                type="number"
+                                                                min="0" max="100"
+                                                                className="w-full p-1.5 text-center bg-transparent focus:bg-blue-50 outline-none rounded focus:ring-1 focus:ring-blue-300"
+                                                                value={subG.sem1 ?? ''}
+                                                                onChange={e => handleGradeChange(st.id, sub.id, 'sem1', e.target.value)}
+                                                            />
+                                                        </td>
+                                                        <td className="p-1 border-r">
+                                                            <input
+                                                                type="number"
+                                                                min="0" max="100"
+                                                                className="w-full p-1.5 text-center bg-transparent focus:bg-blue-50 outline-none rounded focus:ring-1 focus:ring-blue-300"
+                                                                value={subG.sem2 ?? ''}
+                                                                onChange={e => handleGradeChange(st.id, sub.id, 'sem2', e.target.value)}
+                                                            />
+                                                        </td>
+                                                        <td className="p-2 border-r bg-gray-50 text-center font-semibold text-gray-700 text-xs">
+                                                            {subG.total !== '' ? Number(subG.total).toFixed(1) : ''}
+                                                        </td>
+                                                        <td className="p-2 border-r bg-gray-50 text-center font-bold text-blue-700 text-xs">
+                                                            {subG.rata !== '' ? Number(subG.rata).toFixed(2) : ''}
+                                                        </td>
+                                                    </React.Fragment>
+                                                );
+                                            })}
+                                        </tr>
+                                    );
+                                })}
+                                {studentsInClass.length === 0 && (
+                                    <tr>
+                                        <td colSpan={3 + ijazahSubjects.length * 4 + 3} className="py-10 text-center text-gray-400">
+                                            Tidak ada santri di kelas ini.
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* Panduan Predikat */}
+                    <div className="p-3 bg-gray-50 border-t">
+                        <p className="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">Tabel Predikat:</p>
+                        <div className="flex flex-wrap gap-2 text-xs">
+                            {[
+                                { range: '90 – 100', ar: 'ممتاز', id: 'Mumtaz (Istimewa)', color: 'bg-emerald-100 text-emerald-800' },
+                                { range: '80 – 89', ar: 'جيد جدا', id: 'Jayyid Jiddan (Sangat Baik)', color: 'bg-blue-100 text-blue-800' },
+                                { range: '70 – 79', ar: 'جيد', id: 'Jayyid (Baik)', color: 'bg-sky-100 text-sky-800' },
+                                { range: '60 – 69', ar: 'مقبول', id: 'Maqbul (Cukup)', color: 'bg-yellow-100 text-yellow-800' },
+                                { range: '50 – 59', ar: 'ضعيف', id: "Dha'if (Kurang)", color: 'bg-orange-100 text-orange-800' },
+                                { range: '1 – 49', ar: 'راسب', id: 'Rasib (Gagal)', color: 'bg-red-100 text-red-800' },
+                            ].map(p => (
+                                <span key={p.range} className={`px-2 py-1 rounded-full font-semibold ${p.color}`}>
+                                    {p.range}: <span className="font-arabic">{p.ar}</span> ({p.id})
+                                </span>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+// ==========================================
 // CETAK RAPORT / IJAZAH
 // ==========================================
 const CetakDokumen = ({ mode = 'raport' }) => {
@@ -6700,6 +7089,22 @@ const CetakDokumen = ({ mode = 'raport' }) => {
     const gradeDocId = getGradeDocId(selectedClass, classesData, activeSetting, data.grades);
     const classGradesDoc = data.grades.find(g => g.id === gradeDocId)?.data || {};
     const studentGrades = classGradesDoc[selectedStudent] || {};
+
+    // Ijazah grades lookup per student
+    const ijazahGradesMap = useMemo(() => {
+        const map = {};
+        (data.ijazah_grades || []).forEach(doc => {
+            if (doc.tahun === activeSetting.tahun && doc.data) {
+                // docId format: ijazah_<studentId>_<tahun>
+                const parts = doc.id.split('_');
+                if (parts.length >= 3) {
+                    const studentId = parts.slice(1, -1).join('_');
+                    map[studentId] = doc.data;
+                }
+            }
+        });
+        return map;
+    }, [data.ijazah_grades, activeSetting.tahun]);
 
     const classAverages = useMemo(() => {
         if(!gradeDocId) return {};
@@ -6912,6 +7317,46 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                              .replace(/\{\{rata_rata_raport_ar\}\}/gi, rataRataAr)
                              .replace(/\{\{jumlah_santri\}\}/gi, jumlahSantri)
                              .replace(/\{\{jumlah_santri_ar\}\}/gi, jumlahSantriAr);
+
+            // ---- IJAZAH VARIABLES ----
+            if (mode === 'ijazah') {
+                const stdIjazah = ijazahGradesMap[stdData.id] || {};
+                const ijazahSubs = (data.masterSubjects || []).filter(m => m.is_ijazah);
+                
+                // Per-subject ijazah variables
+                ijazahSubs.forEach(m => {
+                    const subEntry = subjectsForClass.find(s => s.masterId === m.id);
+                    if (!subEntry) return;
+                    const subGrades = stdIjazah[subEntry.id] || {};
+                    const sc = m.shortCode || m.id.slice(0, 4);
+                    const escRe = (s) => (s || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    const safe = escRe(sc);
+                    replaced = replaced
+                        .replace(new RegExp(`\\{\\{ijazah_${safe}_sem1\\}\\}`, 'gi'), subGrades.sem1 ?? '')
+                        .replace(new RegExp(`\\{\\{ijazah_${safe}_sem2\\}\\}`, 'gi'), subGrades.sem2 ?? '')
+                        .replace(new RegExp(`\\{\\{ijazah_${safe}_total\\}\\}`, 'gi'), subGrades.total !== undefined && subGrades.total !== '' ? Number(subGrades.total).toFixed(1) : '')
+                        .replace(new RegExp(`\\{\\{ijazah_${safe}_rata\\}\\}`, 'gi'), subGrades.rata !== undefined && subGrades.rata !== '' ? Number(subGrades.rata).toFixed(2) : '');
+                });
+                
+                // Overall ijazah totals
+                let ijazahTotalSum = 0;
+                let ijazahCount = 0;
+                ijazahSubs.forEach(m => {
+                    const subEntry = subjectsForClass.find(s => s.masterId === m.id);
+                    if (!subEntry) return;
+                    const rata = parseFloat((stdIjazah[subEntry.id] || {}).rata);
+                    if (!isNaN(rata)) { ijazahTotalSum += rata; ijazahCount++; }
+                });
+                const ijazahRata = ijazahCount > 0 ? ijazahTotalSum / ijazahCount : '';
+                const predikat = ijazahRata !== '' ? calculateIjazahPredicate(ijazahRata) : { ar: '', id: '' };
+                
+                replaced = replaced
+                    .replace(/\{\{ijazah_total\}\}/gi, ijazahCount > 0 ? ijazahTotalSum.toFixed(1) : '')
+                    .replace(/\{\{ijazah_rata\}\}/gi, ijazahRata !== '' ? Number(ijazahRata).toFixed(2) : '')
+                    .replace(/\{\{ijazah_predikat_id\}\}/gi, predikat.id)
+                    .replace(/\{\{ijazah_predikat_ar\}\}/gi, predikat.ar);
+            }
+            // ---- END IJAZAH VARIABLES ----
             
             // Replace dynamic variables for Master Subjects
             // Iterates ALL masterSubjects (not per-class filtered), supports:
@@ -7567,6 +8012,7 @@ const Dashboard = () => {
     { id: 'master_data', label: 'Master Data', icon: Users, roles: ['admin'], subItems: masterDataSubItems },
     { id: 'layout_builder', label: 'Desain Layout', icon: LayoutTemplate, roles: ['admin'] },
     { id: 'input_nilai', label: 'Input Nilai', icon: CheckSquare, roles: ['admin', 'guru', 'user'], subItems: inputNilaiSubItems },
+    { id: 'input_ijazah', label: 'Kelola Nilai Ijazah', icon: FileSignature, roles: ['admin', 'guru', 'user'] },
     { id: 'legger', label: 'Legger Kelas', icon: BookOpen, roles: ['admin', 'guru', 'user'] },
     { id: 'cetak_raport', label: 'Cetak Raport', icon: Printer, roles: ['admin', 'guru', 'user'] },
     { id: 'cetak_ijazah', label: 'Cetak Ijazah', icon: Printer, roles: ['admin'] },
@@ -7584,6 +8030,7 @@ const Dashboard = () => {
 
     switch (activeMenu) {
       case 'dashboard': return <HomeDashboard />;
+      case 'input_ijazah': return <InputIjazah />;
       case 'layout_builder': return <LayoutBuilder />;
       case 'cetak_raport': return <ErrorBoundary key="eb-raport"><CetakDokumen key="raport" mode="raport" /></ErrorBoundary>;
       case 'cetak_ijazah': return <ErrorBoundary key="eb-ijazah"><CetakDokumen key="ijazah" mode="ijazah" /></ErrorBoundary>;
