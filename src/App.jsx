@@ -7463,17 +7463,25 @@ const InputIjazah = () => {
         });
     }, [allData?.classes, data.classes]);
 
-    // Untuk dropdown, tampilkan kelas aktif (data.classes) saja agar tidak membingungkan
     const dropdownClasses = useMemo(() => {
         const raw = data.classes || [];
         const seen = new Set();
         return raw.filter(c => { 
             const name = (c.name || '').toLowerCase().trim();
+            // Hanya kelas 9 dan 12 (atau IX dan XII)
+            if (!name.includes('9') && !name.includes('12') && !name.includes('ix') && !name.includes('xii')) return false;
+
             if (seen.has(name)) return false; 
             seen.add(name); 
             return true; 
         });
     }, [data.classes]);
+
+    useEffect(() => {
+        if (selectedClass && !dropdownClasses.some(c => c.id === selectedClass)) {
+            setSelectedClass('');
+        }
+    }, [selectedClass, dropdownClasses]);
 
     const allMasterSubjects = useMemo(() => {
         const raw = allData?.masterSubjects || [];
@@ -7529,13 +7537,10 @@ const InputIjazah = () => {
 
     const ijazahSubjects = useMemo(() => {
         return subjectsInClass.filter(sub => {
-            // Cek is_ijazah langsung dari data subjects (di-set dari toggle di halaman Plotting)
-            if (typeof sub.is_ijazah === 'boolean') return sub.is_ijazah;
-            // Fallback: cek dari masterSubjects jika is_ijazah belum di-set di subjects
-            const master = allMasterSubjects.find(m => m.id === sub.masterId || m.nameId === sub.nameId);
-            return master && master.is_ijazah;
+            // Sesuai request: HANYA pelajaran yang telah dipilih (dicentang) di halaman Plotting Pelajaran
+            return sub.is_ijazah === true;
         });
-    }, [subjectsInClass, allMasterSubjects]);
+    }, [subjectsInClass]);
 
     useEffect(() => {
         if (!selectedClass || !activeSetting) { setLocalIjazah({}); return; }
