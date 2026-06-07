@@ -2935,16 +2935,45 @@ const MasterData = ({ activeTab }) => {
                                     <Trash2 size={16}/> Hapus Semua ({data.students?.length || 0})
                                 </button>
                             </div>
-                            <table className="w-full text-left border-collapse">
-                <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm">
-                    <SortableHeader label="NIS" sortKey="nis" />
-                    <SortableHeader label="Nama Santri" sortKey="nama" />
-                    <SortableHeader label="Nama Arab" sortKey="nama_arab" />
-                    <SortableHeader label="Kelas" sortKey="kelas" />
-                    <th className="p-3 border-b text-center">Aksi</th>
-                </tr></thead>
-                <tbody>{sortedData.map(st => (<tr key={st.id} className="border-b hover:bg-gray-50"><td className="p-3">{st.nis}</td><td className="p-3 font-semibold">{st.nama}</td><td className="p-3 font-arabic" dir="rtl">{st.nama_arab}</td><td className="p-3">{getClassNameFromValue(allData?.classes || data.classes, st.kelas)}</td><td className="p-3 text-center"><button onClick={() => handleOpenModal(st)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('students', st.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td></tr>))}</tbody>
-              </table>
+                            <div className="overflow-x-auto w-full bg-white rounded-lg border">
+                                <table className="w-full text-left border-collapse whitespace-nowrap min-w-max">
+                                    <thead className="sticky top-0 bg-gray-100 z-10">
+                                        <tr className="text-sm">
+                                            <SortableHeader label="NIS" sortKey="nis" className="sticky left-0 bg-gray-100 z-20 shadow-[1px_0_0_0_#e5e7eb]" />
+                                            <SortableHeader label="Nama Santri" sortKey="nama" />
+                                            <SortableHeader label="Nama Arab" sortKey="nama_arab" />
+                                            <SortableHeader label="Kelas" sortKey="kelas" />
+                                            {data.studentFields?.map(f => (
+                                                <React.Fragment key={f.key}>
+                                                    <SortableHeader label={f.name} sortKey={f.key} />
+                                                    <SortableHeader label={`${f.name} (Arab)`} sortKey={`${f.key}_ar`} />
+                                                </React.Fragment>
+                                            ))}
+                                            <th className="p-3 border-b text-center sticky right-0 bg-gray-100 z-20 shadow-[-1px_0_0_0_#e5e7eb]">Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {sortedData.map(st => (
+                                            <tr key={st.id} className="border-b hover:bg-gray-50">
+                                                <td className="p-3 sticky left-0 bg-white group-hover:bg-gray-50 z-10 shadow-[1px_0_0_0_#e5e7eb] font-mono text-sm">{st.nis}</td>
+                                                <td className="p-3 font-semibold">{st.nama}</td>
+                                                <td className="p-3 font-arabic" dir="rtl">{st.nama_arab}</td>
+                                                <td className="p-3">{getClassNameFromValue(allData?.classes || data.classes, st.kelas)}</td>
+                                                {data.studentFields?.map(f => (
+                                                    <React.Fragment key={f.key}>
+                                                        <td className="p-3 text-gray-600 max-w-[200px] truncate" title={st[f.key]}>{st[f.key] || '-'}</td>
+                                                        <td className="p-3 font-arabic text-gray-600 max-w-[200px] truncate" dir="rtl" title={st[`${f.key}_ar`]}>{st[`${f.key}_ar`] || '-'}</td>
+                                                    </React.Fragment>
+                                                ))}
+                                                <td className="p-3 text-center sticky right-0 bg-white group-hover:bg-gray-50 z-10 shadow-[-1px_0_0_0_#e5e7eb]">
+                                                    <button onClick={() => handleOpenModal(st)} className="text-blue-500 p-1"><Edit2 size={16}/></button>
+                                                    <button onClick={() => deleteFromDb('students', st.id)} className="text-red-500 p-1"><Trash2 size={16}/></button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
 
               {/* OVERLAY PROGRESS SANTRI */}
               {isBulkProcessing && (
