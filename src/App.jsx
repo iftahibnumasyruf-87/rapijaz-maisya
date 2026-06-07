@@ -7448,20 +7448,8 @@ const InputIjazah = () => {
 
     const activeSetting = data.settings.find(s => s.isActive);
 
-    // Gabungkan allData.classes dan data.classes agar tidak ada santri yang hilang karena mismatch ID kelas antar semester
-    const classesData = useMemo(() => {
-        const raw = [...(allData?.classes || []), ...(data.classes || [])];
-        const seen = new Set();
-        // Prioritaskan berdasarkan ID unik, lalu deduplicate by name
-        const byId = new Map();
-        raw.forEach(c => { if (!byId.has(c.id)) byId.set(c.id, c); });
-        return Array.from(byId.values()).filter(c => { 
-            const name = (c.name || '').toLowerCase().trim();
-            if (seen.has(name)) return false; 
-            seen.add(name); 
-            return true; 
-        });
-    }, [allData?.classes, data.classes]);
+    // Gunakan allData.classes agar bisa mengenali ID kelas dari semester Ganjil maupun Genap
+    const classesData = allData?.classes || data.classes;
 
     const dropdownClasses = useMemo(() => {
         const raw = data.classes || [];
