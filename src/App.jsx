@@ -2077,7 +2077,7 @@ const MasterData = ({ activeTab }) => {
           });
       }
       return sortableItems;
-  }, [data, activeTab, sortConfig]);
+  }, [data, activeTab, sortConfig, searchQuery, allData]);
 
   const handleMoveSubject = (subject, direction) => {
       const allClassSubjects = data.subjects.filter(s => getSubjectClassLabel(s, allData?.classes || data.classes) === getSubjectClassLabel(subject, allData?.classes || data.classes) && (s.kategori || '') === (subject.kategori || ''));
@@ -2860,10 +2860,11 @@ const MasterData = ({ activeTab }) => {
             <table className="w-full text-left border-collapse">
                 <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm">
                     <SortableHeader label="Nama Label" sortKey="name" />
+                    <SortableHeader label="Nama Label Arab" sortKey="name_arab" />
                     <SortableHeader label="Variabel (Key)" sortKey="key" />
                     <th className="p-3 border-b text-center">Aksi</th>
                 </tr></thead>
-                <tbody>{sortedData.map(f => (<tr key={f.id} className="border-b hover:bg-gray-50"><td className="p-3 font-semibold">{f.name}</td><td className="p-3 font-mono text-sm text-gray-500">{`{{${f.key}}}`}</td><td className="p-3 text-center"><button onClick={() => handleOpenModal(f)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('studentFields', f.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td></tr>))}</tbody>
+                <tbody>{sortedData.map(f => (<tr key={f.id} className="border-b hover:bg-gray-50"><td className="p-3 font-semibold">{f.name}</td><td className="p-3 font-arabic" dir="rtl">{f.name_arab || '-'}</td><td className="p-3 font-mono text-sm text-gray-500">{`{{${f.key}}}`}</td><td className="p-3 text-center"><button onClick={() => handleOpenModal(f)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('studentFields', f.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td></tr>))}</tbody>
             </table>
         );
       case 'classes':
@@ -3064,8 +3065,27 @@ const MasterData = ({ activeTab }) => {
         );
         case 'studentFields': return (
             <div className="space-y-4">
-                <input className="w-full p-2 border rounded" placeholder="Nama Kolom (Misal: Tempat Lahir)" value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value, key: e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '_')})} />
+                <input 
+                    className="w-full p-2 border rounded" 
+                    placeholder="Nama Kolom (Misal: Tempat Lahir)" 
+                    value={formData.name || ''} 
+                    onChange={e => setFormData({...formData, name: e.target.value, key: e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '_')})} 
+                    onBlur={async (e) => {
+                        if (e.target.value && !formData.name_arab) {
+                            const translated = await translateToArabic(e.target.value);
+                            setFormData(prev => ({...prev, name_arab: translated}));
+                        }
+                    }}
+                />
+                <input 
+                    className="w-full p-2 border rounded text-right font-arabic" 
+                    placeholder="Nama Arab (Terisi Otomatis Google Translate)" 
+                    dir="rtl" 
+                    value={formData.name_arab || ''} 
+                    onChange={e => setFormData({...formData, name_arab: e.target.value})} 
+                />
                 <input className="w-full p-2 border rounded bg-gray-100" value={formData.key || ''} disabled placeholder="Otomatis menjadi key" />
+                <p className="text-[10px] text-gray-500 italic">*Ketik nama label (Indonesia) lalu klik di luar kotak untuk Google Translate otomatis.</p>
             </div>
         );
         case 'students': return (
@@ -3665,6 +3685,16 @@ const LayoutBuilder = () => {
             // Short key variables (nilai, kkm, rata, presensi, sikap, ekskul)
             replaced = replaced.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
                 if (stdData[key] !== undefined) return stdData[key];
+                if (key.endsWith('_label')) {
+                    const realKey = key.replace('_label', '');
+                    const fieldObj = data.studentFields?.find(f => f.key === realKey);
+                    if (fieldObj) return fieldObj.name || '';
+                }
+                if (key.endsWith('_label_ar') || key.endsWith('_label_arab')) {
+                    const realKey = key.replace(/_label_ar(ab)?$/, '');
+                    const fieldObj = data.studentFields?.find(f => f.key === realKey);
+                    if (fieldObj) return fieldObj.name_arab || fieldObj.name || '';
+                }
                 const shortEntry = shortKeyMapPrev[key] || shortKeyMapPrev[String(key).toLowerCase()];
                 if (shortEntry) {
                     const { realId, dataType } = shortEntry;
@@ -7803,6 +7833,16 @@ const CetakDokumen = ({ mode = 'raport' }) => {
             return replaced.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
                  if (stdData[key] !== undefined) return stdData[key];
                  if (stdData.fields && stdData.fields[key] !== undefined) return stdData.fields[key];
+                 if (key.endsWith('_label')) {
+                     const realKey = key.replace('_label', '');
+                     const fieldObj = data.studentFields?.find(f => f.key === realKey);
+                     if (fieldObj) return fieldObj.name || '';
+                 }
+                 if (key.endsWith('_label_ar') || key.endsWith('_label_arab')) {
+                     const realKey = key.replace(/_label_ar(ab)?$/, '');
+                     const fieldObj = data.studentFields?.find(f => f.key === realKey);
+                     if (fieldObj) return fieldObj.name_arab || fieldObj.name || '';
+                 }
                  // Resolve short key alias (case-insensitive for presences/traits which are generated lowercase)
                  const shortEntry = shortKeyMapRender[key] || shortKeyMapRender[String(key).toLowerCase()];
                  if (shortEntry) {
