@@ -930,10 +930,10 @@ const PAGE_COLLECTIONS = {
     catatan:            ['grades', 'students', 'classes'],
     // Main pages
     dashboard:          ['settings', 'grades', 'students', 'classes', 'subjects'],
-    layout_builder:     ['layouts', 'fonts', 'subjects', 'presences', 'characterTraits', 'extracurriculars'],
+    layout_builder:     ['layouts', 'fonts', 'subjects', 'presences', 'characterTraits', 'extracurriculars', 'masterSubjects', 'studentFields', 'ijazah_grades', 'students'],
     legger:             ['grades', 'students', 'subjects', 'classes'],
-    cetak_raport:       ['grades', 'students', 'subjects', 'classes', 'layouts'],
-    cetak_ijazah:       ['grades', 'students', 'subjects', 'classes', 'layouts'],
+    cetak_raport:       ['grades', 'students', 'subjects', 'classes', 'layouts', 'masterSubjects', 'studentFields', 'extracurriculars', 'characterTraits'],
+    cetak_ijazah:       ['grades', 'students', 'subjects', 'classes', 'layouts', 'ijazah_grades', 'masterSubjects', 'studentFields'],
 };
 
 const PageRefreshButton = ({ activeMenu }) => {
@@ -3855,7 +3855,15 @@ const LayoutBuilder = () => {
                 .replace(/\{\{jumlah_santri_ar\}\}/gi, toAr(jumlahSantri));
 
             // ---- IJAZAH VARIABLES ----
-            const stdIjazah = (data.ijazah_grades && data.ijazah_grades[stdData.id]) ? data.ijazah_grades[stdData.id] : {};
+            // data.ijazah_grades is an array of docs: { id: 'ijazah_<studentId>_<tahun>', tahun, data }
+            const previewActiveTahun = previewActiveSetting?.tahun;
+            const ijazahDoc = (data.ijazah_grades || []).find(g => {
+                const parts = (g.id || '').split('_');
+                if (parts.length < 3) return false;
+                const docStudentId = parts.slice(1, -1).join('_');
+                return docStudentId === stdData.id && g.tahun === previewActiveTahun;
+            });
+            const stdIjazah = ijazahDoc ? (ijazahDoc.data || {}) : {};
             const ijazahSubs = (data.masterSubjects || []).filter(m => m.is_ijazah);
             
             ijazahSubs.forEach(m => {
@@ -3918,8 +3926,9 @@ const LayoutBuilder = () => {
 
             // Short key variables (nilai, kkm, rata, presensi, sikap, ekskul, student fields)
             replaced = replaced.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
-                if (stdData[key] !== undefined) return stdData[key];
-                if (stdData.fields && stdData.fields[key] !== undefined) return stdData.fields[key];
+                // Direct student field lookup (includes custom fields like ttl, ttl_ar, asrama, asrama_ar)
+                if (stdData[key] !== undefined && stdData[key] !== null) return String(stdData[key]);
+                if (stdData.fields && stdData.fields[key] !== undefined) return String(stdData.fields[key]);
                 if (key.endsWith('_label')) {
                     const realKey = key.replace('_label', '');
                     const fieldObj = data.studentFields?.find(f => f.key === realKey);
@@ -8074,8 +8083,9 @@ const CetakDokumen = ({ mode = 'raport' }) => {
             }
             
             return replaced.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
-                 if (stdData[key] !== undefined) return stdData[key];
-                 if (stdData.fields && stdData.fields[key] !== undefined) return stdData.fields[key];
+                 // Direct student field lookup (including custom fields like ttl, ttl_ar, asrama, asrama_ar)
+                 if (stdData[key] !== undefined && stdData[key] !== null) return String(stdData[key]);
+                 if (stdData.fields && stdData.fields[key] !== undefined) return String(stdData.fields[key]);
                  if (key.endsWith('_label')) {
                      const realKey = key.replace('_label', '');
                      const fieldObj = data.studentFields?.find(f => f.key === realKey);
