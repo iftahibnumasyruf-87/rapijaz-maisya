@@ -8914,7 +8914,11 @@ const Dashboard = () => {
     { id: 'cetak_ijazah', label: 'Cetak Ijazah', icon: Printer, roles: ['admin'] },
   ];
 
-  const filteredMenu = menuItems.filter(m => m.roles.includes(currentUser?.role));
+  const filteredMenu = menuItems.filter(m => {
+      if (!m.roles.includes(currentUser?.role)) return false;
+      if ((m.id === 'input_ijazah' || m.id === 'cetak_ijazah') && activeSetting?.semester !== 'Genap') return false;
+      return true;
+  });
 
   const renderContent = () => {
     if (masterDataSubItems.some(sub => sub.id === activeMenu)) {
