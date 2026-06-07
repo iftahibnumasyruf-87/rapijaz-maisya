@@ -356,6 +356,12 @@ const isSubjectVisibleInClass = (subject, selectedClass, classes = []) => {
   });
 };
 
+const toArabicNumerals = (str) => {
+    if (!str) return str;
+    const arabicNumbers = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+    return String(str).replace(/[0-9]/g, w => arabicNumbers[parseInt(w, 10)]);
+};
+
 const isReligiousCategory = (cat) => {
     if (!cat) return false;
     const n = normalizeValue(cat);
@@ -3163,7 +3169,7 @@ const MasterData = ({ activeTab }) => {
             <div className="space-y-4">
                 <input className="w-full p-2 border rounded" placeholder="NIS" value={formData.nis || ''} onChange={e => setFormData({...formData, nis: e.target.value})} />
                 <input className="w-full p-2 border rounded" placeholder="Nama Lengkap" value={formData.nama || ''} onChange={e => setFormData({...formData, nama: e.target.value})} />
-                <input className="w-full p-2 border rounded" placeholder="Nama Arab (النام)" value={formData.nama_arab || ''} onChange={e => setFormData({...formData, nama_arab: e.target.value})} />
+                <input className="w-full p-2 border rounded" placeholder="Nama Arab (النام)" value={formData.nama_arab || ''} onChange={e => setFormData({...formData, nama_arab: toArabicNumerals(e.target.value)})} />
                 <select className="w-full p-2 border rounded" value={formData.kelas || ''} onChange={e => setFormData({...formData, kelas: e.target.value})}>
                     <option value="">Pilih Kelas</option>{data.classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
@@ -3192,7 +3198,7 @@ const MasterData = ({ activeTab }) => {
                                     placeholder={`Isi ${f.name} (Arab) - Otomatis via Google Translate`} 
                                     dir="rtl"
                                     value={formData[arKey] || ''} 
-                                    onChange={e => setFormData({...formData, [arKey]: e.target.value})} 
+                                    onChange={e => setFormData({...formData, [arKey]: toArabicNumerals(e.target.value)})} 
                                     onBlur={async () => {
                                         if (formData[f.key] && !formData[arKey]) {
                                             try {
@@ -3200,7 +3206,7 @@ const MasterData = ({ activeTab }) => {
                                                 const res = await fetch(url);
                                                 const json = await res.json();
                                                 const translated = json[0][0][0];
-                                                if (translated) setFormData(prev => ({...prev, [arKey]: translated}));
+                                                if (translated) setFormData(prev => ({...prev, [arKey]: toArabicNumerals(translated)}));
                                             } catch (error) {
                                                 console.error("Translation error", error);
                                             }
@@ -3216,7 +3222,7 @@ const MasterData = ({ activeTab }) => {
         case 'classes': return (
             <div className="space-y-4">
                 <input className="w-full p-2 border rounded" placeholder="Nama Kelas" value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} />
-                <input className="w-full p-2 border rounded" placeholder="Nama Kelas Arab (الفصل)" value={formData.name_arab || ''} onChange={e => setFormData({...formData, name_arab: e.target.value})} />
+                <input className="w-full p-2 border rounded" placeholder="Nama Kelas Arab (الفصل)" value={formData.name_arab || ''} onChange={e => setFormData({...formData, name_arab: toArabicNumerals(e.target.value)})} />
                 <input className="w-full p-2 border rounded" placeholder="Wali Kelas" value={formData.wali || ''} onChange={e => setFormData({...formData, wali: e.target.value})} />
             </div>
         );
