@@ -435,8 +435,26 @@ const getUniqueActiveSubjects = (dataObj) => {
 const buildShortKeyMap = (subjects = [], presences = [], characterTraits = [], extracurriculars = [], globalShortCodes = {}) => {
     const usedKeys = new Set();
     const map = {}; // shortKey -> { realId, dataType }
+    
+    // Process presences and traits FIRST so they get priority on single-letter keys like 's' (Sakit), 'i' (Izin)
+    presences.forEach(p => {
+        const sk = makeShortKey(p.name || p.id, usedKeys);
+        map[sk] = { realId: p.id, dataType: 'presence' };
+    });
+    characterTraits.forEach(p => {
+        const sk = makeShortKey(p.name || p.id, usedKeys);
+        map[sk] = { realId: p.id, dataType: 'trait' };
+    });
+    
+    // Ekskul: 2 slot tetap per siswa
+    map['ekskul1_nama']  = { realId: 'ekskul1_nama',  dataType: 'ekskul_fixed' };
+    map['ekskul1_nilai'] = { realId: 'ekskul1_nilai', dataType: 'ekskul_fixed' };
+    map['ekskul2_nama']  = { realId: 'ekskul2_nama',  dataType: 'ekskul_fixed' };
+    map['ekskul2_nilai'] = { realId: 'ekskul2_nilai', dataType: 'ekskul_fixed' };
+    map['cw'] = { realId: 'catatan_wali', dataType: 'catatan' };
+
     subjects.forEach(sub => {
-        // Legacy support
+        // Legacy support (will fallback if presences took the key, e.g. Siroh -> s1)
         const sk = makeShortKey(sub.nameId || sub.name || sub.id, usedKeys);
         map[sk] = { realId: sub.id, dataType: 'subject' };
         map[`${sk}_u`] = { realId: sub.id, dataType: 'subject_uts' };
@@ -461,20 +479,6 @@ const buildShortKeyMap = (subjects = [], presences = [], characterTraits = [], e
         }
     });
 
-    presences.forEach(p => {
-        const sk = makeShortKey(p.name || p.id, usedKeys);
-        map[sk] = { realId: p.id, dataType: 'presence' };
-    });
-    characterTraits.forEach(p => {
-        const sk = makeShortKey(p.name || p.id, usedKeys);
-        map[sk] = { realId: p.id, dataType: 'trait' };
-    });
-    // Ekskul: 2 slot tetap per siswa
-    map['ekskul1_nama']  = { realId: 'ekskul1_nama',  dataType: 'ekskul_fixed' };
-    map['ekskul1_nilai'] = { realId: 'ekskul1_nilai', dataType: 'ekskul_fixed' };
-    map['ekskul2_nama']  = { realId: 'ekskul2_nama',  dataType: 'ekskul_fixed' };
-    map['ekskul2_nilai'] = { realId: 'ekskul2_nilai', dataType: 'ekskul_fixed' };
-    map['cw'] = { realId: 'catatan_wali', dataType: 'catatan' };
     return map;
 };
 
@@ -2368,12 +2372,37 @@ const MasterData = ({ activeTab }) => {
       case 'variables_list': {
           const dedupedMasterSubs = getUniqueActiveSubjects(data);
           const globalCodes = getGlobalSubjectShortCodes(dedupedMasterSubs);
+          
+          const handleCopy = (text) => {
+              navigator.clipboard.writeText(text).then(() => {
+                  const toast = document.createElement('div');
+                  toast.className = 'fixed bottom-4 right-4 bg-gray-800 text-white px-4 py-2 rounded shadow-lg z-[9999] animate-fade-in-up text-sm';
+                  toast.innerText = `Dicopy: ${text}`;
+                  document.body.appendChild(toast);
+                  setTimeout(() => {
+                      toast.style.opacity = '0';
+                      toast.style.transition = 'opacity 0.5s ease';
+                      setTimeout(() => document.body.removeChild(toast), 500);
+                  }, 2000);
+              });
+          };
+
+          const CopyableVar = ({ text, className }) => (
+              <span 
+                  onClick={() => handleCopy(text)}
+                  className={`font-mono font-bold select-all cursor-pointer hover:bg-yellow-200 transition px-1 rounded ${className || ''}`}
+                  title="Klik untuk copy"
+              >
+                  {text}
+              </span>
+          );
+
           return (
               <div className="space-y-6 pb-8">
                   <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                       <h4 className="font-bold text-blue-800 mb-2">Panduan Penggunaan Variabel</h4>
-                      <p className="text-sm text-blue-700">Gunakan kode variabel di bawah ini dengan mengapitnya menggunakan kurung kurawal ganda, contoh: <b>{'{{nama_santri}}'}</b>. Variabel ini akan otomatis digantikan dengan data asli saat Anda mencetak raport atau dokumen lainnya melalui tabel kustom.</p>
-                      <p className="text-sm text-blue-700 mt-1">Anda dapat menyalin teks variabel secara langsung dengan memblok teksnya, atau klik ganda lalu <b>Ctrl+C</b>.</p>
+                      <p className="text-sm text-blue-700">Gunakan kode variabel di bawah ini di dalam desain layout Anda. Variabel akan otomatis digantikan dengan data asli saat Anda mencetak raport.</p>
+                      <p className="text-sm text-blue-700 mt-1 font-semibold">💡 <b>Klik sekali pada kode variabel</b> untuk langsung menyalinnya ke clipboard!</p>
                   </div>
                   
                   <div>
@@ -2397,9 +2426,15 @@ const MasterData = ({ activeTab }) => {
                               { code: 'semester', label: 'Semester' },
                               { code: 'semester_ar', label: 'Semester (Arab)' },
                           ].map(v => (
-                              <div key={v.code} className="flex flex-col bg-gray-50 border rounded p-3 hover:bg-gray-100 transition">
-                                  <span className="font-mono text-indigo-700 font-bold mb-1 select-all cursor-text text-[13px]">{'{{'}{v.code}{'}}'}</span>
+                              <div
+                                  key={v.code}
+                                  onClick={() => handleCopy(`{{${v.code}}}`)} 
+                                  className="flex flex-col bg-gray-50 border rounded p-3 hover:bg-yellow-50 hover:border-yellow-300 transition cursor-pointer group"
+                                  title="Klik untuk copy"
+                              >
+                                  <span className="font-mono text-indigo-700 font-bold mb-1 text-[13px] group-hover:text-yellow-700">{`{{${v.code}}}`}</span>
                                   <span className="text-xs text-gray-600">{v.label}</span>
+                                  <span className="text-[10px] text-gray-400 mt-1 group-hover:text-yellow-500">🖱️ Klik untuk copy</span>
                               </div>
                           ))}
                       </div>
@@ -2419,23 +2454,23 @@ const MasterData = ({ activeTab }) => {
                                           <div className="p-3 space-y-2">
                                               <div className="flex justify-between items-center text-xs">
                                                   <span className="text-gray-600">Nama Indonesia:</span>
-                                                  <span className="font-mono font-bold text-indigo-700 select-all cursor-text">{'{{'}{sc}I{'}}'}</span>
+                                                  <CopyableVar text={`{{${sc}I}}`} className="text-indigo-700" />
                                               </div>
                                               <div className="flex justify-between items-center text-xs">
                                                   <span className="text-gray-600">Nama Arab:</span>
-                                                  <span className="font-mono font-bold text-indigo-700 select-all cursor-text">{'{{'}{sc}A{'}}'}</span>
+                                                  <CopyableVar text={`{{${sc}A}}`} className="text-indigo-700" />
                                               </div>
                                               <div className="flex justify-between items-center text-xs pt-1 border-t">
                                                   <span className="text-gray-600">Nilai:</span>
-                                                  <span className="font-mono font-bold text-emerald-700 select-all cursor-text">{'{{'}{sc}N{'}}'}</span>
+                                                  <CopyableVar text={`{{${sc}N}}`} className="text-emerald-700" />
                                               </div>
                                               <div className="flex justify-between items-center text-xs">
                                                   <span className="text-gray-600">KKM:</span>
-                                                  <span className="font-mono font-bold text-orange-700 select-all cursor-text">{'{{'}{sc}K{'}}'}</span>
+                                                  <CopyableVar text={`{{${sc}K}}`} className="text-orange-700" />
                                               </div>
                                               <div className="flex justify-between items-center text-xs">
                                                   <span className="text-gray-600">Rata-rata:</span>
-                                                  <span className="font-mono font-bold text-blue-700 select-all cursor-text">{'{{'}{sc}R{'}}'}</span>
+                                                  <CopyableVar text={`{{${sc}R}}`} className="text-blue-700" />
                                               </div>
                                           </div>
                                       </div>
@@ -2444,6 +2479,51 @@ const MasterData = ({ activeTab }) => {
                           </div>
                       )}
                   </div>
+
+                  {/* VARIABEL PRESENSI DAN SIKAP */}
+                  {(() => {
+                      const demoUsedKeys = new Set();
+                      const presenceCards = (data.presences || []).map(p => {
+                          const code = makeShortKey(p.name || p.id, demoUsedKeys);
+                          return (
+                              <div key={p.id} className="text-center p-2 bg-white rounded border flex-1 min-w-[100px] shadow-sm hover:shadow-md transition">
+                                  <div className="font-bold text-emerald-800 text-xs truncate" title={p.name}>{p.name}</div>
+                                  <div className="mt-1"><CopyableVar text={`{{${code}}}`} className="text-pink-600 bg-pink-50 text-xs" /></div>
+                              </div>
+                          );
+                      });
+                      const traitCards = (data.characterTraits || []).map(p => {
+                          const code = makeShortKey(p.name || p.id, demoUsedKeys);
+                          return (
+                              <div key={p.id} className="text-center p-2 bg-white rounded border flex-1 min-w-[100px] shadow-sm hover:shadow-md transition">
+                                  <div className="font-bold text-purple-800 text-xs truncate" title={p.name}>{p.name}</div>
+                                  <div className="mt-1"><CopyableVar text={`{{${code}}}`} className="text-pink-600 bg-pink-50 text-xs" /></div>
+                              </div>
+                          );
+                      });
+                      return (
+                          <div className="mt-8">
+                              <h4 className="font-bold text-gray-800 mb-3 border-b pb-2">Variabel Khusus (Presensi & Sikap)</h4>
+                              <p className="text-xs text-gray-500 mb-3">Kode di bawah ini digenerate secara otomatis berdasarkan data Presensi dan Sikap Anda. Kode tidak akan bertabrakan dengan pelajaran.</p>
+                              
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                  <div>
+                                      <h5 className="font-bold text-emerald-700 mb-2 text-sm flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-500"></div> Kehadiran / Presensi</h5>
+                                      <div className="flex flex-wrap gap-2">
+                                          {presenceCards.length > 0 ? presenceCards : <div className="text-xs text-gray-500 italic">Belum ada data presensi</div>}
+                                      </div>
+                                  </div>
+                                  <div>
+                                      <h5 className="font-bold text-purple-700 mb-2 text-sm flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-purple-500"></div> Sikap / Karakter</h5>
+                                      <div className="flex flex-wrap gap-2">
+                                          {traitCards.length > 0 ? traitCards : <div className="text-xs text-gray-500 italic">Belum ada data sikap</div>}
+                                      </div>
+                                  </div>
+                              </div>
+                          </div>
+                      );
+                  })()}
+
               </div>
           );
       }
@@ -3357,7 +3437,7 @@ const pageDimensions = { 'A4': { width: 794, height: 1123 }, 'F4': { width: 816,
 // A4 at 96 DPI: 794px = 21cm, so 1cm = 794/21 ≈ 37.8px
 const PX_PER_CM = 794 / 21;
 
-const VariablesHelp = ({ onInsert, masterSubjects = [] }) => {
+const VariablesHelp = ({ onInsert, allSubjects = [] }) => {
     return (
         <div className="mt-2 text-xs flex gap-2 items-center bg-gray-50 p-2 rounded border">
             <span className="text-[10px] text-gray-600 font-bold whitespace-nowrap">Sisipkan:</span>
@@ -3390,11 +3470,11 @@ const VariablesHelp = ({ onInsert, masterSubjects = [] }) => {
                     <option value="{{semester}}">Semester</option>
                     <option value="{{semester_ar}}">Semester (Arab)</option>
                 </optgroup>
-                {masterSubjects.length > 0 && (
+                {allSubjects.length > 0 && (
                     <optgroup label="Daftar Pelajaran (Master)">
                         {(() => {
-                            const globalCodes = getGlobalSubjectShortCodes(masterSubjects);
-                            return masterSubjects.map(m => {
+                            const globalCodes = getGlobalSubjectShortCodes(allSubjects);
+                            return allSubjects.map(m => {
                                 const sc = globalCodes[m.id] || 'XX';
                                 return (
                                     <React.Fragment key={m.id}>
@@ -3556,7 +3636,7 @@ const LayoutBuilder = () => {
                 });
             }
 
-            // Short key variables (nilai, kkm, rata)
+            // Short key variables (nilai, kkm, rata, presensi, sikap, ekskul)
             replaced = replaced.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
                 if (stdData[key] !== undefined) return stdData[key];
                 const shortEntry = shortKeyMapPrev[key] || shortKeyMapPrev[String(key).toLowerCase()];
@@ -3576,6 +3656,15 @@ const LayoutBuilder = () => {
                     }
                     if (dataType === 'subject_uts') { const g = sGrades[realId]; return (g && typeof g === 'object') ? String(g.uts || '') : ''; }
                     if (dataType === 'subject_uas') { const g = sGrades[realId]; return (g && typeof g === 'object') ? String(g.uas || '') : ''; }
+                    if (dataType === 'presence' || dataType === 'trait') {
+                        return sGrades[realId] !== undefined ? String(sGrades[realId]) : '';
+                    }
+                    if (dataType === 'ekskul_fixed') {
+                        return sGrades[realId] !== undefined ? String(sGrades[realId]) : '';
+                    }
+                    if (dataType === 'catatan') {
+                        return sGrades['catatan_wali'] || '';
+                    }
                 }
                 return match; // leave unreplaced
             });
@@ -5084,7 +5173,7 @@ const LayoutBuilder = () => {
                             {activeEl.type === 'text' && (
                                 <>
                                     <textarea className="w-full p-2 border rounded text-sm focus:ring-2 outline-none min-h-[60px]" value={activeEl.content} onChange={e => updateElement(selectedElementId, { content: e.target.value })} />
-                                    <VariablesHelp onInsert={(val) => updateElement(selectedElementId, { content: (activeEl.content || '') + val })} masterSubjects={data.masterSubjects || []} />
+                                    <VariablesHelp onInsert={(val) => updateElement(selectedElementId, { content: (activeEl.content || '') + val })} allSubjects={getUniqueActiveSubjects(data)} />
                                 </>
                             )}
 
@@ -5385,7 +5474,7 @@ const LayoutBuilder = () => {
                                                         newCells[ck] = {...(newCells[ck]||{}), content: currentVal + val}; 
                                                     });
                                                     updateElement(selectedElementId, { cells: newCells });
-                                                }} masterSubjects={data.masterSubjects || []} />
+                                                }} allSubjects={getUniqueActiveSubjects(data)} />
                                                 <div className="flex gap-2 items-center">
                                                     <button onClick={() => {
                                                         const newCells = {...activeEl.cells};
@@ -6348,7 +6437,7 @@ const InputNilai = ({ activeInputTab }) => {
 
     // Build short key map: shortKey -> { realId, dataType }
     const shortKeyMap = useMemo(() => {
-        const globalShortCodes = getGlobalSubjectShortCodes(data.masterSubjects || data.subjects);
+        const globalShortCodes = getGlobalSubjectShortCodes(getUniqueActiveSubjects(data));
         return buildShortKeyMap(subjectsInClass, data.presences, data.characterTraits, data.extracurriculars, globalShortCodes);
     }, [subjectsInClass, data.presences, data.characterTraits, data.extracurriculars, data.masterSubjects, data.subjects]);
     // Build reverse map: realId -> shortKey (for display in headers)
