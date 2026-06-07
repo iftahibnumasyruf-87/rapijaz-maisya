@@ -7765,7 +7765,9 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                         .replace(new RegExp(`\\{\\{ijazah_${safe}_sem1\\}\\}`, 'gi'), subGrades.sem1 ?? '')
                         .replace(new RegExp(`\\{\\{ijazah_${safe}_sem2\\}\\}`, 'gi'), subGrades.sem2 ?? '')
                         .replace(new RegExp(`\\{\\{ijazah_${safe}_total\\}\\}`, 'gi'), subGrades.total !== undefined && subGrades.total !== '' ? Number(subGrades.total).toFixed(1) : '')
-                        .replace(new RegExp(`\\{\\{ijazah_${safe}_rata\\}\\}`, 'gi'), subGrades.rata !== undefined && subGrades.rata !== '' ? String(Math.round(Number(subGrades.rata))) : '');
+                        .replace(new RegExp(`\\{\\{ijazah_${safe}_rata\\}\\}`, 'gi'), subGrades.rata !== undefined && subGrades.rata !== '' ? String(Math.round(Number(subGrades.rata))) : '')
+                        .replace(new RegExp(`\\{\\{ijazah_${safe}_nama\\}\\}`, 'gi'), m.nameId || '')
+                        .replace(new RegExp(`\\{\\{ijazah_${safe}_nama_ar\\}\\}`, 'gi'), m.nameAr || m.nameId || '');
                 });
                 
                 // Overall ijazah totals
