@@ -3129,9 +3129,10 @@ const MasterData = ({ activeTab }) => {
                     <SortableHeader label="Kelas" sortKey="name" />
                     <SortableHeader label="Kelas Arab" sortKey="name_arab" />
                     <SortableHeader label="Wali Kelas" sortKey="wali" />
+                    <SortableHeader label="Wali Kelas Arab" sortKey="wali_arab" />
                     <th className="p-3 border-b text-center">Aksi</th>
                 </tr></thead>
-                <tbody>{sortedData.map(c => (<tr key={c.id} className="border-b hover:bg-gray-50"><td className="p-3">{c.name}</td><td className="p-3 font-arabic" dir="rtl">{c.name_arab}</td><td className="p-3">{c.wali}</td><td className="p-3 text-center"><button onClick={() => handleOpenModal(c)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('classes', c.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td></tr>))}</tbody>
+                <tbody>{sortedData.map(c => (<tr key={c.id} className="border-b hover:bg-gray-50"><td className="p-3">{c.name}</td><td className="p-3 font-arabic" dir="rtl">{c.name_arab}</td><td className="p-3">{c.wali}</td><td className="p-3 font-arabic" dir="rtl">{c.wali_arab}</td><td className="p-3 text-center"><button onClick={() => handleOpenModal(c)} className="text-blue-500 p-1"><Edit2 size={16}/></button><button onClick={() => deleteFromDb('classes', c.id)} className="text-red-500 p-1"><Trash2 size={16}/></button></td></tr>))}</tbody>
             </table>
         );
       case 'users':
@@ -3407,9 +3408,38 @@ const MasterData = ({ activeTab }) => {
         );
         case 'classes': return (
             <div className="space-y-4">
-                <input className="w-full p-2 border rounded" placeholder="Nama Kelas" value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} />
-                <input className="w-full p-2 border rounded" placeholder="Nama Kelas Arab (الفصل)" value={formData.name_arab || ''} onChange={e => setFormData({...formData, name_arab: toArabicNumerals(e.target.value)})} />
-                <input className="w-full p-2 border rounded" placeholder="Wali Kelas" value={formData.wali || ''} onChange={e => setFormData({...formData, wali: e.target.value})} />
+                <input 
+                    className="w-full p-2 border rounded" 
+                    placeholder="Nama Kelas" 
+                    value={formData.name || ''} 
+                    onChange={e => setFormData({...formData, name: e.target.value})} 
+                    onBlur={async (e) => {
+                        if (e.target.value && !formData.name_arab) {
+                            try {
+                                const translated = await translateToArabic(e.target.value);
+                                if (translated) setFormData(prev => ({...prev, name_arab: toArabicNumerals(translated)}));
+                            } catch (err) { console.error(err); }
+                        }
+                    }}
+                />
+                <input className="w-full p-2 border rounded font-arabic text-right" dir="rtl" placeholder="Nama Kelas Arab (الفصل) - Terisi Otomatis" value={formData.name_arab || ''} onChange={e => setFormData({...formData, name_arab: toArabicNumerals(e.target.value)})} />
+                
+                <input 
+                    className="w-full p-2 border rounded" 
+                    placeholder="Wali Kelas" 
+                    value={formData.wali || ''} 
+                    onChange={e => setFormData({...formData, wali: e.target.value})} 
+                    onBlur={async (e) => {
+                        if (e.target.value && !formData.wali_arab) {
+                            try {
+                                const translated = await translateToArabic(e.target.value);
+                                if (translated) setFormData(prev => ({...prev, wali_arab: toArabicNumerals(translated)}));
+                            } catch (err) { console.error(err); }
+                        }
+                    }}
+                />
+                <input className="w-full p-2 border rounded font-arabic text-right" dir="rtl" placeholder="Wali Kelas Arab - Terisi Otomatis" value={formData.wali_arab || ''} onChange={e => setFormData({...formData, wali_arab: toArabicNumerals(e.target.value)})} />
+                <p className="text-[10px] text-gray-500 italic">*Kolom Arab akan otomatis terisi menggunakan Google Translate saat Anda selesai mengetik di kolom sebelahnya.</p>
             </div>
         );
         case 'users': return (
@@ -3964,6 +3994,8 @@ const LayoutBuilder = () => {
                 .replace(/\{\{nisn\}\}/gi, stdData.nisn || '')
                 .replace(/\{\{kelas\}\}/gi, className || '')
                 .replace(/\{\{kelas_ar\}\}/gi, classDataObj?.name_arab || '')
+                .replace(/\{\{wali_kelas\}\}/gi, classDataObj?.wali || '')
+                .replace(/\{\{wali_kelas_ar\}\}/gi, classDataObj?.wali_arab || '')
                 .replace(/\{\{tahun_ajaran\}\}/gi, previewActiveSetting?.tahun || '')
                 .replace(/\{\{tahun_ajaran_ar\}\}/gi, previewActiveSetting?.tahun_arab || '')
                 .replace(/\{\{semester\}\}/gi, previewActiveSetting?.semester || '')
@@ -5465,6 +5497,7 @@ const LayoutBuilder = () => {
                                 <button onClick={() => addElement('kelas')} className="bg-blue-50 hover:bg-blue-100 text-blue-700 py-1.5 rounded text-xs flex justify-center gap-1"><BookOpen size={14}/> Kelas</button>
                                 <button onClick={() => addElement('kelas_ar')} className="bg-blue-50 hover:bg-blue-100 text-blue-700 py-1.5 rounded text-xs flex justify-center gap-1"><BookOpen size={14}/> Kelas (Arab)</button>
                                 <button onClick={() => addElement('wali_kelas')} className="bg-purple-50 hover:bg-purple-100 text-purple-700 py-1.5 rounded text-xs flex justify-center gap-1"><User size={14}/> Wali Kelas</button>
+                                <button onClick={() => addElement('wali_kelas_ar')} className="bg-purple-50 hover:bg-purple-100 text-purple-700 py-1.5 rounded text-xs flex justify-center gap-1"><User size={14}/> Wali Kelas (Arab)</button>
                                 <button onClick={() => addElement('catatan_wali')} className="col-span-2 bg-pink-50 hover:bg-pink-100 text-pink-700 py-1.5 rounded text-xs flex justify-center gap-1"><FileSignature size={14}/> Catatan Wali Kelas</button>
                             </div>
                             <p className="text-xs font-semibold text-gray-400 uppercase mt-3 mb-1">Variabel Umum</p>
@@ -8159,6 +8192,8 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                              .replace(/\{\{nisn\}\}/gi, stdData.nisn || '')
                              .replace(/\{\{kelas\}\}/gi, className || '')
                              .replace(/\{\{kelas_ar\}\}/gi, classDataObj?.name_arab || '')
+                             .replace(/\{\{wali_kelas\}\}/gi, classDataObj?.wali || '')
+                             .replace(/\{\{wali_kelas_ar\}\}/gi, classDataObj?.wali_arab || '')
                              .replace(/\{\{tahun_ajaran\}\}/gi, activeSetting.tahun || '')
                              .replace(/\{\{tahun_ajaran_ar\}\}/gi, activeSetting.tahun_arab || '')
                              .replace(/\{\{semester\}\}/gi, activeSetting.semester || '')
