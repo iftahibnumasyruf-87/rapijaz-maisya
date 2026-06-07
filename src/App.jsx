@@ -2546,6 +2546,47 @@ const MasterData = ({ activeTab }) => {
                       );
                   })()}
 
+                  {/* VARIABEL CUSTOM FIELD SANTRI */}
+                  {(() => {
+                      if (!data.studentFields || data.studentFields.length === 0) return null;
+                      return (
+                          <div className="mt-8">
+                              <h4 className="font-bold text-gray-800 mb-1 border-b pb-2">Variabel Tambahan Santri</h4>
+                              <p className="text-xs text-gray-500 mb-3">Kode di bawah ini digenerate berdasarkan data form tambahan santri yang Anda buat.</p>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                  {data.studentFields.map(f => {
+                                      const fields = [
+                                          { code: f.key, label: 'Isi Data (Indonesia)', color: 'text-indigo-700' },
+                                          { code: `${f.key}_ar`, label: 'Isi Data (Arab)', color: 'text-emerald-700' },
+                                          { code: `${f.key}_label`, label: 'Nama Field (Indonesia)', color: 'text-gray-700' },
+                                          { code: `${f.key}_label_ar`, label: 'Nama Field (Arab)', color: 'text-gray-700' },
+                                      ];
+                                      return (
+                                          <div key={f.key} className="bg-white border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition">
+                                              <div className="bg-blue-100 px-3 py-2 border-b">
+                                                  <div className="font-bold text-blue-900 text-sm whitespace-nowrap overflow-hidden text-ellipsis" title={f.name}>{f.name}</div>
+                                                  {f.name_arab && <div className="font-arabic text-blue-700 text-xs mt-0.5" dir="rtl">{f.name_arab}</div>}
+                                              </div>
+                                              <div className="p-3 space-y-1.5">
+                                                  {fields.map(fieldItem => (
+                                                      <div key={fieldItem.code} className="flex justify-between items-center text-xs">
+                                                          <span className="text-gray-600">{fieldItem.label}:</span>
+                                                          <span
+                                                              onClick={() => handleCopy(`{{${fieldItem.code}}}`)}
+                                                              className={`font-mono font-bold select-all cursor-pointer hover:bg-yellow-200 transition px-1 rounded ${fieldItem.color}`}
+                                                              title="Klik untuk copy"
+                                                          >{`{{${fieldItem.code}}}`}</span>
+                                                      </div>
+                                                  ))}
+                                              </div>
+                                          </div>
+                                      );
+                                  })}
+                              </div>
+                          </div>
+                      );
+                  })()}
+
                   {/* VARIABEL IJAZAH */}
                   {(() => {
                       const ijazahMasters = (data.masterSubjects || []).filter(m => m.is_ijazah);
