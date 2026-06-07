@@ -1062,13 +1062,13 @@ const HomeDashboard = () => {
                     const avg = countGrade > 0 ? (totalGrade / countGrade) : 0;
                     
                     if (countGrade > 0) {
-                        topStudentsList.push({ name: st.nama, avg: Number(avg.toFixed(2)), kelas: className });
+                        topStudentsList.push({ name: st.nama, avg: Math.round(avg), kelas: className });
                         classTotalScore += totalGrade;
                         classTotalCount += countGrade;
                     }
 
                     if (avg > topStudent.avg) {
-                        topStudent = { name: st.nama, avg: avg.toFixed(2), kelas: className };
+                        topStudent = { name: st.nama, avg: String(Math.round(avg)), kelas: className };
                     }
 
                     let totalAbs = 0;
@@ -1094,8 +1094,8 @@ const HomeDashboard = () => {
         topStudentsList.sort((a, b) => b.avg - a.avg);
         const top10Students = topStudentsList.slice(0, 5); // Ambil Top 5
         
-        const classAverages = Object.keys(classAvgMap).map(k => ({ name: k, 'Rata-Rata': Number(classAvgMap[k].toFixed(2)) }));
-        const subjectAverages = Object.keys(subjectAvgMap).map(k => ({ name: k, 'Rata-Rata': Number((subjectAvgMap[k].total / subjectAvgMap[k].count).toFixed(2)) }));
+        const classAverages = Object.keys(classAvgMap).map(k => ({ name: k, 'Rata-Rata': Math.round(classAvgMap[k]) }));
+        const subjectAverages = Object.keys(subjectAvgMap).map(k => ({ name: k, 'Rata-Rata': Math.round(subjectAvgMap[k].total / subjectAvgMap[k].count) }));
         
         // Sort for better chart view
         classAverages.sort((a, b) => a.name.localeCompare(b.name));
@@ -3570,7 +3570,7 @@ const LayoutBuilder = () => {
                 else if (g !== undefined && g !== '' && !isNaN(g)) val = Number(g);
                 if (val !== null) { total += val; count++; }
             });
-            avgs[sub.id] = count > 0 ? (total / count).toFixed(2) : '';
+            avgs[sub.id] = count > 0 ? String(Math.round(total / count)) : '';
         });
         return avgs;
     }, [previewClass, previewClassGrades, data.subjects, previewClassesData]);
@@ -3595,7 +3595,7 @@ const LayoutBuilder = () => {
             else if (g !== undefined && g !== '' && !isNaN(g)) num = Number(g);
             if (num !== null && !isNaN(num)) { totalVal += num; countVal++; }
         });
-        const rataRata = countVal > 0 ? (totalVal / countVal).toFixed(2) : '';
+        const rataRata = countVal > 0 ? String(Math.round(totalVal / countVal)) : '';
         const totalRaport = countVal > 0 ? totalVal : '';
         const jumlahSantri = previewStudentsInClass?.length || 0;
         const toAr = (val) => String(val).replace(/[0-9]/g, w => ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'][w]);
@@ -6689,8 +6689,8 @@ const InputNilai = ({ activeInputTab }) => {
                                             </td>
                                         );
                                     })}
-                                    <td className="p-3 text-center font-bold text-emerald-800 bg-emerald-50 border-r">{rowRaportTotal !== 0 ? rowRaportTotal.toFixed(2) : '-'}</td>
-                                    <td className="p-3 text-center font-bold text-blue-800 bg-blue-50">{rowRaportCount > 0 ? (rowRaportTotal / rowRaportCount).toFixed(2) : '-'}</td>
+                                    <td className="p-3 text-center font-bold text-emerald-800 bg-emerald-50 border-r">{rowRaportTotal !== 0 ? Math.round(rowRaportTotal) : '-'}</td>
+                                    <td className="p-3 text-center font-bold text-blue-800 bg-blue-50">{rowRaportCount > 0 ? Math.round(rowRaportTotal / rowRaportCount) : '-'}</td>
                                 </tr>
                             );
                         })}
@@ -6699,7 +6699,7 @@ const InputNilai = ({ activeInputTab }) => {
                         <tr className="bg-gray-100 text-gray-800">
                             <td colSpan="3" className="p-3 text-right font-bold border-r sticky left-0 z-30 bg-gray-200">Rata-rata Raport per Pelajaran</td>
                             {subjectsInClass.map(sub => (
-                                <td key={sub.id} className="p-3 text-center font-bold border-r text-blue-700">{classCounts[sub.id] > 0 ? (classTotals[sub.id] / classCounts[sub.id]).toFixed(2) : '-'}</td>
+                                <td key={sub.id} className="p-3 text-center font-bold border-r text-blue-700">{classCounts[sub.id] > 0 ? Math.round(classTotals[sub.id] / classCounts[sub.id]) : '-'}</td>
                             ))}
                             <td className="p-3 text-center font-bold border-r text-blue-700">-</td>
                             <td className="bg-gray-200 border-l"></td>
@@ -7293,7 +7293,7 @@ const InputIjazah = () => {
                                                 {overall.total !== '' ? Number(overall.total).toFixed(1) : ''}
                                             </td>
                                             <td className="p-2 border-r bg-emerald-50 text-center font-bold text-emerald-800">
-                                                {overall.rata !== '' ? Number(overall.rata).toFixed(2) : ''}
+                                                {overall.rata !== '' ? Math.round(Number(overall.rata)) : ''}
                                             </td>
                                             <td className="p-2 border-r bg-emerald-50/80 text-center">
                                                 {overall.predikat.id && (
@@ -7330,7 +7330,7 @@ const InputIjazah = () => {
                                                             {subG.total !== '' ? Number(subG.total).toFixed(1) : ''}
                                                         </td>
                                                         <td className="p-2 border-r bg-gray-50 text-center font-bold text-blue-700 text-xs">
-                                                            {subG.rata !== '' ? Number(subG.rata).toFixed(2) : ''}
+                                                            {subG.rata !== '' ? Math.round(Number(subG.rata)) : ''}
                                                         </td>
                                                     </React.Fragment>
                                                 );
@@ -7474,7 +7474,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
             });
         });
         const avgs = {};
-        Object.keys(sums).forEach(k => avgs[k] = (sums[k]/counts[k]).toFixed(2));
+        Object.keys(sums).forEach(k => avgs[k] = String(Math.round(sums[k]/counts[k])));
         return avgs;
     }, [classGradesDoc, gradeDocId]);
 
@@ -7545,7 +7545,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
             }
             if (num !== null) { totalVal += num; countVal++; }
         });
-        const avgVal = countVal > 0 ? (totalVal / countVal).toFixed(2) : '-';
+        const avgVal = countVal > 0 ? String(Math.round(totalVal / countVal)) : '-';
 
         const text = `\uD83C\uDF93 *Laporan Nilai ${mode === 'raport' ? 'Raport' : 'Ijazah'}*\nPonpes Imam Syafi'i Brebes\n\nAssalamu'alaikum Wr. Wb.\n\nDengan hormat, berikut adalah informasi nilai ananda:\n\nNama: *${studentData.nama}*\nKelas: *${className}*\nTA: *${tahun} | Semester ${semester}*\n\n\uD83D\uDCDA *Nilai Mata Pelajaran:*\n${gradeLines}\n\n\uD83D\uDCCA Rata-Rata: *${avgVal}*\n\nSemoga nilai ini menjadi motivasi untuk terus belajar. Silakan hubungi sekolah untuk pengambilan berkas fisik.\n\nWassalamu'alaikum Wr. Wb. \uD83E\uDD32`;
         addLog(`Membagikan Info ${mode} via WA untuk ${studentData.nama}`);
@@ -7645,7 +7645,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                 }
                 if (num !== null && !isNaN(num)) { totalVal += num; countVal++; }
             });
-            const rataRata = countVal > 0 ? (totalVal / countVal).toFixed(2) : '';
+            const rataRata = countVal > 0 ? String(Math.round(totalVal / countVal)) : '';
             const totalRaport = countVal > 0 ? totalVal : '';
             const jumlahSantri = studentsInClass?.length || 0;
             const toArabicNumbers = (val) => String(val).replace(/[0-9]/g, w => ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'][w]);
@@ -7688,7 +7688,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                         .replace(new RegExp(`\\{\\{ijazah_${safe}_sem1\\}\\}`, 'gi'), subGrades.sem1 ?? '')
                         .replace(new RegExp(`\\{\\{ijazah_${safe}_sem2\\}\\}`, 'gi'), subGrades.sem2 ?? '')
                         .replace(new RegExp(`\\{\\{ijazah_${safe}_total\\}\\}`, 'gi'), subGrades.total !== undefined && subGrades.total !== '' ? Number(subGrades.total).toFixed(1) : '')
-                        .replace(new RegExp(`\\{\\{ijazah_${safe}_rata\\}\\}`, 'gi'), subGrades.rata !== undefined && subGrades.rata !== '' ? Number(subGrades.rata).toFixed(2) : '');
+                        .replace(new RegExp(`\\{\\{ijazah_${safe}_rata\\}\\}`, 'gi'), subGrades.rata !== undefined && subGrades.rata !== '' ? String(Math.round(Number(subGrades.rata))) : '');
                 });
                 
                 // Overall ijazah totals
@@ -7705,7 +7705,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                 
                 replaced = replaced
                     .replace(/\{\{ijazah_total\}\}/gi, ijazahCount > 0 ? ijazahTotalSum.toFixed(1) : '')
-                    .replace(/\{\{ijazah_rata\}\}/gi, ijazahRata !== '' ? Number(ijazahRata).toFixed(2) : '')
+                    .replace(/\{\{ijazah_rata\}\}/gi, ijazahRata !== '' ? String(Math.round(Number(ijazahRata))) : '')
                     .replace(/\{\{ijazah_predikat_id\}\}/gi, predikat.id)
                     .replace(/\{\{ijazah_predikat_ar\}\}/gi, predikat.ar);
             }
@@ -8080,7 +8080,7 @@ const LeggerKelas = () => {
                 const value = getSubjectGradeValue(grades[st.id]?.[sub.id]);
                 if (value !== null && !isNaN(value)) { total += value; count++; }
             });
-            const avg = count > 0 ? (total / count).toFixed(2) : 0;
+            const avg = count > 0 ? Math.round(total / count) : 0;
             let predikat = 'D'; if (avg >= 90) predikat = 'A'; else if (avg >= 80) predikat = 'B'; else if (avg >= 70) predikat = 'C';
             return { ...st, total, avg, predikat, grades: grades[st.id] || {} };
         });
