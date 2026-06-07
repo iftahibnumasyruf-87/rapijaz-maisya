@@ -2540,6 +2540,77 @@ const MasterData = ({ activeTab }) => {
                       );
                   })()}
 
+                  {/* VARIABEL IJAZAH */}
+                  {(() => {
+                      const ijazahMasters = (data.masterSubjects || []).filter(m => m.is_ijazah);
+                      const ijazahShortCodes = getGlobalSubjectShortCodes(ijazahMasters);
+                      if (ijazahMasters.length === 0) return null;
+                      return (
+                          <div className="mt-8">
+                              <h4 className="font-bold text-gray-800 mb-1 border-b pb-2">Variabel Nilai Ijazah</h4>
+                              <p className="text-xs text-gray-500 mb-3">Variabel berikut hanya berlaku di template mode <span className="font-bold text-emerald-700">Ijazah</span>. Kode singkat mengikuti kode pelajaran ijazah.</p>
+                              {/* Overall ijazah */}
+                              <div className="mb-4">
+                                  <h5 className="font-bold text-emerald-700 text-sm mb-2">Ringkasan Keseluruhan</h5>
+                                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                      {[
+                                          { code: 'ijazah_total', label: 'Total Nilai Ijazah' },
+                                          { code: 'ijazah_rata', label: 'Rata-rata Nilai Ijazah' },
+                                          { code: 'ijazah_predikat_id', label: 'Predikat Ijazah (Indonesia)' },
+                                          { code: 'ijazah_predikat_ar', label: 'Predikat Ijazah (Arab)' },
+                                      ].map(v => (
+                                          <div
+                                              key={v.code}
+                                              onClick={() => handleCopy(`{{${v.code}}}`)}
+                                              className="flex flex-col bg-emerald-50 border border-emerald-200 rounded p-3 hover:bg-yellow-50 hover:border-yellow-300 transition cursor-pointer group"
+                                              title="Klik untuk copy"
+                                          >
+                                              <span className="font-mono text-emerald-700 font-bold mb-1 text-[13px] group-hover:text-yellow-700">{`{{${v.code}}}`}</span>
+                                              <span className="text-xs text-gray-600">{v.label}</span>
+                                              <span className="text-[10px] text-gray-400 mt-1 group-hover:text-yellow-500">🖱️ Klik untuk copy</span>
+                                          </div>
+                                      ))}
+                                  </div>
+                              </div>
+                              {/* Per-mapel ijazah */}
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                  {ijazahMasters.map(m => {
+                                      const sc = ijazahShortCodes[m.id] || m.shortCode || m.id.slice(0,4);
+                                      const fields = [
+                                          { suffix: '_sem1', label: 'Nilai Sem 1', color: 'text-indigo-700' },
+                                          { suffix: '_sem2', label: 'Nilai Sem 2', color: 'text-indigo-700' },
+                                          { suffix: '_total', label: 'Total (Sem1+Sem2)', color: 'text-blue-700' },
+                                          { suffix: '_rata', label: 'Rata-rata', color: 'text-emerald-700' },
+                                          { suffix: '_nama', label: 'Nama Mapel (Indonesia)', color: 'text-gray-700' },
+                                          { suffix: '_nama_ar', label: 'Nama Mapel (Arab)', color: 'text-gray-700' },
+                                      ];
+                                      return (
+                                          <div key={m.id} className="bg-white border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition">
+                                              <div className="bg-emerald-100 px-3 py-2 border-b">
+                                                  <div className="font-bold text-emerald-900 text-sm whitespace-nowrap overflow-hidden text-ellipsis" title={m.nameId}>{m.nameId}</div>
+                                                  {m.nameAr && <div className="font-arabic text-emerald-700 text-xs mt-0.5" dir="rtl">{m.nameAr}</div>}
+                                                  <div className="text-[11px] text-emerald-600 mt-0.5">Kode: <span className="font-mono font-bold">{sc}</span></div>
+                                              </div>
+                                              <div className="p-3 space-y-1.5">
+                                                  {fields.map(f => (
+                                                      <div key={f.suffix} className="flex justify-between items-center text-xs">
+                                                          <span className="text-gray-600">{f.label}:</span>
+                                                          <span
+                                                              onClick={() => handleCopy(`{{ijazah_${sc}${f.suffix}}}`)}
+                                                              className={`font-mono font-bold select-all cursor-pointer hover:bg-yellow-200 transition px-1 rounded ${f.color}`}
+                                                              title="Klik untuk copy"
+                                                          >{`{{ijazah_${sc}${f.suffix}}}`}</span>
+                                                      </div>
+                                                  ))}
+                                              </div>
+                                          </div>
+                                      );
+                                  })}
+                              </div>
+                          </div>
+                      );
+                  })()}
+
               </div>
           );
       }
