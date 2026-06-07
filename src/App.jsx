@@ -3854,6 +3854,52 @@ const LayoutBuilder = () => {
                 .replace(/\{\{jumlah_santri\}\}/gi, String(jumlahSantri))
                 .replace(/\{\{jumlah_santri_ar\}\}/gi, toAr(jumlahSantri));
 
+            // ---- IJAZAH VARIABLES ----
+            const stdIjazah = (data.ijazah_grades && data.ijazah_grades[stdData.id]) ? data.ijazah_grades[stdData.id] : {};
+            const ijazahSubs = (data.masterSubjects || []).filter(m => m.is_ijazah);
+            
+            ijazahSubs.forEach(m => {
+                const subEntry = subjectsForClass.find(s => s.masterId === m.id || s.nameId === m.nameId);
+                if (!subEntry) return;
+                const subGrades = stdIjazah[subEntry.id] || {};
+                const sc = m.shortCode || m.id.slice(0, 4);
+                const safe = (sc || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                replaced = replaced
+                    .replace(new RegExp(`\\{\\{ijazah_${safe}_sem1\\}\\}`, 'gi'), subGrades.sem1 ?? '')
+                    .replace(new RegExp(`\\{\\{ijazah_${safe}_sem2\\}\\}`, 'gi'), subGrades.sem2 ?? '')
+                    .replace(new RegExp(`\\{\\{ijazah_${safe}_total\\}\\}`, 'gi'), subGrades.total !== undefined && subGrades.total !== '' ? Number(subGrades.total).toFixed(1) : '')
+                    .replace(new RegExp(`\\{\\{ijazah_${safe}_rata\\}\\}`, 'gi'), subGrades.rata !== undefined && subGrades.rata !== '' ? String(Math.round(Number(subGrades.rata))) : '')
+                    .replace(new RegExp(`\\{\\{ijazah_${safe}_nama\\}\\}`, 'gi'), m.nameId || '')
+                    .replace(new RegExp(`\\{\\{ijazah_${safe}_nama_ar\\}\\}`, 'gi'), m.nameAr || m.nameId || '');
+            });
+            
+            let ijazahTotalSum = 0;
+            let ijazahCount = 0;
+            ijazahSubs.forEach(m => {
+                const subEntry = subjectsForClass.find(s => s.masterId === m.id || s.nameId === m.nameId);
+                if (!subEntry) return;
+                const rata = parseFloat((stdIjazah[subEntry.id] || {}).rata);
+                if (!isNaN(rata)) { ijazahTotalSum += rata; ijazahCount++; }
+            });
+            const ijazahRata = ijazahCount > 0 ? ijazahTotalSum / ijazahCount : '';
+            const calculateIjazahPredicatePreview = (val) => {
+                const num = Number(val);
+                if (isNaN(num)) return { ar: '', id: '' };
+                if (num >= 90) return { ar: 'مُمْتَازٌ', id: 'Mumtaz (Istimewa)' };
+                if (num >= 80) return { ar: 'جَيِّدٌ جِدًّا', id: 'Jayyid Jiddan (Sangat Baik)' };
+                if (num >= 70) return { ar: 'جَيِّدٌ', id: 'Jayyid (Baik)' };
+                if (num >= 60) return { ar: 'مَقْبُوْلٌ', id: 'Maqbul (Cukup)' };
+                return { ar: 'رَاسِبٌ', id: 'Rasib (Kurang)' };
+            };
+            const predikat = ijazahRata !== '' ? calculateIjazahPredicatePreview(ijazahRata) : { ar: '', id: '' };
+            
+            replaced = replaced
+                .replace(/\{\{ijazah_total\}\}/gi, ijazahCount > 0 ? ijazahTotalSum.toFixed(1) : '')
+                .replace(/\{\{ijazah_rata\}\}/gi, ijazahRata !== '' ? String(Math.round(Number(ijazahRata))) : '')
+                .replace(/\{\{ijazah_predikat_id\}\}/gi, predikat.id)
+                .replace(/\{\{ijazah_predikat_ar\}\}/gi, predikat.ar);
+            // ---- END IJAZAH VARIABLES ----
+
             // Master subjects
             const activeMasterSubjectsForAr = getUniqueActiveSubjects(data);
             if (activeMasterSubjectsForAr.length > 0) {
@@ -3870,9 +3916,10 @@ const LayoutBuilder = () => {
                 });
             }
 
-            // Short key variables (nilai, kkm, rata, presensi, sikap, ekskul)
+            // Short key variables (nilai, kkm, rata, presensi, sikap, ekskul, student fields)
             replaced = replaced.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
                 if (stdData[key] !== undefined) return stdData[key];
+                if (stdData.fields && stdData.fields[key] !== undefined) return stdData.fields[key];
                 if (key.endsWith('_label')) {
                     const realKey = key.replace('_label', '');
                     const fieldObj = data.studentFields?.find(f => f.key === realKey);
