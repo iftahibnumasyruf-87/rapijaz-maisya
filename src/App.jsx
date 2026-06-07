@@ -3925,15 +3925,20 @@ const LayoutBuilder = () => {
             }
 
             // Short key variables (nilai, kkm, rata, presensi, sikap, ekskul, student fields)
-            replaced = replaced.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
+            replaced = replaced.replace(/\{\{([^}]+)\}\}/g, (match, rawKey) => {
+                let key = rawKey.trim();
+                let lowerKey = key.toLowerCase();
                 // Direct student field lookup (includes custom fields like ttl, ttl_ar, asrama, asrama_ar)
                 if (stdData[key] !== undefined && stdData[key] !== null) return String(stdData[key]);
-                if (key.endsWith('_arab')) {
-                    const arKey = key.replace(/_arab$/, '_ar');
+                if (stdData[lowerKey] !== undefined && stdData[lowerKey] !== null) return String(stdData[lowerKey]);
+                
+                if (key.endsWith('_arab') || lowerKey.endsWith('_arab')) {
+                    const arKey = lowerKey.replace(/_arab$/, '_ar');
                     if (stdData[arKey] !== undefined && stdData[arKey] !== null) return String(stdData[arKey]);
                     if (stdData.fields && stdData.fields[arKey] !== undefined) return String(stdData.fields[arKey]);
                 }
                 if (stdData.fields && stdData.fields[key] !== undefined) return String(stdData.fields[key]);
+                if (stdData.fields && stdData.fields[lowerKey] !== undefined) return String(stdData.fields[lowerKey]);
                 if (key.endsWith('_label')) {
                     const realKey = key.replace('_label', '');
                     const fieldObj = data.studentFields?.find(f => f.key === realKey);
@@ -8087,15 +8092,20 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                 });
             }
             
-            return replaced.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
+            return replaced.replace(/\{\{([^}]+)\}\}/g, (match, rawKey) => {
+                 let key = rawKey.trim();
+                 let lowerKey = key.toLowerCase();
                  // Direct student field lookup (including custom fields like ttl, ttl_ar, asrama, asrama_ar)
                  if (stdData[key] !== undefined && stdData[key] !== null) return String(stdData[key]);
-                 if (key.endsWith('_arab')) {
-                     const arKey = key.replace(/_arab$/, '_ar');
+                 if (stdData[lowerKey] !== undefined && stdData[lowerKey] !== null) return String(stdData[lowerKey]);
+                 
+                 if (key.endsWith('_arab') || lowerKey.endsWith('_arab')) {
+                     const arKey = lowerKey.replace(/_arab$/, '_ar');
                      if (stdData[arKey] !== undefined && stdData[arKey] !== null) return String(stdData[arKey]);
                      if (stdData.fields && stdData.fields[arKey] !== undefined) return String(stdData.fields[arKey]);
                  }
                  if (stdData.fields && stdData.fields[key] !== undefined) return String(stdData.fields[key]);
+                 if (stdData.fields && stdData.fields[lowerKey] !== undefined) return String(stdData.fields[lowerKey]);
                  if (key.endsWith('_label')) {
                      const realKey = key.replace('_label', '');
                      const fieldObj = data.studentFields?.find(f => f.key === realKey);
