@@ -5603,6 +5603,12 @@ const LayoutBuilder = () => {
                                             Format Teks Arab (RTL)
                                         </label>
                                     </div>
+                                    <div className="mt-1">
+                                        <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 bg-gray-50 p-2 border rounded cursor-pointer">
+                                            <input type="checkbox" checked={activeEl?.isArabicDigits || false} onChange={e => updateElement(selectedElementId, { isArabicDigits: e.target.checked })} />
+                                            Ubah Angka (0-9) ke Arab (٠-٩)
+                                        </label>
+                                    </div>
                                 </>
                             )}
 
@@ -6517,7 +6523,7 @@ const LayoutBuilder = () => {
                                     : el.type === 'image' ? <img src={el.content} style={{ width: '100%', height: '100%', objectFit: el.objectFit || 'contain', objectPosition: `${el.objectPositionX ?? 50}% ${el.objectPositionY ?? 50}%`, pointerEvents: 'none' }} alt="elemen" />
                                     : el.type === 'line' ? <div style={{ width: '100%', height: `${el.lineThickness || 2}px`, backgroundColor: el.lineColor || '#000000', pointerEvents: 'none' }} />
                                     : el.type === 'shape' ? <div style={{ width: '100%', height: '100%', backgroundColor: el.shapeFill || '#000000', borderRadius: `${el.shapeRadius || 0}px`, border: el.shapeBorder ? `${el.shapeBorder}px solid ${el.shapeBorderColor || '#000000'}` : 'none', pointerEvents: 'none' }} />
-                                    : <div onDoubleClick={(e) => { e.stopPropagation(); const newContent = window.prompt('Ubah teks (ketik \\n untuk baris baru):', (el.content || '').replace(/\n/g, '\\n')); if (newContent !== null) updateElement(el.id, { content: newContent.replace(/\\n/g, '\n') }); }} style={{ whiteSpace: 'pre-wrap', width: '100%', height: '100%', textAlign: el.textAlign || 'left', direction: el.isRtl ? 'rtl' : 'ltr', cursor: 'text' }}>{previewReplacer ? previewReplacer(el.content) : el.content}</div>}
+                                    : <div onDoubleClick={(e) => { e.stopPropagation(); const newContent = window.prompt('Ubah teks (ketik \\n untuk baris baru):', (el.content || '').replace(/\n/g, '\\n')); if (newContent !== null) updateElement(el.id, { content: newContent.replace(/\\n/g, '\n') }); }} style={{ whiteSpace: 'pre-wrap', width: '100%', height: '100%', textAlign: el.textAlign || 'left', direction: el.isRtl ? 'rtl' : 'ltr', cursor: 'text' }}>{(() => { const raw = previewReplacer ? previewReplacer(el.content) : el.content; return el.isArabicDigits ? toArabicNumerals(raw) : raw; })()}</div>}
                                     
                                     {isSelected && !el.locked && selectedIds.length === 1 && (
                                         <>
@@ -8152,6 +8158,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
         };
 
         let content = replaceVariables(el.content);
+        if (el.isArabicDigits) content = toArabicNumerals(content);
         
         const baseStyle = {
             position: 'absolute',
