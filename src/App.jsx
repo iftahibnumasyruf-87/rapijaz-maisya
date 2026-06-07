@@ -7923,6 +7923,20 @@ const CetakDokumen = ({ mode = 'raport' }) => {
     const activeSetting = data.settings.find(s => s.isActive) || {};
     const activeStudents = getStudentsForYear(data.studentSnapshots, activeSetting, data.students);
     const classesData = data.classes || [];
+    const dropdownClasses = useMemo(() => {
+        if (mode !== 'ijazah') return classesData;
+        return classesData.filter(c => {
+            const name = (c.name || '').toLowerCase().trim();
+            return name.includes('9') || name.includes('12') || name === 'ix' || name === 'xii';
+        });
+    }, [classesData, mode]);
+    
+    // Reset selected class if it's no longer in dropdownClasses
+    useEffect(() => {
+        if (selectedClass && !dropdownClasses.some(c => c.id === selectedClass)) {
+            setSelectedClass(dropdownClasses.length > 0 ? dropdownClasses[0].id : '');
+        }
+    }, [selectedClass, dropdownClasses]);
     const studentsInClass = getStudentsInClass(activeStudents, classesData, selectedClass);
     const studentData = activeStudents.find(s => s.id === selectedStudent);
     
@@ -7971,7 +7985,39 @@ const CetakDokumen = ({ mode = 'raport' }) => {
     }, [data.fonts]);
 
     const gradeDocId = getGradeDocId(selectedClass, classesData, activeSetting, data.grades);
-    const classGradesDoc = data.grades.find(g => g.id === gradeDocId)?.data || {};
+    const rawClassGradesDoc = data.grades.find(g => g.id === gradeDocId)?.data || {};
+    
+    // Calculate subjects for Katrol logic
+    const topLevelSubjectsForClass = useMemo(() => {
+        return sortSubjectsByCategory(filterSubjectsByClass(data.subjects, selectedClass, classesData), data.subjectCategories);
+    }, [data.subjects, selectedClass, classesData, data.subjectCategories]);
+
+    // Apply Katrol for Raport grades
+    const classGradesDoc = useMemo(() => {
+        if (!useKatrol) return rawClassGradesDoc;
+        const result = {};
+        Object.keys(rawClassGradesDoc).forEach(stdId => {
+            const sGrades = { ...rawClassGradesDoc[stdId] };
+            Object.keys(sGrades).forEach(k => {
+                const subObj = topLevelSubjectsForClass.find(s => s.id === k);
+                if (subObj && subObj.kkm) {
+                    const kkm = Number(subObj.kkm);
+                    const v = sGrades[k];
+                    if (v && typeof v === 'object') {
+                        let {uts, uas} = v;
+                        if (uts !== '' && !isNaN(uts) && Number(uts) < kkm) uts = String(kkm);
+                        if (uas !== '' && !isNaN(uas) && Number(uas) < kkm) uas = String(kkm);
+                        sGrades[k] = { ...v, uts, uas };
+                    } else if (v !== undefined && v !== '' && !isNaN(v) && Number(v) < kkm) {
+                        sGrades[k] = String(kkm);
+                    }
+                }
+            });
+            result[stdId] = sGrades;
+        });
+        return result;
+    }, [rawClassGradesDoc, useKatrol, topLevelSubjectsForClass]);
+
     const studentGrades = classGradesDoc[selectedStudent] || {};
 
     // Ijazah grades lookup per student
@@ -7983,12 +8029,31 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                 const parts = doc.id.split('_');
                 if (parts.length >= 3) {
                     const studentId = parts.slice(1, -1).join('_');
-                    map[studentId] = doc.data;
+                    let sGrades = { ...doc.data };
+                    
+                    if (useKatrol) {
+                        Object.keys(sGrades).forEach(k => {
+                            const subObj = topLevelSubjectsForClass.find(s => s.id === k);
+                            if (subObj && subObj.kkm) {
+                                const kkm = Number(subObj.kkm);
+                                const v = sGrades[k];
+                                if (v) {
+                                    let { sem1, sem2, total, rata } = v;
+                                    if (sem1 !== undefined && sem1 !== '' && !isNaN(sem1) && Number(sem1) < kkm) sem1 = String(kkm);
+                                    if (sem2 !== undefined && sem2 !== '' && !isNaN(sem2) && Number(sem2) < kkm) sem2 = String(kkm);
+                                    if (total !== undefined && total !== '' && !isNaN(total) && Number(total) < kkm * 2) total = String(kkm * 2);
+                                    if (rata !== undefined && rata !== '' && !isNaN(rata) && Number(rata) < kkm) rata = String(kkm);
+                                    sGrades[k] = { ...v, sem1, sem2, total, rata };
+                                }
+                            }
+                        });
+                    }
+                    map[studentId] = sGrades;
                 }
             }
         });
         return map;
-    }, [data.ijazah_grades, activeSetting.tahun]);
+    }, [data.ijazah_grades, activeSetting.tahun, useKatrol, topLevelSubjectsForClass]);
 
     const classAverages = useMemo(() => {
         if(!gradeDocId) return {};
@@ -8480,7 +8545,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                 <h3 className="text-xl font-bold mb-4 capitalize">Cetak {mode}</h3>
                 {!activeSetting.tahun && <div className="bg-yellow-50 text-yellow-800 p-3 rounded-lg text-sm mb-4 border border-yellow-200">Pastikan Admin mengaktifkan Tahun Ajaran di Master Data terlebih dahulu.</div>}
                 <div className="space-y-4">
-                    <select className="w-full p-2 border rounded-lg" value={selectedClass} onChange={e => {setSelectedClass(e.target.value); setSelectedStudent('');}}><option value="">-- Kelas --</option>{data.classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+                    <select className="w-full p-2 border rounded-lg" value={selectedClass} onChange={e => {setSelectedClass(e.target.value); setSelectedStudent('');}}><option value="">-- Kelas --</option>{dropdownClasses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
                     <select className="w-full p-2 border rounded-lg" value={selectedStudent} onChange={e => setSelectedStudent(e.target.value)} disabled={!selectedClass}><option value="">-- Santri --</option>{studentsInClass.map(s => <option key={s.id} value={s.id}>{s.nama}</option>)}</select>
                     
                     {/* Pilihan Layout */}
