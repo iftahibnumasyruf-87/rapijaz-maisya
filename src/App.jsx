@@ -5,7 +5,7 @@ import {
   Menu, X, Home, Users, BookOpen, Settings, LayoutTemplate, 
   Printer, CheckSquare, LogOut, Plus, Trash2, Edit2, Save,
   Download, Upload, Share2, AlertCircle, CheckCircle, GripHorizontal,
-  Type, User, CreditCard, Image as ImageIcon, Ruler, Type as TypeIcon, FileText,
+  Type, User, CreditCard, Image as ImageIcon, Ruler, Type as TypeIcon, FileText, Award,
   Columns, FileSignature, TrendingUp, UserX, Clock, Activity, ChevronDown,
   ZoomIn, ZoomOut, Maximize, Minimize, ChevronUp, Lock, Database, Copy, Undo, Redo, Eye, EyeOff, Scissors,
   AlignLeft, AlignCenter, AlignRight, AlignStartVertical, AlignCenterVertical, AlignEndVertical, BarChart2, AlignJustify, Layers, Calendar,
@@ -448,9 +448,17 @@ const buildShortKeyMap = (subjects = [], presences = [], characterTraits = [], e
     
     // Ekskul: 2 slot tetap per siswa
     map['ekskul1_nama']  = { realId: 'ekskul1_nama',  dataType: 'ekskul_fixed' };
+    map['ekskul1_nama_ar']  = { realId: 'ekskul1_nama_ar',  dataType: 'ekskul_fixed' };
+    map['ekskul1_nama_arab'] = { realId: 'ekskul1_nama_ar',  dataType: 'ekskul_fixed' };
     map['ekskul1_nilai'] = { realId: 'ekskul1_nilai', dataType: 'ekskul_fixed' };
+    map['ekskul1_nilai_ar']  = { realId: 'ekskul1_nilai_ar',  dataType: 'ekskul_fixed' };
+    map['ekskul1_nilai_arab'] = { realId: 'ekskul1_nilai_ar',  dataType: 'ekskul_fixed' };
     map['ekskul2_nama']  = { realId: 'ekskul2_nama',  dataType: 'ekskul_fixed' };
+    map['ekskul2_nama_ar']  = { realId: 'ekskul2_nama_ar',  dataType: 'ekskul_fixed' };
+    map['ekskul2_nama_arab'] = { realId: 'ekskul2_nama_ar',  dataType: 'ekskul_fixed' };
     map['ekskul2_nilai'] = { realId: 'ekskul2_nilai', dataType: 'ekskul_fixed' };
+    map['ekskul2_nilai_ar']  = { realId: 'ekskul2_nilai_ar',  dataType: 'ekskul_fixed' };
+    map['ekskul2_nilai_arab'] = { realId: 'ekskul2_nilai_ar',  dataType: 'ekskul_fixed' };
     map['cw'] = { realId: 'catatan_wali', dataType: 'catatan' };
 
     subjects.forEach(sub => {
@@ -2425,6 +2433,14 @@ const MasterData = ({ activeTab }) => {
                               { code: 'tahun_ajaran_ar', label: 'Tahun Ajaran (Arab)' },
                               { code: 'semester', label: 'Semester' },
                               { code: 'semester_ar', label: 'Semester (Arab)' },
+                              { code: 'ekskul1_nama', label: 'Nama Ekskul 1' },
+                              { code: 'ekskul1_nama_ar', label: 'Nama Ekskul 1 (Arab)' },
+                              { code: 'ekskul1_nilai', label: 'Nilai Ekskul 1' },
+                              { code: 'ekskul1_nilai_ar', label: 'Nilai Ekskul 1 (Arab)' },
+                              { code: 'ekskul2_nama', label: 'Nama Ekskul 2' },
+                              { code: 'ekskul2_nama_ar', label: 'Nama Ekskul 2 (Arab)' },
+                              { code: 'ekskul2_nilai', label: 'Nilai Ekskul 2' },
+                              { code: 'ekskul2_nilai_ar', label: 'Nilai Ekskul 2 (Arab)' },
                           ].map(v => (
                               <div
                                   key={v.code}
@@ -3470,6 +3486,16 @@ const VariablesHelp = ({ onInsert, allSubjects = [] }) => {
                     <option value="{{semester}}">Semester</option>
                     <option value="{{semester_ar}}">Semester (Arab)</option>
                 </optgroup>
+                <optgroup label="Ekstrakurikuler">
+                    <option value="{{ekskul1_nama}}">Nama Ekskul 1</option>
+                    <option value="{{ekskul1_nama_ar}}">Nama Ekskul 1 (Arab)</option>
+                    <option value="{{ekskul1_nilai}}">Nilai Ekskul 1</option>
+                    <option value="{{ekskul1_nilai_ar}}">Nilai Ekskul 1 (Arab)</option>
+                    <option value="{{ekskul2_nama}}">Nama Ekskul 2</option>
+                    <option value="{{ekskul2_nama_ar}}">Nama Ekskul 2 (Arab)</option>
+                    <option value="{{ekskul2_nilai}}">Nilai Ekskul 2</option>
+                    <option value="{{ekskul2_nilai_ar}}">Nilai Ekskul 2 (Arab)</option>
+                </optgroup>
                 {allSubjects.length > 0 && (
                     <optgroup label="Daftar Pelajaran (Master)">
                         {(() => {
@@ -3660,6 +3686,20 @@ const LayoutBuilder = () => {
                         return sGrades[realId] !== undefined ? String(sGrades[realId]) : '';
                     }
                     if (dataType === 'ekskul_fixed') {
+                        if (realId === 'ekskul1_nama_ar' || realId === 'ekskul2_nama_ar') {
+                            const indKey = realId === 'ekskul1_nama_ar' ? 'ekskul1_nama' : 'ekskul2_nama';
+                            const indName = sGrades[indKey];
+                            if (!indName) return '';
+                            const ekskulObj = data.extracurriculars?.find(e => e.name === indName);
+                            return ekskulObj ? (ekskulObj.nameAr || indName) : indName;
+                        }
+                        if (realId === 'ekskul1_nilai_ar' || realId === 'ekskul2_nilai_ar') {
+                            const indKey = realId === 'ekskul1_nilai_ar' ? 'ekskul1_nilai' : 'ekskul2_nilai';
+                            const indVal = sGrades[indKey];
+                            if (!indVal) return '';
+                            const toArabic = (val) => String(val).replace(/[0-9]/g, w => ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'][w]);
+                            return toArabic(indVal);
+                        }
                         return sGrades[realId] !== undefined ? String(sGrades[realId]) : '';
                     }
                     if (dataType === 'catatan') {
@@ -5028,6 +5068,13 @@ const LayoutBuilder = () => {
                                 <button onClick={() => addElement('tahun_ajaran_ar')} className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 py-1.5 rounded text-xs flex justify-center gap-1"><Calendar size={14}/> Thn Ajaran (Arab)</button>
                                 <button onClick={() => addElement('semester')} className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 py-1.5 rounded text-xs flex justify-center gap-1"><BookOpen size={14}/> Semester</button>
                                 <button onClick={() => addElement('semester_ar')} className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 py-1.5 rounded text-xs flex justify-center gap-1"><BookOpen size={14}/> Semester (Arab)</button>
+                            </div>
+                            <p className="text-xs font-semibold text-gray-400 uppercase mt-3 mb-1">Variabel Ekstrakurikuler</p>
+                            <div className="grid grid-cols-2 gap-1">
+                                <button onClick={() => addElement('ekskul1_nama')} className="bg-orange-50 hover:bg-orange-100 text-orange-700 py-1.5 rounded text-[10px] flex justify-center gap-1 truncate" title="Nama Ekskul 1"><Award size={14}/> Ekskul 1</button>
+                                <button onClick={() => addElement('ekskul1_nilai')} className="bg-orange-50 hover:bg-orange-100 text-orange-700 py-1.5 rounded text-[10px] flex justify-center gap-1 truncate" title="Nilai Ekskul 1"><Award size={14}/> Nilai 1</button>
+                                <button onClick={() => addElement('ekskul2_nama')} className="bg-orange-50 hover:bg-orange-100 text-orange-700 py-1.5 rounded text-[10px] flex justify-center gap-1 truncate" title="Nama Ekskul 2"><Award size={14}/> Ekskul 2</button>
+                                <button onClick={() => addElement('ekskul2_nilai')} className="bg-orange-50 hover:bg-orange-100 text-orange-700 py-1.5 rounded text-[10px] flex justify-center gap-1 truncate" title="Nilai Ekskul 2"><Award size={14}/> Nilai 2</button>
                             </div>
                             {data.studentFields && data.studentFields.length > 0 && (
                             <div className="mt-2 grid grid-cols-2 gap-1">
@@ -7784,6 +7831,20 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                          return sGrades[realId] !== undefined ? sGrades[realId] : '';
                      }
                      if (dataType === 'ekskul_fixed') {
+                         if (realId === 'ekskul1_nama_ar' || realId === 'ekskul2_nama_ar') {
+                             const indKey = realId === 'ekskul1_nama_ar' ? 'ekskul1_nama' : 'ekskul2_nama';
+                             const indName = sGrades[indKey];
+                             if (!indName) return '';
+                             const ekskulObj = data.extracurriculars?.find(e => e.name === indName);
+                             return ekskulObj ? (ekskulObj.nameAr || indName) : indName;
+                         }
+                         if (realId === 'ekskul1_nilai_ar' || realId === 'ekskul2_nilai_ar') {
+                             const indKey = realId === 'ekskul1_nilai_ar' ? 'ekskul1_nilai' : 'ekskul2_nilai';
+                             const indVal = sGrades[indKey];
+                             if (!indVal) return '';
+                             const toArabic = (val) => String(val).replace(/[0-9]/g, w => ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'][w]);
+                             return toArabic(indVal);
+                         }
                          return sGrades[realId] !== undefined ? sGrades[realId] : '';
                      }
                      if (dataType === 'catatan') {
