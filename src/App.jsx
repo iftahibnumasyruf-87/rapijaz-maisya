@@ -362,6 +362,42 @@ const toArabicNumerals = (str) => {
     return String(str).replace(/[0-9]/g, w => arabicNumbers[parseInt(w, 10)]);
 };
 
+const toArabicWords = (numStr) => {
+    const trimmed = String(numStr).trim();
+    if (!trimmed || isNaN(trimmed)) return numStr;
+    const n = Math.round(Number(trimmed));
+    if (n < 0 || n > 999) return numStr;
+    
+    const units = ['صفر', 'واحد', 'اثنان', 'ثلاثة', 'أربعة', 'خمسة', 'ستة', 'سبعة', 'ثمانية', 'تسعة'];
+    const teens = ['عشرة', 'أحد عشر', 'اثنا عشر', 'ثلاثة عشر', 'أربعة عشر', 'خمسة عشر', 'ستة عشر', 'سبعة عشر', 'ثمانية عشر', 'تسعة عشر'];
+    const tens = ['', 'عشرة', 'عشرون', 'ثلاثون', 'أربعون', 'خمسون', 'ستون', 'سبعون', 'ثمانون', 'تسعون'];
+    const hundreds = ['', 'مائة', 'مائتان', 'ثلاثمائة', 'أربعمائة', 'خمسمائة', 'ستمائة', 'سبعمائة', 'ثمانمائة', 'تسعمائة'];
+
+    if (n === 0) return units[0];
+
+    let parts = [];
+    let h = Math.floor(n / 100);
+    if (h > 0) parts.push(hundreds[h]);
+
+    let remainder = n % 100;
+    if (remainder > 0) {
+        if (remainder < 10) {
+            parts.push(units[remainder]);
+        } else if (remainder < 20) {
+            parts.push(teens[remainder - 10]);
+        } else {
+            let t = Math.floor(remainder / 10);
+            let u = remainder % 10;
+            if (u === 0) {
+                parts.push(tens[t]);
+            } else {
+                parts.push(units[u] + ' و ' + tens[t]);
+            }
+        }
+    }
+    return parts.join(' و ');
+};
+
 const isReligiousCategory = (cat) => {
     if (!cat) return false;
     const n = normalizeValue(cat);
@@ -3583,7 +3619,12 @@ const renderCustomTable = (el, replaceVars = s => s, options = {}) => {
                                         }
                                         let html = replaceVars(contentStr).replace(/\n/g, '<br/>');
                                         if (contentStr === '=') html = '<span style="color:#4f46e5;font-size:10px;animation: pulse 1.5s infinite;">Pilih Sel...</span>';
-                                        if (cell.isArabicDigits || el.isArabicDigits) {
+                                        if (cell.isTerbilangArab || el.isTerbilangArab) {
+                                            html = html.split(/(<[^>]*>)/).map(part => {
+                                                if (part.startsWith('<') && part.endsWith('>')) return part;
+                                                return toArabicWords(part);
+                                            }).join('');
+                                        } else if (cell.isArabicDigits || el.isArabicDigits) {
                                             html = html.split(/(<[^>]*>)/).map(part => {
                                                 if (part.startsWith('<') && part.endsWith('>')) return part;
                                                 return part.replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[d]);
@@ -5628,6 +5669,12 @@ const LayoutBuilder = () => {
                                             Ubah Angka (0-9) ke Arab (٠-٩)
                                         </label>
                                     </div>
+                                    <div className="mt-1">
+                                        <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 bg-gray-50 p-2 border rounded cursor-pointer">
+                                            <input type="checkbox" checked={activeEl?.isTerbilangArab || false} onChange={e => updateElement(selectedElementId, { isTerbilangArab: e.target.checked })} />
+                                            Ubah Angka ke Teks Arab (Terbilang)
+                                        </label>
+                                    </div>
                                 </>
                             )}
 
@@ -5905,6 +5952,14 @@ const LayoutBuilder = () => {
                                                         updateElement(selectedElementId, { cells: newCells });
                                                     }}/>
                                                     Ubah Angka (0-9) ke Arab (٠-٩)
+                                                </label>
+                                                <label className="flex items-center gap-2 text-[11px] text-gray-700 bg-gray-50 p-2 rounded cursor-pointer border mt-1">
+                                                    <input type="checkbox" checked={activeEl.cells?.[ctSelCells[0]]?.isTerbilangArab || false} onChange={e => {
+                                                        const newCells = {...activeEl.cells};
+                                                        ctSelCells.forEach(ck => { newCells[ck] = {...(newCells[ck]||{}), isTerbilangArab: e.target.checked}; });
+                                                        updateElement(selectedElementId, { cells: newCells });
+                                                    }}/>
+                                                    Ubah Angka ke Teks Arab (Terbilang)
                                                 </label>
                                                 {/* Merge / Unmerge Buttons */}
                                                 {ctSelCells.length > 1 ? (
@@ -6542,7 +6597,7 @@ const LayoutBuilder = () => {
                                     : el.type === 'image' ? <img src={el.content} style={{ width: '100%', height: '100%', objectFit: el.objectFit || 'contain', objectPosition: `${el.objectPositionX ?? 50}% ${el.objectPositionY ?? 50}%`, pointerEvents: 'none' }} alt="elemen" />
                                     : el.type === 'line' ? <div style={{ width: '100%', height: `${el.lineThickness || 2}px`, backgroundColor: el.lineColor || '#000000', pointerEvents: 'none' }} />
                                     : el.type === 'shape' ? <div style={{ width: '100%', height: '100%', backgroundColor: el.shapeFill || '#000000', borderRadius: `${el.shapeRadius || 0}px`, border: el.shapeBorder ? `${el.shapeBorder}px solid ${el.shapeBorderColor || '#000000'}` : 'none', pointerEvents: 'none' }} />
-                                    : <div onDoubleClick={(e) => { e.stopPropagation(); const newContent = window.prompt('Ubah teks (ketik \\n untuk baris baru):', (el.content || '').replace(/\n/g, '\\n')); if (newContent !== null) updateElement(el.id, { content: newContent.replace(/\\n/g, '\n') }); }} style={{ whiteSpace: 'pre-wrap', width: '100%', height: '100%', textAlign: el.textAlign || 'left', direction: el.isRtl ? 'rtl' : 'ltr', cursor: 'text' }}>{(() => { const raw = previewReplacer ? previewReplacer(el.content) : el.content; return el.isArabicDigits ? toArabicNumerals(raw) : raw; })()}</div>}
+                                    : <div onDoubleClick={(e) => { e.stopPropagation(); const newContent = window.prompt('Ubah teks (ketik \\n untuk baris baru):', (el.content || '').replace(/\n/g, '\\n')); if (newContent !== null) updateElement(el.id, { content: newContent.replace(/\\n/g, '\n') }); }} style={{ whiteSpace: 'pre-wrap', width: '100%', height: '100%', textAlign: el.textAlign || 'left', direction: el.isRtl ? 'rtl' : 'ltr', cursor: 'text' }}>{(() => { const raw = previewReplacer ? previewReplacer(el.content) : el.content; return el.isTerbilangArab ? toArabicWords(raw) : (el.isArabicDigits ? toArabicNumerals(raw) : raw); })()}</div>}
                                     
                                     {isSelected && !el.locked && selectedIds.length === 1 && (
                                         <>
@@ -8188,7 +8243,8 @@ const CetakDokumen = ({ mode = 'raport' }) => {
         };
 
         let content = replaceVariables(el.content);
-        if (el.isArabicDigits) content = toArabicNumerals(content);
+        if (el.isTerbilangArab) content = toArabicWords(content);
+        else if (el.isArabicDigits) content = toArabicNumerals(content);
         
         const baseStyle = {
             position: 'absolute',
