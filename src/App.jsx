@@ -7368,9 +7368,24 @@ const InputIjazah = () => {
 
     const activeSetting = data.settings.find(s => s.isActive);
 
-    // Gunakan allData agar tidak terkena filter semester-specific, filter by name agar tidak duplikat di dropdown
+    // Gabungkan allData.classes dan data.classes agar tidak ada santri yang hilang karena mismatch ID kelas antar semester
     const classesData = useMemo(() => {
-        const raw = allData?.classes || [];
+        const raw = [...(allData?.classes || []), ...(data.classes || [])];
+        const seen = new Set();
+        // Prioritaskan berdasarkan ID unik, lalu deduplicate by name
+        const byId = new Map();
+        raw.forEach(c => { if (!byId.has(c.id)) byId.set(c.id, c); });
+        return Array.from(byId.values()).filter(c => { 
+            const name = (c.name || '').toLowerCase().trim();
+            if (seen.has(name)) return false; 
+            seen.add(name); 
+            return true; 
+        });
+    }, [allData?.classes, data.classes]);
+
+    // Untuk dropdown, tampilkan kelas aktif (data.classes) saja agar tidak membingungkan
+    const dropdownClasses = useMemo(() => {
+        const raw = data.classes || [];
         const seen = new Set();
         return raw.filter(c => { 
             const name = (c.name || '').toLowerCase().trim();
@@ -7378,7 +7393,7 @@ const InputIjazah = () => {
             seen.add(name); 
             return true; 
         });
-    }, [allData?.classes]);
+    }, [data.classes]);
 
     const allMasterSubjects = useMemo(() => {
         const raw = allData?.masterSubjects || [];
@@ -7408,6 +7423,7 @@ const InputIjazah = () => {
         return raw.filter(s => { if (seen.has(s.id)) return false; seen.add(s.id); return true; });
     }, [allData?.subjects]);
 
+    // Gunakan classesData gabungan untuk cari santri, agar santri dengan ID kelas lama tetap ditemukan
     const activeStudents = getStudentsForYear(data.studentSnapshots, activeSetting, data.students);
     const studentsInClass = getStudentsInClass(activeStudents, classesData, selectedClass);
 
@@ -7602,7 +7618,7 @@ const InputIjazah = () => {
                             onChange={e => setSelectedClass(e.target.value)}
                         >
                             <option value="">-- Pilih Kelas --</option>
-                            {classesData.map(c => (
+                            {dropdownClasses.map(c => (
                                 <option key={c.id} value={c.id}>{c.name}</option>
                             ))}
                         </select>
@@ -7635,9 +7651,9 @@ const InputIjazah = () => {
                     </p>
                 </div>
             ) : (
-                <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <table className="border-collapse whitespace-nowrap text-sm">
+                <div className="bg-white rounded-xl border shadow-sm overflow-hidden flex flex-col" style={{maxHeight: 'calc(100vh - 280px)', minHeight: '400px'}}>
+                    <div className="overflow-auto flex-1" style={{overflowX:'auto', overflowY:'auto'}}>
+                        <table className="border-collapse whitespace-nowrap text-sm w-max min-w-full">
                             <thead className="sticky top-0 z-20">
                                 {/* Row 1 - Group headers */}
                                 <tr className="bg-emerald-800 text-white">
