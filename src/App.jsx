@@ -416,16 +416,19 @@ const getGlobalSubjectShortCodes = (subjects) => {
     return map;
 };
 
-// Deduplicate master subjects to ensure consistent short codes
-const getDedupedMasterSubjects = (allMasterSubs = [], activeSetting) => {
-    const msMap = new Map();
-    allMasterSubs.forEach(m => {
-        const key = m.nameId || m.id;
-        const existing = msMap.get(key);
-        if (!existing) msMap.set(key, m);
-        else if (activeSetting && m.tahun === activeSetting.tahun && m.semester === activeSetting.semester) msMap.set(key, m);
+// Get deduplicated list of active subjects (master subjects + actively assigned subjects)
+// This guarantees all graded subjects get a short code, while preventing deleted ghost subjects from polluting codes.
+const getUniqueActiveSubjects = (dataObj) => {
+    const map = new Map();
+    (dataObj.masterSubjects || []).forEach(m => {
+        if (m.nameId) map.set(m.nameId.trim().toLowerCase(), m);
     });
-    return Array.from(msMap.values());
+    (dataObj.subjects || []).forEach(s => {
+        if (s.nameId && !map.has(s.nameId.trim().toLowerCase())) {
+            map.set(s.nameId.trim().toLowerCase(), s);
+        }
+    });
+    return Array.from(map.values());
 };
 
 // Build map: shortKey -> { id, type } for subjects/presences/characterTraits/extracurriculars
@@ -2363,8 +2366,7 @@ const MasterData = ({ activeTab }) => {
   const renderFullTable = () => {
     switch (activeTab) {
       case 'variables_list': {
-          // IMPORTANT: use ONLY active semester's masterSubjects to avoid ghost subjects from old semesters
-          const dedupedMasterSubs = data.masterSubjects || [];
+          const dedupedMasterSubs = getUniqueActiveSubjects(data);
           const globalCodes = getGlobalSubjectShortCodes(dedupedMasterSubs);
           return (
               <div className="space-y-6 pb-8">
@@ -3500,8 +3502,7 @@ const LayoutBuilder = () => {
         const className = getClassNameFromValue(previewClassesData, previewClass);
         const classDataObj = previewClassesData.find(c => c.id === previewClass);
         const subjectsForClass = sortSubjectsByCategory(filterSubjectsByClass(data.subjects, previewClass, previewClassesData), data.subjectCategories);
-        // IMPORTANT: use ONLY active semester's masterSubjects to avoid ghost subjects from old semesters
-        const activeMasterSubjects = data.masterSubjects || [];
+        const activeMasterSubjects = getUniqueActiveSubjects(data);
         const globalShortCodes = getGlobalSubjectShortCodes(activeMasterSubjects);
         const shortKeyMapPrev = buildShortKeyMap(subjectsForClass, data.presences, data.characterTraits, data.extracurriculars, globalShortCodes);
 
@@ -3540,8 +3541,7 @@ const LayoutBuilder = () => {
                 .replace(/\{\{jumlah_santri_ar\}\}/gi, toAr(jumlahSantri));
 
             // Master subjects
-            // IMPORTANT: use ONLY active semester's masterSubjects
-            const activeMasterSubjectsForAr = data.masterSubjects || [];
+            const activeMasterSubjectsForAr = getUniqueActiveSubjects(data);
             if (activeMasterSubjectsForAr.length > 0) {
                 const globalCodes = getGlobalSubjectShortCodes(activeMasterSubjectsForAr);
                 activeMasterSubjectsForAr.forEach(m => {
@@ -3559,7 +3559,7 @@ const LayoutBuilder = () => {
             // Short key variables (nilai, kkm, rata)
             replaced = replaced.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
                 if (stdData[key] !== undefined) return stdData[key];
-                const shortEntry = shortKeyMapPrev[key];
+                const shortEntry = shortKeyMapPrev[key] || shortKeyMapPrev[String(key).toLowerCase()];
                 if (shortEntry) {
                     const { realId, dataType } = shortEntry;
                     if (dataType === 'subject' || dataType === 'subject_nilai') {
@@ -7535,8 +7535,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
 
         // Build short key map once per student render (deterministic, same order as InputNilai)
         const subjectsForClass = sortSubjectsByCategory(filterSubjectsByClass(data.subjects, selectedClass, classesData), data.subjectCategories);
-        // IMPORTANT: use ONLY active semester's masterSubjects to avoid ghost subjects from old semesters
-        const activeMasterSubjectsRender = data.masterSubjects || [];
+        const activeMasterSubjectsRender = getUniqueActiveSubjects(data);
         const globalShortCodes = getGlobalSubjectShortCodes(activeMasterSubjectsRender);
         const shortKeyMapRender = buildShortKeyMap(subjectsForClass, data.presences, data.characterTraits, data.extracurriculars, globalShortCodes);
         
@@ -7624,8 +7623,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
             // ---- END IJAZAH VARIABLES ----
             
             // Replace dynamic variables for Master Subjects
-            // IMPORTANT: use ONLY active semester's masterSubjects
-            const activeMasterSubjectsForArRender = data.masterSubjects || [];
+            const activeMasterSubjectsForArRender = getUniqueActiveSubjects(data);
             if (activeMasterSubjectsForArRender.length > 0) {
                 const globalCodes = getGlobalSubjectShortCodes(activeMasterSubjectsForArRender);
                 activeMasterSubjectsForArRender.forEach(m => {
@@ -7669,8 +7667,8 @@ const CetakDokumen = ({ mode = 'raport' }) => {
             return replaced.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
                  if (stdData[key] !== undefined) return stdData[key];
                  if (stdData.fields && stdData.fields[key] !== undefined) return stdData.fields[key];
-                 // Resolve short key alias (e.g. {{bi}}, {{bi_u}}, {{bi_a}}, {{cw}})
-                 const shortEntry = shortKeyMapRender[key];
+                 // Resolve short key alias (case-insensitive for presences/traits which are generated lowercase)
+                 const shortEntry = shortKeyMapRender[key] || shortKeyMapRender[String(key).toLowerCase()];
                  if (shortEntry) {
                      const { realId, dataType } = shortEntry;
                      if (dataType === 'subject' || dataType === 'subject_nilai') {
