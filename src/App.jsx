@@ -9,7 +9,7 @@ import {
   Columns, FileSignature, TrendingUp, UserX, Clock, Activity, ChevronDown,
   ZoomIn, ZoomOut, Maximize, Minimize, ChevronUp, Lock, Database, Copy, Undo, Redo, Eye, EyeOff, Scissors,
   AlignLeft, AlignCenter, AlignRight, AlignStartVertical, AlignCenterVertical, AlignEndVertical, BarChart2, AlignJustify, Layers, Calendar,
-  Minus, Square, Grid, Info, RefreshCw, Search
+  Minus, Square, Grid, Info, RefreshCw, Search, LockOpen
 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, AreaChart, Area } from 'recharts';
@@ -1573,6 +1573,30 @@ const BackupRestorePanel = () => {
         setProgressText('');
     };
 
+    const handleDeleteSnapshot = async () => {
+        if (!activeSetting || !snapshotId) {
+            showNotification('Tidak ada snapshot yang bisa dihapus.', 'error');
+            return;
+        }
+        if (!confirm(`Lepas kunci Snapshot Santri untuk Tahun ${activeSetting.tahun} Semester ${activeSetting.semester}?\n\nSetelah dikunci dilepas, sistem akan kembali menggunakan data santri terkini (live data) untuk preview dan cetak.`)) return;
+
+        setIsProcessing(true);
+        setProgressText('Melepas kunci snapshot...');
+        try {
+            const { error } = await supabase.from('studentSnapshots').delete().eq('id', snapshotId);
+            if (error) throw error;
+            // Hapus dari state lokal juga
+            showNotification('Snapshot berhasil dihapus. Data santri sekarang menggunakan data terkini.');
+            // Reload data agar state ter-update
+            setTimeout(() => window.location.reload(), 800);
+        } catch (e) {
+            console.error(e);
+            showNotification('Gagal menghapus snapshot: ' + (e?.message || ''), 'error');
+        }
+        setIsProcessing(false);
+        setProgressText('');
+    };
+
     const handleBackupExcel = async () => {
         if (!activeSetting || !activeSetting.tahun) {
             showNotification('Aktifkan Tahun Ajaran terlebih dahulu untuk mem-backup data!', 'error');
@@ -1933,26 +1957,46 @@ const BackupRestorePanel = () => {
                 </div>
             )}
 
-            <div className="bg-blue-50 border border-blue-200 p-6 rounded-xl">
-                <h4 className="font-bold text-blue-900 text-lg mb-2 flex items-center gap-2"><Lock size={20}/> Kunci Data Santri (Snapshot)</h4>
-                <p className="text-sm text-blue-800 mb-4">
+            <div className={`border p-6 rounded-xl ${currentSnapshot ? 'bg-emerald-50 border-emerald-200' : 'bg-blue-50 border-blue-200'}`}>
+                <h4 className={`font-bold text-lg mb-2 flex items-center gap-2 ${currentSnapshot ? 'text-emerald-900' : 'text-blue-900'}`}>
+                    {currentSnapshot ? <Lock size={20} className="text-emerald-600"/> : <LockOpen size={20} className="text-blue-500"/>}
+                    Kunci Data Santri (Snapshot)
+                </h4>
+                <p className={`text-sm mb-4 ${currentSnapshot ? 'text-emerald-800' : 'text-blue-800'}`}>
                     Fitur ini digunakan untuk <b>mengunci data santri</b> pada tahun ajaran yang sedang aktif. 
                     Saat tahun ajaran berganti, santri yang sudah naik kelas atau lulus tidak akan merubah tampilan raport lama.
                 </p>
-                <div className="flex items-center justify-between bg-white p-4 rounded-lg shadow-sm border border-blue-100">
+                <div className={`flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-lg shadow-sm border ${currentSnapshot ? 'bg-white border-emerald-100' : 'bg-white border-blue-100'}`}>
                     <div>
-                        <p className="font-semibold text-gray-800">Status Snapshot: {activeSetting ? `${activeSetting.tahun} Sem ${activeSetting.semester}` : 'Tidak ada tahun aktif'}</p>
-                        <p className="text-sm text-gray-500">
-                            {currentSnapshot ? `✅ Terkunci dengan ${currentSnapshot.students?.length || 0} santri (Diperbarui: ${new Date(currentSnapshot.createdAt).toLocaleString()})` : '⚠️ Belum ada snapshot untuk tahun ini.'}
+                        <p className="font-semibold text-gray-800">
+                            Status: {activeSetting ? `${activeSetting.tahun} Sem ${activeSetting.semester}` : 'Tidak ada tahun aktif'}
+                        </p>
+                        <p className={`text-sm mt-1 font-medium ${currentSnapshot ? 'text-emerald-700' : 'text-orange-600'}`}>
+                            {currentSnapshot 
+                                ? `🔒 Terkunci — ${currentSnapshot.students?.length || 0} santri (Update: ${new Date(currentSnapshot.createdAt).toLocaleString('id-ID')})`
+                                : '🔓 Tidak dikunci — Menggunakan data santri terkini (live)'}
                         </p>
                     </div>
-                    <button 
-                        onClick={handleSaveSnapshot} 
-                        disabled={isProcessing}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-bold transition shadow-sm"
-                    >
-                        {isProcessing ? 'Menyimpan...' : 'Simpan Snapshot'}
-                    </button>
+                    <div className="flex gap-2 flex-wrap">
+                        <button 
+                            onClick={handleSaveSnapshot} 
+                            disabled={isProcessing}
+                            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-2.5 rounded-lg font-bold transition shadow-sm flex items-center gap-2"
+                        >
+                            <Lock size={16}/>
+                            {isProcessing && progressText.includes('Menyimpan') ? 'Menyimpan...' : currentSnapshot ? 'Update Snapshot' : 'Simpan Snapshot'}
+                        </button>
+                        {currentSnapshot && (
+                            <button 
+                                onClick={handleDeleteSnapshot} 
+                                disabled={isProcessing}
+                                className="bg-red-50 hover:bg-red-100 disabled:opacity-50 text-red-600 border border-red-200 px-4 py-2.5 rounded-lg font-bold transition flex items-center gap-2"
+                            >
+                                <LockOpen size={16}/>
+                                {isProcessing && progressText.includes('Melepas') ? 'Melepas...' : 'Lepas Kunci'}
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
 
