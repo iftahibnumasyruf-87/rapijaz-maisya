@@ -3928,6 +3928,11 @@ const LayoutBuilder = () => {
             replaced = replaced.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
                 // Direct student field lookup (includes custom fields like ttl, ttl_ar, asrama, asrama_ar)
                 if (stdData[key] !== undefined && stdData[key] !== null) return String(stdData[key]);
+                if (key.endsWith('_arab')) {
+                    const arKey = key.replace(/_arab$/, '_ar');
+                    if (stdData[arKey] !== undefined && stdData[arKey] !== null) return String(stdData[arKey]);
+                    if (stdData.fields && stdData.fields[arKey] !== undefined) return String(stdData.fields[arKey]);
+                }
                 if (stdData.fields && stdData.fields[key] !== undefined) return String(stdData.fields[key]);
                 if (key.endsWith('_label')) {
                     const realKey = key.replace('_label', '');
@@ -5468,7 +5473,7 @@ const LayoutBuilder = () => {
 
                     {selectedIds.length === 1 && activeEl && (
                         <div className="border rounded-lg overflow-hidden border-blue-200">
-                            <button onClick={() => togglePanel('editSingle')} className="w-full flex items-center justify-between px-3 py-2.5 bg-blue-50 hover:bg-blue-100 transition text-left">
+                            <div onClick={() => togglePanel('editSingle')} className="w-full flex items-center justify-between px-3 py-2.5 bg-blue-50 hover:bg-blue-100 transition text-left cursor-pointer select-none">
                                 <span className="text-xs font-bold text-blue-700 uppercase tracking-wide flex items-center gap-2">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                                     Edit: {activeEl.type === 'group' ? 'Grup' : activeEl.type === 'image' ? 'Gambar' : activeEl.type === 'table_custom' ? 'Tabel Kustom' : 'Teks'}
@@ -5477,7 +5482,7 @@ const LayoutBuilder = () => {
                                     <button onClick={(e) => { e.stopPropagation(); setSelectedIds([]); }} className="text-gray-400 hover:text-gray-700"><X size={14}/></button>
                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{transform: expandedPanels.editSingle ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s'}}><polyline points="6 9 12 15 18 9"/></svg>
                                 </div>
-                            </button>
+                            </div>
                             {expandedPanels.editSingle && (
                             <div className="space-y-3 pt-2 pb-4 p-3 bg-blue-50/30">
 
@@ -8085,6 +8090,11 @@ const CetakDokumen = ({ mode = 'raport' }) => {
             return replaced.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
                  // Direct student field lookup (including custom fields like ttl, ttl_ar, asrama, asrama_ar)
                  if (stdData[key] !== undefined && stdData[key] !== null) return String(stdData[key]);
+                 if (key.endsWith('_arab')) {
+                     const arKey = key.replace(/_arab$/, '_ar');
+                     if (stdData[arKey] !== undefined && stdData[arKey] !== null) return String(stdData[arKey]);
+                     if (stdData.fields && stdData.fields[arKey] !== undefined) return String(stdData.fields[arKey]);
+                 }
                  if (stdData.fields && stdData.fields[key] !== undefined) return String(stdData.fields[key]);
                  if (key.endsWith('_label')) {
                      const realKey = key.replace('_label', '');
