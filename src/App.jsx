@@ -2861,27 +2861,33 @@ const MasterData = ({ activeTab }) => {
       case 'subjects':
         return (
           <div>
-            <div className="flex justify-end items-center mb-3 pb-3 border-b gap-2">
-              {isNumberSortMode ? (
-                  <>
-                      <button onClick={handleSaveSubjectOrders} className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-sm font-semibold transition flex items-center gap-2">
-                          <CheckSquare size={16}/> Simpan Urutan
-                      </button>
-                      <button onClick={() => { setIsNumberSortMode(false); setTempSubjectOrders({}); }} className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-1.5 rounded-lg text-sm font-semibold transition flex items-center gap-2">
-                          Batal
-                      </button>
-                  </>
-              ) : (
-                  <>
-                      <button onClick={() => setIsNumberSortMode(true)} className="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 px-3 py-1.5 rounded-lg text-sm font-semibold transition flex items-center gap-2">
-                          <Layers size={16}/> Urutkan dg Angka
-                      </button>
-                      <button onClick={handleSortAlphabetically} className="bg-blue-100 hover:bg-blue-200 text-blue-800 px-3 py-1.5 rounded-lg text-sm font-semibold transition flex items-center gap-2">
-                          Urutkan Abjad
-                      </button>
-                  </>
-              )}
+            <div className="flex justify-between items-center mb-3 pb-3 border-b">
+              <span className="text-sm text-emerald-700 font-bold bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+                  Total mapel Ijazah: {groupedSubjects.filter(r => r.type !== 'group' && r.subject.is_ijazah).length}
+              </span>
+              <div className="flex items-center gap-2">
+                {isNumberSortMode ? (
+                    <>
+                        <button onClick={handleSaveSubjectOrders} className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-sm font-semibold transition flex items-center gap-2">
+                            <CheckSquare size={16}/> Simpan Urutan
+                        </button>
+                        <button onClick={() => { setIsNumberSortMode(false); setTempSubjectOrders({}); }} className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-1.5 rounded-lg text-sm font-semibold transition flex items-center gap-2">
+                            Batal
+                        </button>
+                    </>
+                ) : (
+                    <>
+                        <button onClick={() => setIsNumberSortMode(true)} className="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 px-3 py-1.5 rounded-lg text-sm font-semibold transition flex items-center gap-2">
+                            <Layers size={16}/> Urutkan dg Angka
+                        </button>
+                        <button onClick={handleSortAlphabetically} className="bg-blue-100 hover:bg-blue-200 text-blue-800 px-3 py-1.5 rounded-lg text-sm font-semibold transition flex items-center gap-2">
+                            Urutkan Abjad
+                        </button>
+                    </>
+                )}
+              </div>
             </div>
+
             <table className="w-full text-left border-collapse">
               <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm">
                 <th className="p-3 border-b text-center">No.</th>
@@ -2889,6 +2895,12 @@ const MasterData = ({ activeTab }) => {
                 <SortableHeader label="Kategori" sortKey="kategori" />
                 <SortableHeader label="Mapel (ID)" sortKey="nameId" />
                 <SortableHeader label="Mapel (AR)" sortKey="nameAr" className="text-right" />
+                <th className="p-3 border-b text-center">
+                    <div className="flex flex-col items-center gap-0.5">
+                        <span className="text-emerald-700 font-bold">Ijazah</span>
+                        <span className="text-[10px] text-gray-400 font-normal leading-tight">tampil?</span>
+                    </div>
+                </th>
                 <SortableHeader label="KKM & Guru" sortKey="kkm" className="text-center" />
                 <th className="p-3 border-b text-center">Aksi</th>
             </tr></thead>
@@ -2896,13 +2908,13 @@ const MasterData = ({ activeTab }) => {
                   if (row.type === 'group') {
                       return (
                           <tr key={`group-${row.kelas}-${index}`} className="bg-emerald-50">
-                              <td colSpan="7" className="p-3 font-semibold text-emerald-800">Kelas: {row.kelas}</td>
+                              <td colSpan="8" className="p-3 font-semibold text-emerald-800">Kelas: {row.kelas}</td>
                           </tr>
                       );
                   }
                   const sub = row.subject;
                   return (
-                      <tr key={sub.id} className="border-b hover:bg-gray-50">
+                      <tr key={sub.id} className={`border-b hover:bg-gray-50 ${sub.is_ijazah ? 'bg-emerald-50/40' : ''}`}>
                           <td className="p-3 text-center font-semibold text-gray-700">
                               {isNumberSortMode ? (
                                   <input 
@@ -2919,6 +2931,22 @@ const MasterData = ({ activeTab }) => {
                           <td className="p-3"><div className="text-xs text-emerald-700 font-bold">{sub.kategori || '-'}</div></td>
                           <td className="p-3 font-semibold">{sub.nameId}</td>
                           <td className="p-3 text-right font-arabic" dir="rtl">{sub.nameAr}</td>
+                          <td className="p-3 text-center">
+                              <label className="inline-flex flex-col items-center gap-1 cursor-pointer group" title={sub.is_ijazah ? 'Tampil di Ijazah — klik untuk menonaktifkan' : 'Tidak tampil di Ijazah — klik untuk mengaktifkan'}>
+                                  <div className={`relative w-10 h-5 rounded-full transition-colors duration-200 ${sub.is_ijazah ? 'bg-emerald-500' : 'bg-gray-300'}`}>
+                                      <input 
+                                          type="checkbox" 
+                                          className="sr-only"
+                                          checked={!!sub.is_ijazah}
+                                          onChange={e => saveToDb('subjects', sub.id, { ...sub, is_ijazah: e.target.checked }, true)}
+                                      />
+                                      <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${sub.is_ijazah ? 'translate-x-5' : 'translate-x-0'}`} />
+                                  </div>
+                                  <span className={`text-[10px] font-bold leading-none ${sub.is_ijazah ? 'text-emerald-600' : 'text-gray-400'}`}>
+                                      {sub.is_ijazah ? 'Ya' : 'Tidak'}
+                                  </span>
+                              </label>
+                          </td>
                           <td className="p-3 text-center"><div className="font-bold text-yellow-600">{sub.kkm}</div><div className="text-[11px] text-gray-500 mt-1">{sub.guru || '-'}</div></td>
                           <td className="p-3 text-center whitespace-nowrap">
                               <button onClick={() => handleMoveSubject(sub, -1)} className="text-gray-400 hover:text-emerald-600 p-1" title="Geser ke atas"><ChevronUp size={16}/></button>
