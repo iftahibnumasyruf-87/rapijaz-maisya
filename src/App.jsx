@@ -7503,8 +7503,23 @@ const InputIjazah = () => {
         return raw.filter(s => { if (seen.has(s.id)) return false; seen.add(s.id); return true; });
     }, [allData?.subjects]);
 
-    // Gunakan classesData gabungan untuk cari santri, agar santri dengan ID kelas lama tetap ditemukan
-    const activeStudents = getStudentsForYear(data.studentSnapshots, activeSetting, data.students);
+    // Untuk Kelola Nilai Ijazah, kita butuh santri dari SEMUA semester dalam satu tahun ajaran
+    // (bukan hanya semester aktif), karena ijazah mencakup Ganjil + Genap sekaligus.
+    // Jika ada snapshot → gunakan snapshot. Jika tidak → ambil dari allData.students (filter by tahun saja).
+    const allYearStudents = useMemo(() => {
+        if (!activeSetting?.tahun) return data.students;
+        // Deduplicate by student id - prioritaskan yang tahun cocok
+        const byId = new Map();
+        (allData?.students || [])
+            .filter(s => s.tahun === activeSetting.tahun)
+            .forEach(s => { if (!byId.has(s.id)) byId.set(s.id, s); });
+        // fallback jika filter kosong
+        if (byId.size === 0) return data.students;
+        return Array.from(byId.values());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [allData?.students, activeSetting?.tahun, data.students]);
+
+    const activeStudents = getStudentsForYear(data.studentSnapshots, activeSetting, allYearStudents);
     const studentsInClass = getStudentsInClass(activeStudents, classesData, selectedClass);
 
     const subjectsInClass = useMemo(
