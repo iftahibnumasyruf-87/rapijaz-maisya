@@ -333,7 +333,7 @@ const computeRaportScore = (uts, uas) => {
   if (parsedUts === null && parsedUas === null) return '';
   const u = parsedUts ?? 0;
   const a = parsedUas ?? 0;
-  return Number((u * 0.4 + a * 0.6).toFixed(2));
+  return Math.round(u * 0.4 + a * 0.6);
 };
 
 const isSubjectVisibleInClass = (subject, selectedClass, classes = []) => {
