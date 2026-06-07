@@ -3264,7 +3264,15 @@ const MasterData = ({ activeTab }) => {
                     {data.teachers.map(t => <option key={t.id} value={t.nama}>{t.nama}</option>)}
                 </select>
                 <input type="number" className="w-full p-2 border rounded" placeholder="Standar KKM" value={formData.kkm || ''} onChange={e => setFormData({...formData, kkm: e.target.value})} />
-                <label className="flex items-center gap-2"><input type="checkbox" checked={formData.isIjazah || false} onChange={e => setFormData({...formData, isIjazah: e.target.checked})} /> Tampilkan di Ijazah default</label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                    <input 
+                        type="checkbox" 
+                        className="w-4 h-4 text-emerald-600"
+                        checked={formData.is_ijazah || false} 
+                        onChange={e => setFormData({...formData, is_ijazah: e.target.checked})} 
+                    />
+                    Tampilkan di Ijazah default
+                </label>
             </div>
         );
         case 'presences': return (
@@ -7506,6 +7514,9 @@ const InputIjazah = () => {
 
     const ijazahSubjects = useMemo(() => {
         return subjectsInClass.filter(sub => {
+            // Cek is_ijazah langsung dari data subjects (di-set dari toggle di halaman Plotting)
+            if (typeof sub.is_ijazah === 'boolean') return sub.is_ijazah;
+            // Fallback: cek dari masterSubjects jika is_ijazah belum di-set di subjects
             const master = allMasterSubjects.find(m => m.id === sub.masterId || m.nameId === sub.nameId);
             return master && master.is_ijazah;
         });
