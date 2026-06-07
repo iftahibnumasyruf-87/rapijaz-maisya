@@ -3167,9 +3167,50 @@ const MasterData = ({ activeTab }) => {
                 <select className="w-full p-2 border rounded" value={formData.kelas || ''} onChange={e => setFormData({...formData, kelas: e.target.value})}>
                     <option value="">Pilih Kelas</option>{data.classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
-                {data.studentFields.map(f => (
-                    <input key={f.key} className="w-full p-2 border rounded" placeholder={`Isi ${f.name}`} value={formData[f.key] || ''} onChange={e => setFormData({...formData, [f.key]: e.target.value})} />
-                ))}
+                {data.studentFields.map(f => {
+                    const arKey = `${f.key}_ar`;
+                    const hasAr = formData[arKey] !== undefined;
+                    return (
+                        <div key={f.key} className="space-y-2 border p-3 rounded-lg bg-gray-50/50">
+                            <input className="w-full p-2 border rounded" placeholder={`Isi ${f.name}`} value={formData[f.key] || ''} onChange={e => setFormData({...formData, [f.key]: e.target.value})} />
+                            <div className="flex items-center gap-2 mt-1">
+                                <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer select-none">
+                                    <input type="checkbox" checked={hasAr} onChange={e => {
+                                        if(e.target.checked) setFormData({...formData, [arKey]: ''});
+                                        else {
+                                            const newFormData = {...formData};
+                                            delete newFormData[arKey];
+                                            setFormData(newFormData);
+                                        }
+                                    }} className="rounded text-emerald-600 focus:ring-emerald-500" />
+                                    Tambahkan Terjemahan {f.name} (Arab)
+                                </label>
+                            </div>
+                            {hasAr && (
+                                <input 
+                                    className="w-full p-2 border rounded text-right font-arabic bg-white" 
+                                    placeholder={`Isi ${f.name} (Arab) - Otomatis via Google Translate`} 
+                                    dir="rtl"
+                                    value={formData[arKey] || ''} 
+                                    onChange={e => setFormData({...formData, [arKey]: e.target.value})} 
+                                    onBlur={async () => {
+                                        if (formData[f.key] && !formData[arKey]) {
+                                            try {
+                                                const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=id&tl=ar&dt=t&q=${encodeURIComponent(formData[f.key])}`;
+                                                const res = await fetch(url);
+                                                const json = await res.json();
+                                                const translated = json[0][0][0];
+                                                if (translated) setFormData(prev => ({...prev, [arKey]: translated}));
+                                            } catch (error) {
+                                                console.error("Translation error", error);
+                                            }
+                                        }
+                                    }}
+                                />
+                            )}
+                        </div>
+                    );
+                })}
             </div>
         );
         case 'classes': return (
