@@ -12,6 +12,7 @@ import {
   Minus, Square, Grid, Info, RefreshCw, Search, LockOpen
 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
+import { APP_CONFIG, getFullAppName } from './config';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, AreaChart, Area } from 'recharts';
 import * as XLSX from 'xlsx';
 import html2canvas from 'html2canvas';
@@ -1022,10 +1023,10 @@ const Login = () => {
       <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md">
         <div className="text-center mb-8">
           <div className="mx-auto w-36 h-36 flex items-center justify-center mb-2">
-            <img src="https://i.ibb.co.com/DfZSFRsP/Chat-GPT-Image-3-Mei-2026-04-08-56.png" alt="Logo Ponpes" className="w-full h-full object-contain drop-shadow-md" />
+            <img src={APP_CONFIG.logoUrl || "https://i.ibb.co.com/DfZSFRsP/Chat-GPT-Image-3-Mei-2026-04-08-56.png"} alt="Logo Ponpes" className="w-full h-full object-contain drop-shadow-md" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-800 tracking-tight">Rapijaz-Maisya</h1>
-          <p className="text-gray-500 mt-2 text-sm">Aplikasi Raport dan Ijazah<br/>Ponpes Imam Syafi'i Brebes</p>
+          <h1 className="text-3xl font-bold text-gray-800 tracking-tight">{getFullAppName()}</h1>
+          <p className="text-gray-500 mt-2 text-sm">{APP_CONFIG.loginDescription}<br/>{APP_CONFIG.institutionName}</p>
         </div>
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
@@ -1211,7 +1212,7 @@ const HomeDashboard = () => {
                 <h2 className="text-2xl font-bold text-emerald-800 flex items-center gap-2">
                     <span>🙏</span> Assalamu'alaikum, {currentUser?.name}
                 </h2>
-                <p className="text-emerald-600 mt-1">Selamat datang di Pusat Informasi Rapijaz-Maisya.</p>
+                <p className="text-emerald-600 mt-1">{APP_CONFIG.welcomeMessage}</p>
             </div>
 
             {!activeSetting.tahun && (
@@ -9081,8 +9082,8 @@ const TahunAjaranSelection = ({ allData, saveToDb, onBypass, currentUser }) => {
             </div>
 
             <div className="z-10 bg-white/10 backdrop-blur-lg border border-white/20 p-8 rounded-3xl shadow-2xl max-w-3xl w-full text-center">
-                <img src="https://i.ibb.co.com/DfZSFRsP/Chat-GPT-Image-3-Mei-2026-04-08-56.png" alt="Logo" className="w-24 h-24 mx-auto mb-6 drop-shadow-xl" />
-                <h1 className="text-4xl font-bold text-white mb-2">Rapijaz-Maisya</h1>
+                <img src={APP_CONFIG.logoUrl || "https://i.ibb.co.com/DfZSFRsP/Chat-GPT-Image-3-Mei-2026-04-08-56.png"} alt="Logo" className="w-24 h-24 mx-auto mb-6 drop-shadow-xl" />
+                <h1 className="text-4xl font-bold text-white mb-2">{getFullAppName()}</h1>
                 <p className="text-emerald-100 mb-8 text-lg">Silakan Pilih Tahun Ajaran Aktif untuk Melanjutkan</p>
 
                 {hasSettings ? (
@@ -9258,11 +9259,11 @@ const Dashboard = () => {
       <div className={`fixed inset-y-0 left-0 ${isSidebarCompact ? 'w-16' : 'w-64'} bg-emerald-800 text-emerald-50 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 transition-transform duration-200 ease-in-out z-50 flex flex-col`}>
         <div className={`p-3 ${isSidebarCompact ? 'px-0' : 'p-6'} flex items-center justify-between border-b border-emerald-700/50`}>
           <div className={`flex items-center ${isSidebarCompact ? 'justify-center w-full gap-0' : 'gap-3'}`}>
-            <img src="https://i.ibb.co.com/DfZSFRsP/Chat-GPT-Image-3-Mei-2026-04-08-56.png" alt="Logo" className="w-12 h-12 object-contain drop-shadow-sm shrink-0" />
+            <img src={APP_CONFIG.logoUrl || "https://i.ibb.co.com/DfZSFRsP/Chat-GPT-Image-3-Mei-2026-04-08-56.png"} alt="Logo" className="w-12 h-12 object-contain drop-shadow-sm shrink-0" />
             <div className={`${isSidebarCompact ? 'hidden' : 'font-bold text-xl leading-tight'}`}>
-              Rapijaz-Maisya<br/>
+              {getFullAppName()}<br/>
               <span className="text-emerald-300 text-[10px] font-normal leading-tight block mt-1">
-                Aplikasi Raport dan Ijazah<br/>Ponpes Imam Syafi'i Brebes
+                {APP_CONFIG.loginDescription}<br/>{APP_CONFIG.institutionName}
               </span>
             </div>
           </div>
