@@ -4742,13 +4742,16 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
             const stillExists = currentLayouts && currentLayouts.some(l => l.id === activeLayout);
             if (!stillExists && currentLayouts?.length > 0) return; // Batal simpan jika layout baru saja dihapus
 
+            const currentLayoutObj = currentLayouts?.find(l => l.id === activeLayout);
+
             await saveToDb('layouts', activeLayout, {
-                name: currentLayouts?.find(l => l.id === activeLayout)?.name || activeLayout,
+                name: currentLayoutObj?.name || activeLayout,
                 elements,
                 pageSize,
                 orientation,
                 guides,
-                margins
+                margins,
+                type: mode  // ← gunakan mode prop langsung, BUKAN dari field di DB
             }, true); // silent save
             setAutoSaveStatus('saved');
             // Hilangkan indikator setelah 3 detik
@@ -4848,7 +4851,6 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
         setIsManualSaving(true);
         try {
             const _currentLayout = data.layouts.find(l => l.id === activeLayout);
-            const _layoutType = _currentLayout?.type || (activeLayout === 'ijazah' || activeLayout.includes('_to_ijazah') ? 'ijazah' : 'raport');
             await saveToDb('layouts', activeLayout, { 
                 name: _currentLayout?.name || activeLayout, 
                 elements, 
@@ -4856,7 +4858,7 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
                 orientation, 
                 guides, 
                 margins,
-                type: _layoutType
+                type: mode   // ← gunakan mode prop langsung
             }, false, `Menyimpan desain layout ${activeLayout}`);
         } catch (err) {
             console.error('saveLayout error:', err);
@@ -4965,7 +4967,8 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
                 pageSize,
                 orientation,
                 guides,
-                margins
+                margins,
+                type: mode
             }, false, `Mengubah nama layout menjadi "${finalName}"`);
             showNotification(`Nama layout berhasil diubah menjadi "${finalName}"`, 'success');
         }
@@ -5393,6 +5396,7 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
                             {filteredLayouts.map(l => <option key={l.id} value={l.id}>{l.name || l.id}</option>)}
                         </select>
                         <button onClick={() => setShowNewLayoutForm(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-2 rounded-lg text-sm font-bold transition shrink-0" title="Buat layout baru"><Plus size={16}/></button>
+                        <button onClick={renameLayout} className="bg-amber-500 hover:bg-amber-600 text-white px-2 rounded-lg text-sm font-bold transition shrink-0" title="Ganti Nama Layout"><Edit2 size={16}/></button>
                         <button onClick={duplicateLayout} className="bg-blue-500 hover:bg-blue-600 text-white px-2 rounded-lg text-sm font-bold transition shrink-0" title="Duplikat layout ini di kategori yang sama"><Copy size={16}/></button>
                         <button onClick={duplicateCross} className="bg-indigo-500 hover:bg-indigo-600 text-white px-2 rounded-lg text-sm font-bold transition shrink-0" title={`Duplikat layout ini ke Layout ${mode === 'raport' ? 'Ijazah' : 'Raport'}`}><Layers size={16}/></button>
                         <button onClick={() => deleteLayout(activeLayout)} className="bg-red-500 hover:bg-red-600 text-white px-2 rounded-lg text-sm font-bold transition shrink-0" title="Hapus layout"><Trash2 size={16}/></button>
