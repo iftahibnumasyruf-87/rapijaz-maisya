@@ -3882,10 +3882,25 @@ const VariablesHelp = ({ onInsert, allSubjects = [] }) => {
     );
 };
 
-const LayoutBuilder = () => {
+const LayoutBuilder = ({ mode = 'raport' }) => {
     const { data, allData, activeSetting, saveToDb, deleteFromDb, showNotification, setAutoSaveStatus } = useContext(AppContext);
     const classesData = allData?.classes || data.classes || [];
-    const [activeLayout, setActiveLayout] = useState(() => data.layouts?.length > 0 ? data.layouts[0].id : 'raport');
+    
+    const filteredLayouts = useMemo(() => {
+        return (data.layouts || []).filter(l => {
+            const isIjazah = l.type === 'ijazah' || l.id === 'ijazah';
+            return mode === 'ijazah' ? isIjazah : !isIjazah;
+        });
+    }, [data.layouts, mode]);
+
+    const [activeLayout, setActiveLayout] = useState(() => filteredLayouts.length > 0 ? filteredLayouts[0].id : mode);
+    
+    useEffect(() => {
+        if (!filteredLayouts.some(l => l.id === activeLayout)) {
+            setActiveLayout(filteredLayouts.length > 0 ? filteredLayouts[0].id : mode);
+        }
+    }, [mode, filteredLayouts, activeLayout]);
+
     const [elements, setElements] = useState([]);
     const [newLayoutName, setNewLayoutName] = useState('');
     const [showNewLayoutForm, setShowNewLayoutForm] = useState(false);
@@ -3935,7 +3950,17 @@ const LayoutBuilder = () => {
 
     // Compute preview data when previewMode is active
     // Deduplicate classes by name to avoid duplicate dropdown entries
-    const previewClassesData = data.classes || [];
+    const previewClassesData = useMemo(() => {
+        const raw = data.classes || [];
+        if (mode === 'ijazah') {
+            return raw.filter(c => {
+                const name = (c.name || '').toLowerCase().trim();
+                return name.includes('9') || name.includes('12') || name.includes('ix') || name.includes('xii');
+            });
+        }
+        return raw;
+    }, [data.classes, mode]);
+
     const previewActiveSetting = data.settings.find(s => s.isActive);
     const previewAllStudents = useMemo(() => getStudentsForYear(data.studentSnapshots, previewActiveSetting, data.students), [data.studentSnapshots, previewActiveSetting, data.students]);
     const previewStudentsInClass = useMemo(() => getStudentsInClass(previewAllStudents, previewClassesData, previewClass), [previewAllStudents, previewClassesData, previewClass]);
@@ -4837,20 +4862,24 @@ const LayoutBuilder = () => {
         }
     };
 
-    const createNewLayout = () => {
-        if (!newLayoutName.trim()) {
-            showNotification('Nama layout tidak boleh kosong', 'error');
+    const createNewLayout = async (e) => {
+        e.preventDefault();
+        const newId = newLayoutName.toLowerCase().replace(/[^a-z0-9]/g, '_');
+        if (!newId) return;
+        if (data.layouts.some(l => l.id === newId)) {
+            showNotification('ID Layout sudah ada', 'error');
             return;
         }
-        const layoutId = newLayoutName.toLowerCase().replace(/\s+/g, '_');
-        if (data.layouts.some(l => l.id === layoutId)) {
-            showNotification('Layout dengan nama ini sudah ada', 'error');
-            return;
-        }
-        saveToDb('layouts', layoutId, { name: newLayoutName, elements: [], pageSize: 'A4', orientation: 'portrait', guides: { v: [], h: [] }, margins: { top: 0, bottom: 0, left: 0, right: 0 } }, false, `Membuat layout baru: ${newLayoutName}`);
+        await saveToDb('layouts', newId, { 
+            name: newLayoutName, 
+            elements: [], 
+            pageSize: 'A4', 
+            guides: { h: [], v: [] },
+            type: mode
+        });
         setNewLayoutName('');
         setShowNewLayoutForm(false);
-        setActiveLayout(layoutId);
+        setActiveLayout(newId);
     };
 
     const deleteLayout = (layoutId) => {
@@ -4895,6 +4924,29 @@ const LayoutBuilder = () => {
         setActiveLayout(newId);
         showNotification(`Layout "${newName}" berhasil dibuat!`, 'success');
     };
+
+    const duplicateCross = async () => {
+        const source = data.layouts.find(l => l.id === activeLayout);
+        if (!source) return;
+        const targetMode = mode === 'raport' ? 'ijazah' : 'raport';
+        const targetModeLabel = mode === 'raport' ? 'Ijazah' : 'Raport';
+        const baseName = `${source.name || source.id} (Copy to ${targetModeLabel})`;
+        let newId = `${source.id}_to_${targetMode}`;
+        let counter = 1;
+        while(data.layouts.some(l => l.id === newId)) {
+            newId = `${source.id}_to_${targetMode}_${counter}`;
+            counter++;
+        }
+        
+        await saveToDb('layouts', newId, { 
+            name: baseName, 
+            elements: source.elements || [], 
+            pageSize: source.pageSize || 'A4', 
+            guides: source.guides || { h: [], v: [] },
+            type: targetMode
+        });
+        showNotification(`Berhasil menduplikat ke ${targetModeLabel}. Silakan buka menu Layout ${targetModeLabel}.`);
+    }; 
 
     const renameLayout = () => {
         const layout = data.layouts.find(l => l.id === activeLayout);
@@ -5316,7 +5368,6 @@ const LayoutBuilder = () => {
         setSelectedIds(ungrouped.map(el => el.id));
     };
 
-    
     // Memberikan objek dummy default agar tidak crash saat proses desain layout
 
     return (
@@ -5329,14 +5380,18 @@ const LayoutBuilder = () => {
                     </div>
                     
                     <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
-                    <div className="flex gap-1">
-                        <select className="flex-1 p-2 border rounded-lg bg-white text-sm font-bold text-emerald-800 truncate" value={activeLayout} onChange={e => setActiveLayout(e.target.value)}>
-                            {data.layouts && data.layouts.map(l => <option key={l.id} value={l.id}>{l.name || l.id}</option>)}
+                    <div className="flex gap-2 mb-4">
+                        <select 
+                            value={activeLayout} 
+                            onChange={(e) => setActiveLayout(e.target.value)}
+                            className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm font-semibold text-emerald-800 shadow-sm"
+                        >
+                            {filteredLayouts.map(l => <option key={l.id} value={l.id}>{l.name || l.id}</option>)}
                         </select>
-                        <button onClick={() => setShowNewLayoutForm(!showNewLayoutForm)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-2 rounded-lg text-sm font-bold transition shrink-0" title="Tambah layout baru"><Plus size={16}/></button>
-                        <button onClick={renameLayout} className="bg-yellow-500 hover:bg-yellow-600 text-white px-2 rounded-lg text-sm font-bold transition shrink-0" title="Ubah nama layout ini"><Edit2 size={16}/></button>
-                        <button onClick={duplicateLayout} className="bg-blue-500 hover:bg-blue-600 text-white px-2 rounded-lg text-sm font-bold transition shrink-0" title="Duplikat layout ini"><Copy size={16}/></button>
-                        {data.layouts && data.layouts.length > 1 && <button onClick={() => deleteLayout(activeLayout)} className="bg-red-500 hover:bg-red-600 text-white px-2 rounded-lg text-sm font-bold transition shrink-0" title="Hapus layout"><Trash2 size={16}/></button>}
+                        <button onClick={() => setShowNewLayoutForm(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-2 rounded-lg text-sm font-bold transition shrink-0" title="Buat layout baru"><Plus size={16}/></button>
+                        <button onClick={duplicateLayout} className="bg-blue-500 hover:bg-blue-600 text-white px-2 rounded-lg text-sm font-bold transition shrink-0" title="Duplikat layout ini di kategori yang sama"><Copy size={16}/></button>
+                        <button onClick={duplicateCross} className="bg-indigo-500 hover:bg-indigo-600 text-white px-2 rounded-lg text-sm font-bold transition shrink-0" title={`Duplikat layout ini ke Layout ${mode === 'raport' ? 'Ijazah' : 'Raport'}`}><Layers size={16}/></button>
+                        {filteredLayouts.length > 1 && <button onClick={() => deleteLayout(activeLayout)} className="bg-red-500 hover:bg-red-600 text-white px-2 rounded-lg text-sm font-bold transition shrink-0" title="Hapus layout"><Trash2 size={16}/></button>}
                     </div>
                     <div className="flex gap-2">
                         <select className="w-1/2 p-2 border rounded-lg bg-white text-sm font-bold text-blue-800" value={pageSize} onChange={e => changePageSize(e.target.value)}>
@@ -7686,6 +7741,127 @@ const InputIjazah = () => {
         showNotification(`Berhasil menarik nilai untuk ${count} santri!`, 'success');
     };
 
+    const handleDownloadTemplateIjazah = () => {
+        if (!selectedClass || ijazahSubjects.length === 0) return;
+        const className = getClassNameFromValue(classesData, selectedClass);
+        const wsData = [];
+        
+        // Header 1
+        const header1 = ['ID Santri', 'No', 'Nama Santri'];
+        ijazahSubjects.forEach(sub => {
+            header1.push(sub.nameId || sub.id, '', '', '');
+        });
+        wsData.push(header1);
+        
+        // Header 2
+        const header2 = ['', '', ''];
+        ijazahSubjects.forEach(() => {
+            header2.push('ID Pelajaran', 'Semester 1', 'Semester 2', 'Rata-rata');
+        });
+        wsData.push(header2);
+
+        // Header 3 (Hidden IDs)
+        const header3 = ['id', '', ''];
+        ijazahSubjects.forEach(sub => {
+            header3.push(sub.id, '', '', '');
+        });
+        wsData.push(header3);
+
+        // Data Santri
+        studentsInClass.forEach((st, idx) => {
+            const row = [st.id, idx + 1, st.nama];
+            ijazahSubjects.forEach(sub => {
+                const grades = localIjazah[st.id]?.[sub.id] || {};
+                row.push(sub.id, grades.sem1 || '', grades.sem2 || '', grades.rata || '');
+            });
+            wsData.push(row);
+        });
+
+        const ws = XLSX.utils.aoa_to_sheet(wsData);
+        ws['!cols'] = [{ hidden: true }, { wch: 5 }, { wch: 30 }];
+        ijazahSubjects.forEach(() => {
+            ws['!cols'].push({ hidden: true }, { wch: 12 }, { wch: 12 }, { wch: 12 });
+        });
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Template Ijazah");
+        XLSX.writeFile(wb, `Template_Nilai_Ijazah_${className.replace(/\s+/g, '_')}_${activeSetting.tahun.replace(/\//g, '-')}.xlsx`);
+    };
+
+    const handleUploadExcelIjazah = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        setIsSaving(true);
+        try {
+            const data = await file.arrayBuffer();
+            const workbook = XLSX.read(data, { type: 'array' });
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+            if (jsonData.length < 4) throw new Error("Format template tidak sesuai");
+            
+            const newLocalIjazah = { ...localIjazah };
+            const savePromises = [];
+
+            for (let r = 3; r < jsonData.length; r++) {
+                const row = jsonData[r];
+                if (!row || row.length === 0) continue;
+                const studentId = row[0];
+                if (!studentId) continue;
+
+                let stData = { ...newLocalIjazah[studentId] };
+                let changed = false;
+                let colIdx = 3;
+
+                ijazahSubjects.forEach(sub => {
+                    const s1Raw = row[colIdx + 1];
+                    const s2Raw = row[colIdx + 2];
+                    
+                    const s1 = (s1Raw !== undefined && s1Raw !== null && s1Raw !== '') ? String(s1Raw).replace(',', '.') : '';
+                    const s2 = (s2Raw !== undefined && s2Raw !== null && s2Raw !== '') ? String(s2Raw).replace(',', '.') : '';
+                    
+                    const curr = stData[sub.id] || {};
+                    if (curr.sem1 !== s1 || curr.sem2 !== s2) {
+                        const s1Num = parseFloat(s1);
+                        const s2Num = parseFloat(s2);
+                        let total = '';
+                        let rata = '';
+                        if (!isNaN(s1Num) && !isNaN(s2Num)) {
+                            total = s1Num + s2Num;
+                            rata = (s1Num + s2Num) / 2;
+                        } else if (!isNaN(s1Num)) {
+                            total = s1Num; rata = s1Num;
+                        } else if (!isNaN(s2Num)) {
+                            total = s2Num; rata = s2Num;
+                        }
+                        
+                        stData[sub.id] = { ...curr, sem1: s1, sem2: s2, total, rata };
+                        changed = true;
+                    }
+                    colIdx += 4;
+                });
+
+                if (changed) {
+                    newLocalIjazah[studentId] = stData;
+                    const docId = `ijazah_${studentId}_${activeSetting.tahun}`;
+                    savePromises.push(saveToDb('ijazah_grades', docId, { tahun: activeSetting.tahun, data: stData }, true));
+                }
+            }
+
+            setLocalIjazah(newLocalIjazah);
+            await Promise.all(savePromises);
+            showNotification('Impor nilai ijazah dari Excel berhasil', 'success');
+
+        } catch (err) {
+            console.error(err);
+            showNotification('Gagal memproses file Excel: ' + err.message, 'error');
+        } finally {
+            setIsSaving(false);
+            e.target.value = null;
+        }
+    };
+
     const getOverallData = (studentId) => {
         const stData = localIjazah[studentId] || {};
         let totalSum = 0;
@@ -7748,14 +7924,31 @@ const InputIjazah = () => {
                         </select>
                     </div>
                     {selectedClass && (
-                        <button
-                            onClick={tarikNilaiOtomatis}
-                            disabled={isPulling}
-                            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg font-medium shadow flex items-center gap-2 transition"
-                        >
-                            <Download size={18}/>
-                            {isPulling ? 'Menarik Data...' : 'Tarik Nilai Otomatis dari Raport'}
-                        </button>
+                        <>
+                            <button
+                                onClick={tarikNilaiOtomatis}
+                                disabled={isPulling}
+                                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg font-medium shadow flex items-center gap-2 transition"
+                            >
+                                <Download size={18}/>
+                                {isPulling ? 'Menarik Data...' : 'Tarik Nilai Otomatis dari Raport'}
+                            </button>
+                            
+                            <div className="flex gap-2 border-l border-gray-300 pl-4 ml-2">
+                                <button
+                                    onClick={handleDownloadTemplateIjazah}
+                                    className="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 px-3 py-2 rounded-lg font-medium flex items-center gap-2 transition text-sm"
+                                    title="Download Template Excel"
+                                >
+                                    <Download size={16}/> Template
+                                </button>
+                                <label className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-medium shadow flex items-center gap-2 transition cursor-pointer text-sm">
+                                    <Upload size={16}/>
+                                    Impor Excel
+                                    <input type="file" accept=".xlsx, .xls" className="hidden" onChange={handleUploadExcelIjazah} />
+                                </label>
+                            </div>
+                        </>
                     )}
                 </div>
             </div>
@@ -8996,10 +9189,15 @@ const Dashboard = () => {
     { id: 'catatan', label: 'Catatan Wali Kelas' }
   ];
 
-  const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: Home, roles: ['admin', 'guru', 'user'] },
-    { id: 'master_data', label: 'Master Data', icon: Users, roles: ['admin'], subItems: masterDataSubItems },
-    { id: 'layout_builder', label: 'Desain Layout', icon: LayoutTemplate, roles: ['admin'] },
+    const layoutBuilderSubItems = [
+      { id: 'layout_raport', label: 'Layout Raport' },
+      { id: 'layout_ijazah', label: 'Layout Ijazah' }
+    ];
+
+    const menuItems = [
+      { id: 'dashboard', label: 'Dashboard', icon: Home, roles: ['admin', 'guru', 'user'] },
+      { id: 'master_data', label: 'Master Data', icon: Users, roles: ['admin'], subItems: masterDataSubItems },
+      { id: 'layout_builder', label: 'Desain Layout', icon: LayoutTemplate, roles: ['admin'], subItems: layoutBuilderSubItems },
     { id: 'input_nilai', label: 'Input Nilai', icon: CheckSquare, roles: ['admin', 'guru', 'user'], subItems: inputNilaiSubItems },
     { id: 'input_ijazah', label: 'Kelola Nilai Ijazah', icon: FileSignature, roles: ['admin', 'guru', 'user'] },
     { id: 'legger', label: 'Legger Kelas', icon: BookOpen, roles: ['admin', 'guru', 'user'] },
@@ -9021,10 +9219,13 @@ const Dashboard = () => {
         return <InputNilai activeInputTab={activeMenu} />;
     }
 
+    if (layoutBuilderSubItems.some(sub => sub.id === activeMenu)) {
+        return <LayoutBuilder mode={activeMenu === 'layout_raport' ? 'raport' : 'ijazah'} />;
+    }
+
     switch (activeMenu) {
       case 'dashboard': return <HomeDashboard />;
       case 'input_ijazah': return <InputIjazah />;
-      case 'layout_builder': return <LayoutBuilder />;
       case 'cetak_raport': return <ErrorBoundary key="eb-raport"><CetakDokumen key="raport" mode="raport" /></ErrorBoundary>;
       case 'cetak_ijazah': return <ErrorBoundary key="eb-ijazah"><CetakDokumen key="ijazah" mode="ijazah" /></ErrorBoundary>;
       case 'legger': return <LeggerKelas />;
