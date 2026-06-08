@@ -4847,13 +4847,16 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
         if (isManualSaving) return;
         setIsManualSaving(true);
         try {
+            const _currentLayout = data.layouts.find(l => l.id === activeLayout);
+            const _layoutType = _currentLayout?.type || (activeLayout === 'ijazah' || activeLayout.includes('_to_ijazah') ? 'ijazah' : 'raport');
             await saveToDb('layouts', activeLayout, { 
-                name: data.layouts.find(l => l.id === activeLayout)?.name || activeLayout, 
+                name: _currentLayout?.name || activeLayout, 
                 elements, 
                 pageSize, 
                 orientation, 
                 guides, 
-                margins 
+                margins,
+                type: _layoutType
             }, false, `Menyimpan desain layout ${activeLayout}`);
         } catch (err) {
             console.error('saveLayout error:', err);
@@ -4886,8 +4889,8 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
         if (confirm(`Hapus layout "${data.layouts.find(l => l.id === layoutId)?.name || layoutId}"?`)) {
             deleteFromDb('layouts', layoutId, false, `Menghapus layout ${layoutId}`);
             if (activeLayout === layoutId) {
-                const remainingLayouts = data.layouts.filter(l => l.id !== layoutId);
-                setActiveLayout(remainingLayouts.length > 0 ? remainingLayouts[0].id : 'raport');
+                const remainingFiltered = filteredLayouts.filter(l => l.id !== layoutId);
+                setActiveLayout(remainingFiltered.length > 0 ? remainingFiltered[0].id : (mode === 'ijazah' ? 'ijazah' : 'raport'));
             }
         }
     };
@@ -4918,7 +4921,8 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
             pageSize: pageSize || 'A4',
             orientation: orientation || 'portrait',
             guides: JSON.parse(JSON.stringify(guides || { h: [], v: [] })),
-            margins: JSON.parse(JSON.stringify(margins || { top: 0, bottom: 0, left: 0, right: 0 }))
+            margins: JSON.parse(JSON.stringify(margins || { top: 0, bottom: 0, left: 0, right: 0 })),
+            type: source.type || (source.id === 'ijazah' ? 'ijazah' : 'raport')
         }, false, `Menduplikat layout: ${sourceName}`);
         
         setActiveLayout(newId);
@@ -5391,7 +5395,7 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
                         <button onClick={() => setShowNewLayoutForm(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-2 rounded-lg text-sm font-bold transition shrink-0" title="Buat layout baru"><Plus size={16}/></button>
                         <button onClick={duplicateLayout} className="bg-blue-500 hover:bg-blue-600 text-white px-2 rounded-lg text-sm font-bold transition shrink-0" title="Duplikat layout ini di kategori yang sama"><Copy size={16}/></button>
                         <button onClick={duplicateCross} className="bg-indigo-500 hover:bg-indigo-600 text-white px-2 rounded-lg text-sm font-bold transition shrink-0" title={`Duplikat layout ini ke Layout ${mode === 'raport' ? 'Ijazah' : 'Raport'}`}><Layers size={16}/></button>
-                        {filteredLayouts.length > 1 && <button onClick={() => deleteLayout(activeLayout)} className="bg-red-500 hover:bg-red-600 text-white px-2 rounded-lg text-sm font-bold transition shrink-0" title="Hapus layout"><Trash2 size={16}/></button>}
+                        <button onClick={() => deleteLayout(activeLayout)} className="bg-red-500 hover:bg-red-600 text-white px-2 rounded-lg text-sm font-bold transition shrink-0" title="Hapus layout"><Trash2 size={16}/></button>
                     </div>
                     <div className="flex gap-2">
                         <select className="w-1/2 p-2 border rounded-lg bg-white text-sm font-bold text-blue-800" value={pageSize} onChange={e => changePageSize(e.target.value)}>
