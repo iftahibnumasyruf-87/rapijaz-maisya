@@ -2075,6 +2075,9 @@ const MasterData = ({ activeTab }) => {
     const [isNumberSortMode, setIsNumberSortMode] = useState(false);
     const [tempSubjectOrders, setTempSubjectOrders] = useState({});
     const [searchQuery, setSearchQuery] = useState('');
+    const [subjectClassFilter, setSubjectClassFilter] = useState([]);
+    const [isIjazahOrderMode, setIsIjazahOrderMode] = useState(false);
+    const [tempIjazahOrders, setTempIjazahOrders] = useState({});
 
   // Default pengurutan tabel berdasarkan menu (alfabetis secara bawaan)
   const getDefaultSortKey = (tab) => {
@@ -2113,6 +2116,13 @@ const MasterData = ({ activeTab }) => {
 
   const sortedData = useMemo(() => {
       let sortableItems = [...(data[activeTab] || [])];
+
+      // Filter by class for subjects tab
+      if (activeTab === 'subjects' && subjectClassFilter.length > 0) {
+          sortableItems = sortableItems.filter(sub => {
+              return subjectClassFilter.some(clsId => isSubjectVisibleInClass(sub, clsId, allData?.classes || data.classes));
+          });
+      }
 
       // Filter by search query for students tab
       if (activeTab === 'students' && searchQuery && searchQuery.trim() !== '') {
@@ -2164,7 +2174,7 @@ const MasterData = ({ activeTab }) => {
           });
       }
       return sortableItems;
-  }, [data, activeTab, sortConfig, searchQuery, allData]);
+  }, [data, activeTab, sortConfig, searchQuery, allData, subjectClassFilter]);
 
   const handleMoveSubject = (subject, direction) => {
       const allClassSubjects = data.subjects.filter(s => getSubjectClassLabel(s, allData?.classes || data.classes) === getSubjectClassLabel(subject, allData?.classes || data.classes) && (s.kategori || '') === (subject.kategori || ''));
@@ -2224,6 +2234,30 @@ const MasterData = ({ activeTab }) => {
           showNotification('Urutan berhasil disimpan!');
           setIsNumberSortMode(false);
           setTempSubjectOrders({});
+      } catch (e) {
+          console.error(e);
+          showNotification('Gagal menyimpan urutan', 'error');
+      } finally {
+          setIsBulkProcessing(false);
+          setBulkProgressText('');
+      }
+  };
+
+  const handleSaveIjazahOrders = async () => {
+      setIsBulkProcessing(true);
+      setBulkProgressText('Menyimpan urutan pelajaran ijazah...');
+      try {
+          const toUpdate = Object.entries(tempIjazahOrders);
+          for (let i = 0; i < toUpdate.length; i++) {
+              const [id, orderVal] = toUpdate[i];
+              const m = data.masterSubjects.find(s => s.id === id);
+              if (m && String(m.ijazah_order) !== String(orderVal)) {
+                  await saveToDb('masterSubjects', id, { ...m, ijazah_order: Number(orderVal) }, true);
+              }
+          }
+          showNotification('Urutan pelajaran ijazah berhasil disimpan!');
+          setIsIjazahOrderMode(false);
+          setTempIjazahOrders({});
       } catch (e) {
           console.error(e);
           showNotification('Gagal menyimpan urutan', 'error');
@@ -2812,14 +2846,45 @@ const MasterData = ({ activeTab }) => {
         );
       case 'masterSubjects':
         return (
-              <table className="w-full text-left border-collapse">
-                <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm">
-                    <SortableHeader label="Pelajaran Utama (Indo)" sortKey="nameId" />
-                    <SortableHeader label="Pelajaran Utama (Arab)" sortKey="nameAr" className="text-right" />
-                    <th className="p-3 border-b text-center">Ijazah</th>
-                    <th className="p-3 border-b">Var (Latin)</th>
-                    <th className="p-3 border-b">Var (Arab)</th>
-                    <th className="p-3 border-b text-center">Aksi</th>
+          <div>
+            {/* Header with Urutan Ijazah mode */}
+            <div className="flex justify-between items-center mb-3 pb-3 border-b">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-emerald-700 font-bold bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+                  Total Pelajaran Ijazah: {sortedData.filter(m => m.is_ijazah).length}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                {isIjazahOrderMode ? (
+                  <>
+                    <button onClick={handleSaveIjazahOrders} className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-sm font-semibold transition flex items-center gap-2">
+                      <CheckSquare size={16}/> Simpan Urutan Ijazah
+                    </button>
+                    <button onClick={() => { setIsIjazahOrderMode(false); setTempIjazahOrders({}); }} className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-1.5 rounded-lg text-sm font-semibold transition flex items-center gap-2">
+                      Batal
+                    </button>
+                  </>
+                ) : (
+                  <button onClick={() => setIsIjazahOrderMode(true)} className="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 px-3 py-1.5 rounded-lg text-sm font-semibold transition flex items-center gap-2">
+                    <Layers size={16}/> Atur Urutan Pelajaran Ijazah
+                  </button>
+                )}
+              </div>
+            </div>
+            {isIjazahOrderMode && (
+              <div className="mb-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-sm text-emerald-800">
+                ⚙️ Mode urutan ijazah aktif. Isi angka urutan pada kolom <strong>"Urutan Ijazah"</strong> untuk pelajaran yang ditandai sebagai ijazah, lalu klik <strong>Simpan</strong>.
+              </div>
+            )}
+            <table className="w-full text-left border-collapse">
+              <thead className="sticky top-0 bg-gray-100 z-10"><tr className="text-sm">
+                  {isIjazahOrderMode && <th className="p-3 border-b text-center text-emerald-700 font-bold">Urutan Ijazah</th>}
+                  <SortableHeader label="Pelajaran Utama (Indo)" sortKey="nameId" />
+                  <SortableHeader label="Pelajaran Utama (Arab)" sortKey="nameAr" className="text-right" />
+                  <th className="p-3 border-b text-center">Ijazah</th>
+                  <th className="p-3 border-b">Var (Latin)</th>
+                  <th className="p-3 border-b">Var (Arab)</th>
+                  <th className="p-3 border-b text-center">Aksi</th>
                 </tr></thead>
                 <tbody>{(() => {
                     // Generate unique autoKeys across all sortedData
@@ -2845,8 +2910,28 @@ const MasterData = ({ activeTab }) => {
                     return sortedData.map(m => {
                         const varName = m.shortCode || getAutoKey(m.nameId);
                         return (
-                        <tr key={m.id} className="border-b hover:bg-gray-50">
-                            <td className="p-3 font-semibold">{m.nameId}</td>
+                        <tr key={m.id} className={`border-b hover:bg-gray-50 ${m.is_ijazah ? 'bg-emerald-50/30' : ''}`}>
+                            {isIjazahOrderMode && (
+                              <td className="p-3 text-center">
+                                {m.is_ijazah ? (
+                                  <input
+                                    type="number"
+                                    className="w-16 p-1 border rounded text-center mx-auto border-emerald-300 focus:border-emerald-500"
+                                    value={tempIjazahOrders[m.id] !== undefined ? tempIjazahOrders[m.id] : (typeof m.ijazah_order === 'number' ? m.ijazah_order : '')}
+                                    onChange={(e) => setTempIjazahOrders({...tempIjazahOrders, [m.id]: e.target.value})}
+                                    placeholder="-"
+                                  />
+                                ) : (
+                                  <span className="text-gray-300 text-xs">—</span>
+                                )}
+                              </td>
+                            )}
+                            <td className="p-3 font-semibold">
+                              {m.nameId}
+                              {!isIjazahOrderMode && m.is_ijazah && typeof m.ijazah_order === 'number' && (
+                                <span className="ml-2 text-xs text-emerald-600 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded font-mono">#{m.ijazah_order}</span>
+                              )}
+                            </td>
                             <td className="p-3 text-right font-arabic" dir="rtl">{m.nameAr}</td>
                             <td className="p-3 text-center">
                                 {m.is_ijazah ? <span className="px-2 py-1 bg-emerald-100 text-emerald-700 text-xs rounded-full font-bold">Ya</span> : <span className="px-2 py-1 bg-gray-100 text-gray-500 text-xs rounded-full">Tidak</span>}
@@ -2858,14 +2943,46 @@ const MasterData = ({ activeTab }) => {
                     )});
                 })()}</tbody>
               </table>
+            </div>
         );
       case 'subjects':
         return (
           <div>
             <div className="flex justify-between items-center mb-3 pb-3 border-b">
-              <span className="text-sm text-emerald-700 font-bold bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
-                  Total mapel Ijazah: {groupedSubjects.filter(r => r.type !== 'group' && r.subject.is_ijazah).length}
-              </span>
+              <div className="flex items-center gap-3">
+                  <span className="text-sm text-emerald-700 font-bold bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200 whitespace-nowrap">
+                      Total mapel Ijazah: {groupedSubjects.filter(r => r.type !== 'group' && r.subject.is_ijazah).length}
+                  </span>
+                  
+                  <div className="flex items-center gap-2 flex-wrap ml-4 border-l pl-4">
+                      <span className="text-sm font-bold text-gray-600">Filter Kelas:</span>
+                      {(data.classes || []).map(cls => (
+                          <label key={cls.id} className="flex items-center gap-1 text-sm cursor-pointer hover:bg-gray-50 px-2 py-1 rounded border border-transparent hover:border-gray-200">
+                              <input
+                                  type="checkbox"
+                                  className="rounded text-emerald-600 focus:ring-emerald-500"
+                                  checked={subjectClassFilter.includes(cls.id)}
+                                  onChange={(e) => {
+                                      if (e.target.checked) {
+                                          setSubjectClassFilter([...subjectClassFilter, cls.id]);
+                                      } else {
+                                          setSubjectClassFilter(subjectClassFilter.filter(id => id !== cls.id));
+                                      }
+                                  }}
+                              />
+                              <span>{cls.name}</span>
+                          </label>
+                      ))}
+                      {subjectClassFilter.length > 0 && (
+                          <button
+                              onClick={() => setSubjectClassFilter([])}
+                              className="text-xs text-red-500 hover:text-red-700 underline ml-2"
+                          >
+                              Reset
+                          </button>
+                      )}
+                  </div>
+              </div>
               <div className="flex items-center gap-2">
                 {isNumberSortMode ? (
                     <>
@@ -4044,12 +4161,13 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
             });
             const stdIjazah = ijazahDoc ? (ijazahDoc.data || {}) : {};
             const ijazahSubs = (data.masterSubjects || []).filter(m => m.is_ijazah);
+            const ijazahShortCodes = getGlobalSubjectShortCodes(ijazahSubs);
             
             ijazahSubs.forEach(m => {
                 const subEntry = subjectsForClass.find(s => s.masterId === m.id || s.nameId === m.nameId);
                 if (!subEntry) return;
                 const subGrades = stdIjazah[subEntry.id] || {};
-                const sc = m.shortCode || m.id.slice(0, 4);
+                const sc = ijazahShortCodes[m.id] || m.shortCode || m.id.slice(0, 4);
                 const safe = (sc || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                 replaced = replaced
                     .replace(new RegExp(`\\{\\{ijazah_${safe}_sem1\\}\\}`, 'gi'), subGrades.sem1 ?? '')
@@ -6510,24 +6628,19 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
                         
                         {previewStudentsInClass.length > 0 ? (
                             <div className="flex items-center gap-2 bg-white border border-indigo-300 rounded px-2 py-1 overflow-hidden">
-                                <button
-                                    onClick={() => setPreviewStudentIndex(prev => Math.max(0, prev - 1))}
-                                    disabled={previewStudentIndex === 0}
-                                    className="p-1 hover:bg-indigo-100 rounded text-indigo-700 disabled:opacity-30 disabled:hover:bg-transparent transition"
+                                <select
+                                    className="p-1 border-none bg-transparent text-sm font-bold text-indigo-900 focus:outline-none focus:ring-0 max-w-[200px] cursor-pointer truncate"
+                                    value={previewStudentIndex}
+                                    onChange={e => setPreviewStudentIndex(Number(e.target.value))}
+                                    title={previewStudent?.nama}
                                 >
-                                    <ChevronDown size={16} className="rotate-90"/>
-                                </button>
-                                <span className="text-sm font-bold text-indigo-900 min-w-[150px] max-w-[200px] truncate text-center" title={previewStudent?.nama}>
-                                    {previewStudent?.nama || '...'}
-                                </span>
-                                <button
-                                    onClick={() => setPreviewStudentIndex(prev => Math.min(previewStudentsInClass.length - 1, prev + 1))}
-                                    disabled={previewStudentIndex >= previewStudentsInClass.length - 1}
-                                    className="p-1 hover:bg-indigo-100 rounded text-indigo-700 disabled:opacity-30 disabled:hover:bg-transparent transition"
-                                >
-                                    <ChevronDown size={16} className="-rotate-90"/>
-                                </button>
-                                <div className="text-[10px] text-gray-500 font-medium px-1 border-l ml-1">
+                                    {previewStudentsInClass.map((student, idx) => (
+                                        <option key={student.id} value={idx}>
+                                            {student.nama}
+                                        </option>
+                                    ))}
+                                </select>
+                                <div className="text-[10px] text-gray-500 font-medium px-1 border-l ml-1 whitespace-nowrap">
                                     {previewStudentIndex + 1}/{previewStudentsInClass.length}
                                 </div>
                             </div>
@@ -7621,11 +7734,17 @@ const InputIjazah = () => {
     );
 
     const ijazahSubjects = useMemo(() => {
-        return subjectsInClass.filter(sub => {
-            // Sesuai request: HANYA pelajaran yang telah dipilih (dicentang) di halaman Plotting Pelajaran
-            return sub.is_ijazah === true;
+        const filtered = subjectsInClass.filter(sub => sub.is_ijazah === true);
+        // Sort by ijazah_order from masterSubjects (if set), else fall back to default order
+        return filtered.sort((a, b) => {
+            const masterA = allMasterSubjects.find(m => m.id === a.masterId || m.nameId === a.nameId);
+            const masterB = allMasterSubjects.find(m => m.id === b.masterId || m.nameId === b.nameId);
+            const orderA = masterA && typeof masterA.ijazah_order === 'number' ? masterA.ijazah_order : 999999;
+            const orderB = masterB && typeof masterB.ijazah_order === 'number' ? masterB.ijazah_order : 999999;
+            if (orderA !== orderB) return orderA - orderB;
+            return (a.nameId || '').localeCompare(b.nameId || '', undefined, { numeric: true, sensitivity: 'base' });
         });
-    }, [subjectsInClass]);
+    }, [subjectsInClass, allMasterSubjects]);
 
     useEffect(() => {
         if (!selectedClass || !activeSetting) { setLocalIjazah({}); return; }
@@ -8476,13 +8595,14 @@ const CetakDokumen = ({ mode = 'raport' }) => {
             if (mode === 'ijazah') {
                 const stdIjazah = ijazahGradesMap[stdData.id] || {};
                 const ijazahSubs = (data.masterSubjects || []).filter(m => m.is_ijazah);
+                const ijazahShortCodes = getGlobalSubjectShortCodes(ijazahSubs);
                 
                 // Per-subject ijazah variables
                 ijazahSubs.forEach(m => {
                     const subEntry = subjectsForClass.find(s => s.masterId === m.id || s.nameId === m.nameId);
                     if (!subEntry) return;
                     const subGrades = stdIjazah[subEntry.id] || {};
-                    const sc = m.shortCode || m.id.slice(0, 4);
+                    const sc = ijazahShortCodes[m.id] || m.shortCode || m.id.slice(0, 4);
                     const escRe = (s) => (s || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                     const safe = escRe(sc);
                     replaced = replaced
