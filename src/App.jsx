@@ -5973,7 +5973,8 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
                                         </datalist>
                                     </div>
                                     <div className="flex gap-2">
-                                        <div className="w-2/3"><label className="text-[10px] text-gray-500 font-bold uppercase">Ukuran Teks</label><input type="number" className="w-full p-1.5 border rounded text-sm" value={activeEl.fontSize} onChange={e => updateElement(selectedElementId, { fontSize: Number(e.target.value) })}/></div>
+                                        <div className="w-1/3"><label className="text-[10px] text-gray-500 font-bold uppercase">Warna Teks</label><div className="flex items-center gap-1 mt-0.5"><input type="color" value={activeEl.color || '#000000'} onChange={e => updateElement(selectedElementId, { color: e.target.value }, false)} onBlur={e => updateElement(selectedElementId, { color: e.target.value })} className="w-full h-8 cursor-pointer rounded border p-0" /></div></div>
+                                        <div className="w-1/3"><label className="text-[10px] text-gray-500 font-bold uppercase">Ukuran Teks</label><input type="number" className="w-full p-1.5 border rounded text-sm mt-0.5" value={activeEl.fontSize} onChange={e => updateElement(selectedElementId, { fontSize: Number(e.target.value) })}/></div>
                                         <div className="w-1/3 flex items-end"><button onClick={() => updateElement(selectedElementId, { fontWeight: activeEl.fontWeight === 'bold' ? 'normal' : 'bold' })} className={`w-full border p-1.5 rounded text-sm font-bold transition ${activeEl.fontWeight === 'bold' ? 'bg-gray-800 text-white' : 'bg-white hover:bg-gray-100'}`}>B</button></div>
                                     </div>
                                     <div className="mt-2">
@@ -6253,6 +6254,17 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
                                                             ctSelCells.forEach(ck => { newCells[ck] = {...(newCells[ck]||{}), fontSize: e.target.value ? Number(e.target.value) : undefined}; });
                                                             updateElement(selectedElementId, { cells: newCells });
                                                         }}/>
+                                                    </div>
+                                                    <div className="flex items-center gap-1 border rounded px-1 bg-white h-[26px]">
+                                                        <input type="color" className="w-5 h-5 p-0 border-0 rounded cursor-pointer" value={activeEl.cells?.[ctSelCells[0]]?.color || '#000000'} onChange={e => {
+                                                            const newCells = {...activeEl.cells};
+                                                            ctSelCells.forEach(ck => { newCells[ck] = {...(newCells[ck]||{}), color: e.target.value}; });
+                                                            updateElement(selectedElementId, { cells: newCells }, false);
+                                                        }} onBlur={e => {
+                                                            const newCells = {...activeEl.cells};
+                                                            ctSelCells.forEach(ck => { newCells[ck] = {...(newCells[ck]||{}), color: e.target.value}; });
+                                                            updateElement(selectedElementId, { cells: newCells });
+                                                        }} title="Warna Teks"/>
                                                     </div>
                                                 </div>
                                                 <div className="flex gap-2">
@@ -6891,7 +6903,7 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
                             return (
                                 <div key={el.id} data-element-id={el.id} onMouseDown={(e) => handleElementMouseDown(e, el)}
                                     style={{
-                                        position: 'absolute', left: `${el.x}px`, top: `${el.y}px`, fontSize: `${el.fontSize}px`, fontFamily: el.fontFamily || 'Arial, sans-serif', fontWeight: el.fontWeight,
+                                        position: 'absolute', left: `${el.x}px`, top: `${el.y}px`, fontSize: `${el.fontSize}px`, fontFamily: el.fontFamily || 'Arial, sans-serif', fontWeight: el.fontWeight, color: el.color || '#000000',
                                         width: el.width ? `${el.width}px` : 'auto', height: el.type === 'image' ? (el.height ? `${el.height}px` : 'auto') : el.type === 'table_custom' ? 'auto' : 'auto',
                                         cursor: isDraggingThis ? 'grabbing' : 'grab', outline: isSelected ? '2px dashed #059669' : 'none', padding: (el.type === 'image' || el.type === 'table_custom') ? '0' : '2px',
                                         zIndex: isSelected ? 20 : (el.zIndex ?? 1), opacity: el.opacity ?? 1,
@@ -6903,7 +6915,7 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
                                         <div style={{ position: 'relative', width: '100%', height: '100%' }}>
                                             {(el.children || []).map(child => (
                                                 <div key={child.id} style={{
-                                                    position: 'absolute', left: `${child.x}px`, top: `${child.y}px`, fontSize: `${child.fontSize}px`, fontFamily: child.fontFamily || 'Arial, sans-serif', fontWeight: child.fontWeight,
+                                                    position: 'absolute', left: `${child.x}px`, top: `${child.y}px`, fontSize: `${child.fontSize}px`, fontFamily: child.fontFamily || 'Arial, sans-serif', fontWeight: child.fontWeight, color: child.color || '#000000',
                                                     width: child.width ? `${child.width}px` : 'auto', height: (child.type === 'image' || child.type === 'shape') ? `${child.height}px` : child.type === 'table_custom' ? 'auto' : 'auto',
                                                     padding: (child.type === 'image' || child.type === 'table_custom' || child.type === 'shape' || child.type === 'line') ? '0' : '2px',
                                                     zIndex: child.zIndex ?? 1, opacity: child.opacity ?? 1
@@ -8554,7 +8566,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
         }, 1000);
     };
 
-    const getStyles = (el) => ({ position: 'absolute', left: `${el.x}px`, top: `${el.y}px`, fontSize: `${el.fontSize}px`, fontFamily: el.fontFamily || 'Arial, sans-serif', fontWeight: el.fontWeight, color: 'black', textAlign: el.textAlign || 'left' });
+    const getStyles = (el) => ({ position: 'absolute', left: `${el.x}px`, top: `${el.y}px`, fontSize: `${el.fontSize}px`, fontFamily: el.fontFamily || 'Arial, sans-serif', fontWeight: el.fontWeight, color: el.color || '#000000', textAlign: el.textAlign || 'left' });
 
     let studentsToRender = [];
     if (isBatchMode) {
@@ -8815,7 +8827,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
             fontSize: `${el.fontSize}px`,
             fontFamily: el.fontFamily || 'Arial, sans-serif',
             fontWeight: el.fontWeight,
-            color: 'black',
+            color: el.color || '#000000',
             zIndex: el.zIndex ?? 1,
             opacity: el.opacity ?? 1,
             textAlign: el.textAlign || 'left',
@@ -8860,7 +8872,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                             fontSize: `${child.fontSize}px`,
                             fontFamily: child.fontFamily || 'Arial, sans-serif',
                             fontWeight: child.fontWeight,
-                            color: 'black',
+                            color: child.color || '#000000',
                             zIndex: child.zIndex ?? 1,
                             opacity: child.opacity ?? 1,
                             width: child.width ? `${child.width}px` : 'auto',
