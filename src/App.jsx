@@ -3682,13 +3682,13 @@ const splitArabicAndLatin = (text) => {
     return null;
 };
 
-const renderCellContent = (htmlContent, cellAlign) => {
+const renderCellContent = (htmlContent, cellAlign, combineText) => {
     if (!htmlContent) return '';
     const lines = htmlContent.split(/<br\s*\/?>/gi);
     
     return lines.map((line, lineIdx) => {
         const cleanLine = line.replace(/<[^>]*>/g, '');
-        const splitted = splitArabicAndLatin(cleanLine);
+        const splitted = combineText ? null : splitArabicAndLatin(cleanLine);
         
         if (splitted) {
             return (
@@ -3859,7 +3859,7 @@ const renderCustomTable = (el, replaceVars = s => s, options = {}) => {
                                             }).join('');
                                         }
                                         return html;
-                                    })(), cell.align)}
+                                    })(), cell.align, cell.combineText || el.combineText)}
                                     
                                     {isEditable && targetColIdx < cols - 1 && (
                                         <div 
@@ -6081,6 +6081,10 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
                                             <input type="checkbox" checked={activeEl.isTransparent || false} onChange={e => updateElement(selectedElementId, { isTransparent: e.target.checked })}/>
                                             Latar Tabel Transparan (Tanpa Putih)
                                         </label>
+                                        <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 bg-white p-2 border rounded cursor-pointer">
+                                            <input type="checkbox" checked={activeEl.combineText || false} onChange={e => updateElement(selectedElementId, { combineText: e.target.checked })}/>
+                                            Gabungkan Teks Arab & Latin (Jangan Dipisah Kiri-Kanan)
+                                        </label>
                                     </div>
                                     <div className="bg-gray-100 p-2 rounded-lg mt-2">
                                         <label className="text-[10px] text-gray-500 font-bold uppercase mb-2 block">Lebar Kolom (%)</label>
@@ -6285,6 +6289,14 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
                                                         Arah Teks Arab (RTL)
                                                     </label>
                                                 </div>
+                                                <label className="flex items-center gap-2 text-[11px] text-gray-700 bg-gray-50 p-2 rounded cursor-pointer border mt-1">
+                                                    <input type="checkbox" checked={activeEl.cells?.[ctSelCells[0]]?.combineText || false} onChange={e => {
+                                                        const newCells = {...activeEl.cells};
+                                                        ctSelCells.forEach(ck => { newCells[ck] = {...(newCells[ck]||{}), combineText: e.target.checked}; });
+                                                        updateElement(selectedElementId, { cells: newCells });
+                                                    }}/>
+                                                    Gabungkan Teks Arab & Latin (Jangan Dipisah)
+                                                </label>
                                                 <label className="flex items-center gap-2 text-[11px] text-gray-700 bg-gray-50 p-2 rounded cursor-pointer border mt-1">
                                                     <input type="checkbox" checked={activeEl.cells?.[ctSelCells[0]]?.isArabicDigits || false} onChange={e => {
                                                         const newCells = {...activeEl.cells};
