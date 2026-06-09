@@ -4188,7 +4188,7 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
                 replaced = replaced
                     .replace(new RegExp(`\\{\\{ijazah_${safe}_sem1\\}\\}`, 'gi'), subGrades.sem1 ?? '')
                     .replace(new RegExp(`\\{\\{ijazah_${safe}_sem2\\}\\}`, 'gi'), subGrades.sem2 ?? '')
-                    .replace(new RegExp(`\\{\\{ijazah_${safe}_total\\}\\}`, 'gi'), subGrades.total !== undefined && subGrades.total !== '' ? Number(subGrades.total).toFixed(1) : '')
+                    .replace(new RegExp(`\\{\\{ijazah_${safe}_total\\}\\}`, 'gi'), subGrades.total !== undefined && subGrades.total !== '' ? String(Math.round(Number(subGrades.total))) : '')
                     .replace(new RegExp(`\\{\\{ijazah_${safe}_rata\\}\\}`, 'gi'), subGrades.rata !== undefined && subGrades.rata !== '' ? String(Math.round(Number(subGrades.rata))) : '')
                     .replace(new RegExp(`\\{\\{ijazah_${safe}_nama\\}\\}`, 'gi'), m.nameId || '')
                     .replace(new RegExp(`\\{\\{ijazah_${safe}_nama_ar\\}\\}`, 'gi'), m.nameAr || m.nameId || '');
@@ -4232,7 +4232,7 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
             const predikat = ijazahRata !== '' ? calculateIjazahPredicatePreview(ijazahRata) : { ar: '', id: '' };
             
             replaced = replaced
-                .replace(/\{\{ijazah_total\}\}/gi, ijazahCount > 0 ? ijazahTotalSum.toFixed(1) : '')
+                .replace(/\{\{ijazah_total\}\}/gi, ijazahCount > 0 ? String(Math.round(ijazahTotalSum)) : '')
                 .replace(/\{\{ijazah_rata\}\}/gi, ijazahRata !== '' ? String(Math.round(Number(ijazahRata))) : '')
                 .replace(/\{\{ijazah_predikat_id\}\}/gi, predikat.id)
                 .replace(/\{\{ijazah_predikat_ar\}\}/gi, predikat.ar);
@@ -7835,14 +7835,14 @@ const InputIjazah = () => {
             const hasS1 = !isNaN(s1) && updatedSub.sem1 !== '';
             const hasS2 = !isNaN(s2) && updatedSub.sem2 !== '';
             if (hasS1 && hasS2) {
-                updatedSub.total = s1 + s2;
-                updatedSub.rata = (s1 + s2) / 2;
+                updatedSub.total = Math.round(s1 + s2);
+                updatedSub.rata = Math.round((s1 + s2) / 2);
             } else if (hasS1) {
-                updatedSub.total = s1;
-                updatedSub.rata = s1;
+                updatedSub.total = Math.round(s1);
+                updatedSub.rata = Math.round(s1);
             } else if (hasS2) {
-                updatedSub.total = s2;
-                updatedSub.rata = s2;
+                updatedSub.total = Math.round(s2);
+                updatedSub.rata = Math.round(s2);
             } else {
                 updatedSub.total = '';
                 updatedSub.rata = '';
@@ -7907,8 +7907,8 @@ const InputIjazah = () => {
                     stData[sub.id] = {
                         sem1: avgSem1,
                         sem2: avgSem2,
-                        total: hasS1 && hasS2 ? s1 + s2 : hasS1 ? s1 : hasS2 ? s2 : '',
-                        rata: hasS1 && hasS2 ? (s1 + s2) / 2 : hasS1 ? s1 : hasS2 ? s2 : ''
+                        total: hasS1 && hasS2 ? Math.round(s1 + s2) : hasS1 ? Math.round(s1) : hasS2 ? Math.round(s2) : '',
+                        rata: hasS1 && hasS2 ? Math.round((s1 + s2) / 2) : hasS1 ? Math.round(s1) : hasS2 ? Math.round(s2) : ''
                     };
                 }
             });
@@ -8013,12 +8013,12 @@ const InputIjazah = () => {
                         let total = '';
                         let rata = '';
                         if (!isNaN(s1Num) && !isNaN(s2Num)) {
-                            total = s1Num + s2Num;
-                            rata = (s1Num + s2Num) / 2;
+                            total = Math.round(s1Num + s2Num);
+                            rata = Math.round((s1Num + s2Num) / 2);
                         } else if (!isNaN(s1Num)) {
-                            total = s1Num; rata = s1Num;
+                            total = Math.round(s1Num); rata = Math.round(s1Num);
                         } else if (!isNaN(s2Num)) {
-                            total = s2Num; rata = s2Num;
+                            total = Math.round(s2Num); rata = Math.round(s2Num);
                         }
                         
                         stData[sub.id] = { ...curr, sem1: s1, sem2: s2, total, rata };
@@ -8200,7 +8200,7 @@ const InputIjazah = () => {
                                             </td>
                                             {/* Ringkasan */}
                                             <td className="p-2 border-r bg-emerald-50 text-center font-bold text-emerald-800">
-                                                {overall.total !== '' ? Number(overall.total).toFixed(1) : ''}
+                                                {overall.total !== '' ? Math.round(Number(overall.total)) : ''}
                                             </td>
                                             <td className="p-2 border-r bg-emerald-50 text-center font-bold text-emerald-800">
                                                 {overall.rata !== '' ? Math.round(Number(overall.rata)) : ''}
@@ -8237,7 +8237,7 @@ const InputIjazah = () => {
                                                             />
                                                         </td>
                                                         <td className="p-2 border-r bg-gray-50 text-center font-semibold text-gray-700 text-xs">
-                                                            {subG.total !== '' ? Number(subG.total).toFixed(1) : ''}
+                                                            {subG.total !== '' ? Math.round(Number(subG.total)) : ''}
                                                         </td>
                                                         <td className="p-2 border-r bg-gray-50 text-center font-bold text-blue-700 text-xs">
                                                             {subG.rata !== '' ? Math.round(Number(subG.rata)) : ''}
@@ -8681,7 +8681,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                     replaced = replaced
                         .replace(new RegExp(`\\{\\{ijazah_${safe}_sem1\\}\\}`, 'gi'), subGrades.sem1 ?? '')
                         .replace(new RegExp(`\\{\\{ijazah_${safe}_sem2\\}\\}`, 'gi'), subGrades.sem2 ?? '')
-                        .replace(new RegExp(`\\{\\{ijazah_${safe}_total\\}\\}`, 'gi'), subGrades.total !== undefined && subGrades.total !== '' ? Number(subGrades.total).toFixed(1) : '')
+                        .replace(new RegExp(`\\{\\{ijazah_${safe}_total\\}\\}`, 'gi'), subGrades.total !== undefined && subGrades.total !== '' ? String(Math.round(Number(subGrades.total))) : '')
                         .replace(new RegExp(`\\{\\{ijazah_${safe}_rata\\}\\}`, 'gi'), subGrades.rata !== undefined && subGrades.rata !== '' ? String(Math.round(Number(subGrades.rata))) : '')
                         .replace(new RegExp(`\\{\\{ijazah_${safe}_nama\\}\\}`, 'gi'), m.nameId || '')
                         .replace(new RegExp(`\\{\\{ijazah_${safe}_nama_ar\\}\\}`, 'gi'), m.nameAr || m.nameId || '');
@@ -8714,7 +8714,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                 const predikat = ijazahRata !== '' ? calculateIjazahPredicate(ijazahRata) : { ar: '', id: '' };
                 
                 replaced = replaced
-                    .replace(/\{\{ijazah_total\}\}/gi, ijazahCount > 0 ? ijazahTotalSum.toFixed(1) : '')
+                    .replace(/\{\{ijazah_total\}\}/gi, ijazahCount > 0 ? String(Math.round(ijazahTotalSum)) : '')
                     .replace(/\{\{ijazah_rata\}\}/gi, ijazahRata !== '' ? String(Math.round(Number(ijazahRata))) : '')
                     .replace(/\{\{ijazah_predikat_id\}\}/gi, predikat.id)
                     .replace(/\{\{ijazah_predikat_ar\}\}/gi, predikat.ar);
