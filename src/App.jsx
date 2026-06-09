@@ -8656,9 +8656,25 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                 
                 // Per-subject ijazah variables
                 ijazahSubs.forEach(m => {
-                    const subEntry = subjectsForClass.find(s => s.masterId === m.id || s.nameId === m.nameId);
-                    if (!subEntry) return;
-                    const subGrades = stdIjazah[subEntry.id] || {};
+                    let subEntry = subjectsForClass.find(s => s.masterId === m.id || s.nameId === m.nameId);
+                    if (!subEntry && data.subjects) {
+                        subEntry = data.subjects.find(s => s.masterId === m.id || s.nameId === m.nameId);
+                    }
+                    
+                    let subGrades = stdIjazah[subEntry?.id] || stdIjazah[m.id] || stdIjazah[m.nameId] || null;
+                    
+                    // Fallback pencarian keys kalau-kalau ID-nya tidak cocok langsung
+                    if (!subGrades && Object.keys(stdIjazah).length > 0) {
+                       const matchedKey = Object.keys(stdIjazah).find(k => {
+                           if (k === m.id || k === m.nameId || k === subEntry?.id) return true;
+                           const sObj = data.subjects?.find(ds => ds.id === k);
+                           return sObj && (sObj.masterId === m.id || sObj.nameId === m.nameId);
+                       });
+                       if (matchedKey) subGrades = stdIjazah[matchedKey];
+                    }
+                    
+                    subGrades = subGrades || {};
+                    
                     const sc = ijazahShortCodes[m.id] || m.shortCode || m.id.slice(0, 4);
                     const escRe = (s) => (s || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                     const safe = escRe(sc);
@@ -8675,9 +8691,23 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                 let ijazahTotalSum = 0;
                 let ijazahCount = 0;
                 ijazahSubs.forEach(m => {
-                    const subEntry = subjectsForClass.find(s => s.masterId === m.id || s.nameId === m.nameId);
-                    if (!subEntry) return;
-                    const rata = parseFloat((stdIjazah[subEntry.id] || {}).rata);
+                    let subEntry = subjectsForClass.find(s => s.masterId === m.id || s.nameId === m.nameId);
+                    if (!subEntry && data.subjects) {
+                        subEntry = data.subjects.find(s => s.masterId === m.id || s.nameId === m.nameId);
+                    }
+                    
+                    let subGrades = stdIjazah[subEntry?.id] || stdIjazah[m.id] || stdIjazah[m.nameId] || null;
+                    
+                    if (!subGrades && Object.keys(stdIjazah).length > 0) {
+                       const matchedKey = Object.keys(stdIjazah).find(k => {
+                           if (k === m.id || k === m.nameId || k === subEntry?.id) return true;
+                           const sObj = data.subjects?.find(ds => ds.id === k);
+                           return sObj && (sObj.masterId === m.id || sObj.nameId === m.nameId);
+                       });
+                       if (matchedKey) subGrades = stdIjazah[matchedKey];
+                    }
+                    
+                    const rata = parseFloat((subGrades || {}).rata);
                     if (!isNaN(rata)) { ijazahTotalSum += rata; ijazahCount++; }
                 });
                 const ijazahRata = ijazahCount > 0 ? ijazahTotalSum / ijazahCount : '';
