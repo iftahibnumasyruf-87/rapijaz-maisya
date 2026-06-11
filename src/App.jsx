@@ -9705,7 +9705,7 @@ const TahunAjaranSelection = ({ allData, saveToDb, onBypass, currentUser }) => {
 };
 
 const Dashboard = () => {
-  const { currentUser, setCurrentUser, activeSetting, allData, saveToDb } = useContext(AppContext);
+  const { currentUser, setCurrentUser, activeSetting, allData, data, saveToDb } = useContext(AppContext);
   const isTahunSet = !!activeSetting?.tahun;
   const [bypassSplash, setBypassSplash] = useState(false);
   const [activeMenu, setActiveMenu] = useState('dashboard');
