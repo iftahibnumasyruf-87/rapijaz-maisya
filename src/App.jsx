@@ -440,9 +440,7 @@ const getGlobalSubjectShortCodes = (subjects) => {
         const clean = (s.nameId || s.name || '').trim();
         const words = clean.split(/\s+/).filter(Boolean);
         let key = words.map(w => (w.match(/[a-zA-Z0-9]/) ? w.match(/[a-zA-Z0-9]/)[0] : w[0] || '')).join('').toUpperCase().replace(/[^A-Z0-9]/g, '');
-        if (key.length === 1) key = clean.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 2);
         if (key.length === 0) key = clean.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 2) || 'XX';
-        if (key.length === 1) key = key + 'X'; // Pad to 2 chars if still length 1
         if (key.length > 2) key = key.slice(0, 2);
         if (usedKeys.has(key)) { const fb = clean.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 2); if (!usedKeys.has(fb)) key = fb; }
         if (usedKeys.has(key)) { const base = key.slice(0,1) || 'X'; let i = 1; while(usedKeys.has(`${base}${i}`) && i<=9) i++; if(i<=9) key = `${base}${i}`; else { i=10; while(usedKeys.has(`X${i}`)) i++; key=`X${i}`; } }
@@ -486,13 +484,13 @@ const buildShortKeyMap = (subjects = [], presences = [], characterTraits = [], e
         const sk = makeShortKey(p.name || p.id, usedKeys);
         map[sk] = { realId: p.id, dataType: 'presence' };
         
-        // Explicitly map common attendance abbreviations to prevent any collisions with subjects
+        // Add explicit lower-case words so users can intuitively type {{sakit}}, {{izin}}, {{alpa}}
         const cleanName = String(p.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
         if (cleanName) {
             map[cleanName] = { realId: p.id, dataType: 'presence' };
-            if (cleanName.includes('sakit')) { map['sakit'] = map['sak'] = map['sa'] = { realId: p.id, dataType: 'presence' }; }
-            if (cleanName.includes('izin')) { map['izin'] = map['iz'] = map['i'] = { realId: p.id, dataType: 'presence' }; }
-            if (cleanName.includes('alpa') || cleanName.includes('tanpa')) { map['alpa'] = map['al'] = map['a'] = map['tk'] = { realId: p.id, dataType: 'presence' }; }
+            if (cleanName.includes('sakit')) { map['sakit'] = map['sak'] = { realId: p.id, dataType: 'presence' }; }
+            if (cleanName.includes('izin')) { map['izin'] = map['iz'] = { realId: p.id, dataType: 'presence' }; }
+            if (cleanName.includes('alpa') || cleanName.includes('tanpa')) { map['alpa'] = map['tk'] = { realId: p.id, dataType: 'presence' }; }
         }
     });
     characterTraits.forEach(p => {
@@ -533,12 +531,11 @@ const buildShortKeyMap = (subjects = [], presences = [], characterTraits = [], e
 
         if (sk2) {
             // map[`${sk2}I`] is handled by name replacement, not grades. Same for A.
-            // Check if map doesn't already have it, so we don't accidentally overwrite presences (like 'SA')
-            if (!map[`${sk2}N`]) map[`${sk2}N`] = { realId: sub.id, dataType: 'subject_nilai' };
-            if (!map[`${sk2}K`]) map[`${sk2}K`] = { realId: sub.id, dataType: 'subject_kkm' };
-            if (!map[`${sk2}R`]) map[`${sk2}R`] = { realId: sub.id, dataType: 'subject_rata' };
-            if (!map[`${sk2}U`]) map[`${sk2}U`] = { realId: sub.id, dataType: 'subject_uts' };
-            if (!map[`${sk2}A`]) map[`${sk2}A`] = { realId: sub.id, dataType: 'subject_uas' };
+            map[`${sk2}N`] = { realId: sub.id, dataType: 'subject_nilai' };
+            map[`${sk2}K`] = { realId: sub.id, dataType: 'subject_kkm' };
+            map[`${sk2}R`] = { realId: sub.id, dataType: 'subject_rata' };
+            map[`${sk2}U`] = { realId: sub.id, dataType: 'subject_uts' };
+            map[`${sk2}A`] = { realId: sub.id, dataType: 'subject_uas' };
         }
     });
 
@@ -8771,7 +8768,13 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                 activeMasterSubjectsForArRender.forEach(m => {
                     if (!m || !m.nameId) return;
                     const mapelAr = m.nameAr || m.nameId;
-                    const shortVar = m.shortCode || makeShortKey(m.nameId, new Set());
+                    
+                    let shortVar = m.shortCode;
+                    if (!shortVar) {
+                        const entry = Object.entries(shortKeyMapRender).find(([k, v]) => v.dataType === 'subject' && v.realId === m.id);
+                        if (entry) shortVar = entry[0];
+                    }
+
                     const escapeRe = (s) => (s != null ? String(s) : '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                     if (shortVar) {
                         const safeShort = escapeRe(shortVar);
