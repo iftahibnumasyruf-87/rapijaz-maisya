@@ -1038,7 +1038,7 @@ const PageRefreshButton = ({ activeMenu }) => {
 };
 
 const Login = () => {
-  const { data, allData, setCurrentUser, showNotification } = useContext(AppContext);
+  const { data, allData, activeSetting, setCurrentUser, showNotification } = useContext(AppContext);
   const [loginMode, setLoginMode] = useState('guru');
 
   // Admin mode state
@@ -1063,8 +1063,9 @@ const Login = () => {
     return Array.from(uniqueMap.values()).sort((a,b) => (a.nama||'').localeCompare(b.nama||''));
   }, [allData, data]);
   
-  const allSubjects = useMemo(() => allData?.subjects || data?.subjects || [], [allData, data]);
-  const allClasses  = useMemo(() => allData?.classes  || data?.classes  || [], [allData, data]);
+  // Gunakan hanya subjects dari semester aktif agar sinkron dengan plotting
+  const allSubjects = useMemo(() => data?.subjects || [], [data]);
+  const allClasses  = useMemo(() => data?.classes  || [], [data]);
 
   const filteredTeachers = useMemo(() => {
     if (!guruSearchText.trim()) return allTeachers;
@@ -2233,7 +2234,7 @@ const BackupRestorePanel = () => {
 };
 
 const MasterData = ({ activeTab }) => {
-  const { data, allData, saveToDb, deleteFromDb, showNotification } = useContext(AppContext);
+  const { data, allData, activeSetting, saveToDb, deleteFromDb, showNotification } = useContext(AppContext);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [formData, setFormData] = useState({});
