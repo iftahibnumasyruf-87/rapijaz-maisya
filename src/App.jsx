@@ -8449,7 +8449,8 @@ const CetakDokumen = ({ mode = 'raport' }) => {
     const classAverages = useMemo(() => {
         if(!gradeDocId) return {};
         const sums = {}; const counts = {};
-        Object.values(classGradesDoc).forEach(sGrades => {
+        // Gunakan rawClassGradesDoc agar nilai rata-rata tidak berubah saat Katrol diaktifkan
+        Object.values(rawClassGradesDoc).forEach(sGrades => {
             Object.entries(sGrades).forEach(([k, v]) => {
                 let num = null;
                 if (v && typeof v === 'object') {
@@ -8464,7 +8465,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
         const avgs = {};
         Object.keys(sums).forEach(k => avgs[k] = String(Math.round(sums[k]/counts[k])));
         return avgs;
-    }, [classGradesDoc, gradeDocId]);
+    }, [rawClassGradesDoc, gradeDocId]);
 
     const [isExporting, setIsExporting] = useState(false);
 
@@ -8812,15 +8813,12 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                          let score;
                          if (g && typeof g === 'object') { const r = computeRaportScore(g.uts, g.uas); score = r !== '' ? String(r) : ''; }
                          else { score = g !== undefined ? String(g) : ''; }
-                         // Red color if RAW score (before katrol) is below KKM
+                         // Red color if current score is below KKM (if Katrol is active, score is KKM so it won't be red)
                          if (score !== '') {
-                             const rawG = (rawClassGradesDoc[stdData.id] || {})[realId];
-                             let rawScore = null;
-                             if (rawG && typeof rawG === 'object') { const r = computeRaportScore(rawG.uts, rawG.uas); rawScore = r !== '' ? Number(r) : null; }
-                             else if (rawG !== undefined && rawG !== '' && !isNaN(rawG)) { rawScore = Number(rawG); }
+                             let numScore = Number(score);
                              const subObj = subjectsForClass.find(s => s.id === realId);
                              const kkm = subObj ? Number(subObj.kkm || 0) : 0;
-                             if (rawScore !== null && kkm > 0 && rawScore < kkm) {
+                             if (!isNaN(numScore) && kkm > 0 && numScore < kkm) {
                                  return `<span style="color:#dc2626;font-weight:bold">${score}</span>`;
                              }
                          }
