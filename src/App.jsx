@@ -4284,8 +4284,19 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
                     const { realId, dataType } = shortEntry;
                     if (dataType === 'subject' || dataType === 'subject_nilai') {
                         const g = sGrades[realId];
-                        if (g && typeof g === 'object') { const r = computeRaportScore(g.uts, g.uas); return r !== '' ? String(r) : ''; }
-                        return g !== undefined ? String(g) : '';
+                        let score;
+                        if (g && typeof g === 'object') { const r = computeRaportScore(g.uts, g.uas); score = r !== '' ? String(r) : ''; }
+                        else { score = g !== undefined ? String(g) : ''; }
+                        
+                        if (score !== '') {
+                            let numScore = Number(score);
+                            const subObj = subjectsForClass.find(s => s.id === realId);
+                            const kkm = subObj ? Number(subObj.kkm || 0) : 0;
+                            if (!isNaN(numScore) && kkm > 0 && numScore < kkm) {
+                                return `<span style="color:#dc2626;font-weight:bold">${score}</span>`;
+                            }
+                        }
+                        return score !== '' ? score : '';
                     }
                     if (dataType === 'subject_kkm') {
                         const subObj = subjectsForClass.find(s => s.id === realId);
@@ -6936,7 +6947,7 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
                                                     : child.type === 'image' ? <img src={child.content} style={{ width: '100%', height: '100%', objectFit: child.objectFit || 'contain', objectPosition: `${child.objectPositionX ?? 50}% ${child.objectPositionY ?? 50}%`, pointerEvents: 'none' }} alt="elemen" />
                                                     : child.type === 'line' ? <div style={{ width: '100%', height: `${child.lineThickness || 2}px`, backgroundColor: child.lineColor || '#000000', pointerEvents: 'none' }} />
                                                     : child.type === 'shape' ? <div style={{ width: '100%', height: '100%', backgroundColor: child.shapeFill || '#000000', borderRadius: `${child.shapeRadius || 0}px`, border: child.shapeBorder ? `${child.shapeBorder}px solid ${child.shapeBorderColor || '#000000'}` : 'none', pointerEvents: 'none' }} />
-                                                    : <div onDoubleClick={(e) => { e.stopPropagation(); const newContent = window.prompt('Ubah teks (ketik \\n untuk baris baru):', (child.content || '').replace(/\n/g, '\\n')); if (newContent !== null) updateElement(child.id, { content: newContent.replace(/\\n/g, '\n') }); }} style={{ whiteSpace: 'pre-wrap', width: '100%', height: '100%', textAlign: child.textAlign || 'left', direction: child.isRtl ? 'rtl' : 'ltr', cursor: 'text' }}>{previewReplacer ? previewReplacer(child.content) : child.content}</div>}
+                                                    : <div onDoubleClick={(e) => { e.stopPropagation(); const newContent = window.prompt('Ubah teks (ketik \\n untuk baris baru):', (child.content || '').replace(/\n/g, '\\n')); if (newContent !== null) updateElement(child.id, { content: newContent.replace(/\\n/g, '\n') }); }} style={{ whiteSpace: 'pre-wrap', width: '100%', height: '100%', textAlign: child.textAlign || 'left', direction: child.isRtl ? 'rtl' : 'ltr', cursor: 'text' }} dangerouslySetInnerHTML={{__html: previewReplacer ? previewReplacer(child.content) : child.content}} />}
                                                 </div>
                                             ))}
                                         </div>
@@ -6944,7 +6955,7 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
                                     : el.type === 'image' ? <img src={el.content} style={{ width: '100%', height: '100%', objectFit: el.objectFit || 'contain', objectPosition: `${el.objectPositionX ?? 50}% ${el.objectPositionY ?? 50}%`, pointerEvents: 'none' }} alt="elemen" />
                                     : el.type === 'line' ? <div style={{ width: '100%', height: `${el.lineThickness || 2}px`, backgroundColor: el.lineColor || '#000000', pointerEvents: 'none' }} />
                                     : el.type === 'shape' ? <div style={{ width: '100%', height: '100%', backgroundColor: el.shapeFill || '#000000', borderRadius: `${el.shapeRadius || 0}px`, border: el.shapeBorder ? `${el.shapeBorder}px solid ${el.shapeBorderColor || '#000000'}` : 'none', pointerEvents: 'none' }} />
-                                    : <div onDoubleClick={(e) => { e.stopPropagation(); const newContent = window.prompt('Ubah teks (ketik \\n untuk baris baru):', (el.content || '').replace(/\n/g, '\\n')); if (newContent !== null) updateElement(el.id, { content: newContent.replace(/\\n/g, '\n') }); }} style={{ whiteSpace: 'pre-wrap', width: '100%', height: '100%', textAlign: el.textAlign || 'left', direction: el.isRtl ? 'rtl' : 'ltr', cursor: 'text' }}>{(() => { const raw = previewReplacer ? previewReplacer(el.content) : el.content; return el.isTerbilangArab ? toArabicWords(raw) : (el.isArabicDigits ? toArabicNumerals(raw) : raw); })()}</div>}
+                                    : <div onDoubleClick={(e) => { e.stopPropagation(); const newContent = window.prompt('Ubah teks (ketik \\n untuk baris baru):', (el.content || '').replace(/\n/g, '\\n')); if (newContent !== null) updateElement(el.id, { content: newContent.replace(/\\n/g, '\n') }); }} style={{ whiteSpace: 'pre-wrap', width: '100%', height: '100%', textAlign: el.textAlign || 'left', direction: el.isRtl ? 'rtl' : 'ltr', cursor: 'text' }} dangerouslySetInnerHTML={{__html: (() => { const raw = previewReplacer ? previewReplacer(el.content) : el.content; return el.isTerbilangArab ? toArabicWords(raw) : (el.isArabicDigits ? toArabicNumerals(raw) : raw); })()}} />}
                                     
                                     {isSelected && !el.locked && selectedIds.length === 1 && (
                                         <>
@@ -8370,7 +8381,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
         return sortSubjectsByCategory(filterSubjectsByClass(data.subjects, selectedClass, classesData), data.subjectCategories);
     }, [data.subjects, selectedClass, classesData, data.subjectCategories]);
 
-    // Apply Katrol for Raport grades
+    // Apply Katrol for Raport grades (katrol applies to final score, not individual uts/uas)
     const classGradesDoc = useMemo(() => {
         if (!useKatrol) return rawClassGradesDoc;
         const result = {};
@@ -8381,13 +8392,15 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                 if (subObj && subObj.kkm) {
                     const kkm = Number(subObj.kkm);
                     const v = sGrades[k];
+                    let finalScore;
                     if (v && typeof v === 'object') {
-                        let {uts, uas} = v;
-                        if (uts !== '' && !isNaN(uts) && Number(uts) < kkm) uts = String(kkm);
-                        if (uas !== '' && !isNaN(uas) && Number(uas) < kkm) uas = String(kkm);
-                        sGrades[k] = { ...v, uts, uas };
-                    } else if (v !== undefined && v !== '' && !isNaN(v) && Number(v) < kkm) {
-                        sGrades[k] = String(kkm);
+                        const r = computeRaportScore(v.uts, v.uas);
+                        finalScore = r !== '' ? Number(r) : null;
+                    } else if (v !== undefined && v !== '' && !isNaN(v)) {
+                        finalScore = Number(v);
+                    }
+                    if (finalScore !== null && finalScore !== undefined && !isNaN(finalScore) && finalScore < kkm) {
+                        sGrades[k] = String(kkm); // Set directly to KKM (not uts/uas)
                     }
                 }
             });
@@ -8722,43 +8735,46 @@ const CetakDokumen = ({ mode = 'raport' }) => {
             // ---- END IJAZAH VARIABLES ----
             
             // Replace dynamic variables for Master Subjects
+            // IMPORTANT: do 3-char code replacement ({{IPI}}/{{IPA}}) FIRST,
+            // before legacy shortVar (which uses 'gi' = case-insensitive and could catch {{IPA}} as {{ipa}})
             const activeMasterSubjectsForArRender = getUniqueActiveSubjects(data);
             if (activeMasterSubjectsForArRender.length > 0) {
                 const globalCodes = getGlobalSubjectShortCodes(activeMasterSubjectsForArRender);
+                
+                // STEP 1: 3-char exact replacement FIRST ({{sc}I}}, {{sc}A}})
                 activeMasterSubjectsForArRender.forEach(m => {
-                    if (!m || !m.nameId) return; // guard: skip jika nameId undefined/null
+                    if (!m || !m.nameId) return;
                     const mapelAr = m.nameAr || m.nameId;
-                    
-                    // Legacy support
-                    const shortVar = m.shortCode || makeShortKey(m.nameId, new Set()); // rough fallback, actual replace relies on regex later for _nilai etc
+                    const sc = globalCodes[m.id];
+                    if (sc) {
+                        const escapeRe = (s) => (s != null ? String(s) : '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                        replaced = replaced
+                            .replace(new RegExp(`\\{\\{${escapeRe(sc)}I\\}\\}`, 'g'), m.nameId)
+                            .replace(new RegExp(`\\{\\{${escapeRe(sc)}A\\}\\}`, 'g'), mapelAr);
+                    }
+                });
 
-                    // Escape for use in RegExp
+                // STEP 2: Legacy short/custom key replacement (case-sensitive 'g' not 'gi' to avoid collision)
+                activeMasterSubjectsForArRender.forEach(m => {
+                    if (!m || !m.nameId) return;
+                    const mapelAr = m.nameAr || m.nameId;
+                    const shortVar = m.shortCode || makeShortKey(m.nameId, new Set());
                     const escapeRe = (s) => (s != null ? String(s) : '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-                    // 1) Replace legacy short/custom key  {{alq}} → nameId, {{alq_arb}} → nameAr
                     if (shortVar) {
                         const safeShort = escapeRe(shortVar);
                         replaced = replaced
-                            .replace(new RegExp(`\\{\\{${safeShort}\\}\\}`, 'gi'), m.nameId)
-                            .replace(new RegExp(`\\{\\{${safeShort}_arb\\}\\}`, 'gi'), mapelAr);
-                    }
-                    
-                    // NEW 1b) Replace 3-char short code
-                    const sc = globalCodes[m.id];
-                    if (sc) {
-                        replaced = replaced
-                            .replace(new RegExp(`\\{\\{${sc}I\\}\\}`, 'gi'), m.nameId)
-                            .replace(new RegExp(`\\{\\{${sc}A\\}\\}`, 'gi'), mapelAr);
+                            .replace(new RegExp(`\\{\\{${safeShort}\\}\\}`, 'g'), m.nameId)
+                            .replace(new RegExp(`\\{\\{${safeShort}_arb\\}\\}`, 'g'), mapelAr);
                     }
 
-                    // 2) Replace full nameId key (backward compat) {{Al-Qur'an}} → nameId
+                    // STEP 3: Full nameId replacement (backward compat)
                     if (shortVar !== m.nameId) {
                         const safeNameId = escapeRe(m.nameId);
-                        if (!safeNameId) return; // skip jika safeNameId kosong
+                        if (!safeNameId) return;
                         replaced = replaced
-                            .replace(new RegExp(`\\{\\{${safeNameId}\\}\\}`, 'gi'), m.nameId)
-                            .replace(new RegExp(`\\{\\{${safeNameId}_arb\\}\\}`, 'gi'), mapelAr)
-                            .replace(new RegExp(`\\{\\{${safeNameId}_arb\\}\\}\\}`, 'gi'), mapelAr); // fix triple-brace legacy
+                            .replace(new RegExp(`\\{\\{${safeNameId}\\}\\}`, 'g'), m.nameId)
+                            .replace(new RegExp(`\\{\\{${safeNameId}_arb\\}\\}`, 'g'), mapelAr)
+                            .replace(new RegExp(`\\{\\{${safeNameId}_arb\\}\\}\\}`, 'g'), mapelAr);
                     }
                 });
             }
@@ -8793,8 +8809,22 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                      const { realId, dataType } = shortEntry;
                      if (dataType === 'subject' || dataType === 'subject_nilai') {
                          const g = sGrades[realId];
-                         if (g && typeof g === 'object') { const r = computeRaportScore(g.uts, g.uas); return r !== '' ? r : ''; }
-                         return g !== undefined ? g : '';
+                         let score;
+                         if (g && typeof g === 'object') { const r = computeRaportScore(g.uts, g.uas); score = r !== '' ? String(r) : ''; }
+                         else { score = g !== undefined ? String(g) : ''; }
+                         // Red color if RAW score (before katrol) is below KKM
+                         if (score !== '') {
+                             const rawG = (rawClassGradesDoc[stdData.id] || {})[realId];
+                             let rawScore = null;
+                             if (rawG && typeof rawG === 'object') { const r = computeRaportScore(rawG.uts, rawG.uas); rawScore = r !== '' ? Number(r) : null; }
+                             else if (rawG !== undefined && rawG !== '' && !isNaN(rawG)) { rawScore = Number(rawG); }
+                             const subObj = subjectsForClass.find(s => s.id === realId);
+                             const kkm = subObj ? Number(subObj.kkm || 0) : 0;
+                             if (rawScore !== null && kkm > 0 && rawScore < kkm) {
+                                 return `<span style="color:#dc2626;font-weight:bold">${score}</span>`;
+                             }
+                         }
+                         return score !== '' ? score : '';
                      }
                      if (dataType === 'subject_kkm') {
                          const subObj = subjectsForClass.find(s => s.id === realId);
@@ -8925,7 +8955,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                         if (child.type === 'image') return <img key={child.id} src={child.content} style={{...childStyle, objectFit: child.objectFit||'contain', objectPosition:`${child.objectPositionX??50}% ${child.objectPositionY??50}%`}} alt="c" />;
                         if (child.type === 'line') return <div key={child.id} style={{...childStyle, backgroundColor: child.lineColor || '#000000'}} />;
                         if (child.type === 'shape') return <div key={child.id} style={{...childStyle, backgroundColor: child.shapeFill || '#000000', borderRadius: `${child.shapeRadius || 0}px`, border: child.shapeBorder ? `${child.shapeBorder}px solid ${child.shapeBorderColor || '#000000'}` : 'none'}} />;
-                        return <div key={child.id} style={{...childStyle, whiteSpace:'pre-wrap', direction: child.isRtl ? 'rtl' : 'ltr'}}>{replaceVariables(child.content)}</div>;
+                        return <div key={child.id} style={{...childStyle, whiteSpace:'pre-wrap', direction: child.isRtl ? 'rtl' : 'ltr'}} dangerouslySetInnerHTML={{__html: replaceVariables(child.content)}} />;
                     })}
                 </div>
             );
@@ -8938,9 +8968,8 @@ const CetakDokumen = ({ mode = 'raport' }) => {
         }
         // text / default
         return (
-            <div style={{ ...baseStyle, whiteSpace: 'pre-wrap', width: el.width ? `${el.width}px` : 'auto', direction: el.isRtl ? 'rtl' : 'ltr' }}>
-                {content}
-            </div>
+            <div style={{ ...baseStyle, whiteSpace: 'pre-wrap', width: el.width ? `${el.width}px` : 'auto', direction: el.isRtl ? 'rtl' : 'ltr' }}
+                 dangerouslySetInnerHTML={{__html: content}} />
         );
     };
 
