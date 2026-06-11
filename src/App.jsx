@@ -9,7 +9,7 @@ import {
   Columns, FileSignature, TrendingUp, UserX, Clock, Activity, ChevronDown,
   ZoomIn, ZoomOut, Maximize, Minimize, ChevronUp, Lock, Database, Copy, Undo, Redo, Eye, EyeOff, Scissors,
   AlignLeft, AlignCenter, AlignRight, AlignStartVertical, AlignCenterVertical, AlignEndVertical, BarChart2, AlignJustify, Layers, Calendar,
-  Minus, Square, Grid, Info, RefreshCw, Search, LockOpen
+  Minus, Square, Grid, Info, RefreshCw, Search, LockOpen, PanelLeftClose
 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 import { APP_CONFIG, getFullAppName } from './config';
@@ -9700,6 +9700,7 @@ const Dashboard = () => {
   const [expandedMenu, setExpandedMenu] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCompact, setIsSidebarCompact] = useState(false);
+  const [isSidebarHidden, setIsSidebarHidden] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
   // ==========================================
@@ -9836,7 +9837,7 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {isSidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setIsSidebarOpen(false)} />}
-      <div className={`fixed inset-y-0 left-0 ${isSidebarCompact ? 'w-16' : 'w-64'} bg-emerald-800 text-emerald-50 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 transition-transform duration-200 ease-in-out z-50 flex flex-col`}>
+      <div className={`fixed inset-y-0 left-0 ${isSidebarCompact ? 'w-16' : 'w-64'} bg-emerald-800 text-emerald-50 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} ${isSidebarHidden ? 'md:-translate-x-full md:w-0 md:overflow-hidden' : 'md:relative md:translate-x-0'} transition-all duration-200 ease-in-out z-50 flex flex-col`}>
         <div className={`p-3 ${isSidebarCompact ? 'px-0' : 'p-6'} flex items-center justify-between border-b border-emerald-700/50`}>
           <div className={`flex items-center ${isSidebarCompact ? 'justify-center w-full gap-0' : 'gap-3'}`}>
             <img src={APP_CONFIG.logoUrl || "https://i.ibb.co.com/DfZSFRsP/Chat-GPT-Image-3-Mei-2026-04-08-56.png"} alt="Logo" className="w-12 h-12 object-contain drop-shadow-sm shrink-0" />
@@ -9933,10 +9934,21 @@ const Dashboard = () => {
       </div>
       
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
-        <header className="bg-white shadow-sm border-b px-6 py-4 flex items-center justify-between gap-4 print:hidden z-10 shrink-0">
-          <div className="flex items-center gap-4">
+        <header className="bg-white shadow-sm border-b px-4 py-3 flex items-center justify-between gap-4 print:hidden z-10 shrink-0">
+          <div className="flex items-center gap-2">
             <button className="md:hidden text-gray-500 hover:text-emerald-600" onClick={() => setIsSidebarOpen(true)}><Menu size={24} /></button>
-            <h1 className="text-xl font-bold text-gray-800 capitalize flex-1">{getMenuLabel()}</h1>
+            <button
+              className={`hidden md:inline-flex items-center justify-center w-9 h-9 rounded-lg transition border ${
+                isSidebarHidden
+                  ? 'bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700'
+                  : 'bg-white text-gray-500 border-gray-200 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300'
+              }`}
+              onClick={() => setIsSidebarHidden(prev => !prev)}
+              title={isSidebarHidden ? 'Tampilkan Sidebar' : 'Sembunyikan Sidebar'}
+            >
+              <PanelLeftClose size={18} className={isSidebarHidden ? 'rotate-180' : ''} />
+            </button>
+            <h1 className="text-xl font-bold text-gray-800 capitalize">{getMenuLabel()}</h1>
           </div>
           
           <div className="hidden sm:flex items-center gap-4">
