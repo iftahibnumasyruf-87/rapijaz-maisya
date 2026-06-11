@@ -1115,10 +1115,7 @@ const Login = () => {
     const teacher = allTeachers.find(t => t.nama === selectedGuruName);
     if (!teacher) { showNotification('Guru tidak ditemukan', 'error'); return; }
     const assignments = getGuruAssignments(selectedGuruName, allSubjects, allClasses);
-    const uniqueNames = [...new Set(assignments.subjects.map(s => s.nameId).filter(Boolean))];
-    const validPasswords = uniqueNames.map(nid => generateGuruPassword(selectedGuruName, nid));
-    if (validPasswords.length === 0) { showNotification('Guru ini belum ditugaskan mengajar mapel apapun. Hubungi admin.', 'error'); return; }
-    if (!validPasswords.includes(guruPassword)) { showNotification('Password salah. Hubungi admin untuk mendapatkan password Anda.', 'error'); return; }
+    if (assignments.subjects.length === 0) { showNotification('Guru ini belum ditugaskan mengajar mapel apapun. Hubungi admin.', 'error'); return; }
     const guruUser = { id: teacher.id, nama: teacher.nama, name: teacher.nama, username: teacher.nama, role: 'guru', teacherId: teacher.id, assignedSubjectIds: assignments.subjects.map(s => s.id), assignedClassIds: assignments.classes };
     setCurrentUser(guruUser);
     showNotification(`Selamat datang, ${teacher.nama}!`);
@@ -1152,7 +1149,7 @@ const Login = () => {
 
           <div className="p-7">
             {loginMode === 'guru' && (
-              <form onSubmit={handleGuruLogin} className="space-y-4">
+              <form onSubmit={handleGuruLogin} className="space-y-5">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1.5">Nama Guru</label>
                   <div className="relative" ref={guruDropdownRef}>
@@ -1177,40 +1174,19 @@ const Login = () => {
                   </div>
                 </div>
 
-                {selectedGuruName && uniqueGuruMapel.length > 1 && (
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">Mapel (untuk password)</label>
-                    <select className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-emerald-500 outline-none transition" value={selectedMapelId} onChange={e => setSelectedMapelId(e.target.value)}>
-                      {uniqueGuruMapel.map(s => <option key={s.nameId} value={s.nameId}>{s.nameId}</option>)}
-                    </select>
-                    <p className="text-xs text-gray-400 mt-1">Pilih mapel sesuai password yang diberikan admin.</p>
-                  </div>
-                )}
-
                 {selectedGuruName && uniqueGuruMapel.length === 0 && (
                   <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-700">
                     ⚠️ Guru ini belum ditugaskan mengajar mapel apapun. Hubungi admin.
                   </div>
                 )}
 
-                {selectedGuruName && guruPassword && (
+                {selectedGuruName && uniqueGuruMapel.length > 0 && (
                   <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs text-emerald-700">
-                    💡 <span className="font-semibold">Format password:</span> inisial nama ({getInitials(selectedGuruName,4)}) + '-' + inisial mapel
+                    ✅ <span className="font-semibold">{uniqueGuruMapel.length} mata pelajaran</span> ditemukan untuk guru ini.
                   </div>
                 )}
 
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Password</label>
-                  <div className="relative">
-                    <input type={showGuruPassword ? 'text' : 'password'} required placeholder="Masukkan password..." className="w-full px-4 py-3 pr-12 border-2 border-gray-200 rounded-xl focus:border-emerald-500 outline-none transition font-mono"
-                      value={guruPassword} onChange={e => setGuruPassword(e.target.value)} />
-                    <button type="button" onClick={() => setShowGuruPassword(p => !p)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                      {showGuruPassword ? <EyeOff size={18}/> : <Eye size={18}/>}
-                    </button>
-                  </div>
-                </div>
-
-                <button type="submit" className="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl font-bold shadow-lg hover:from-emerald-700 hover:to-teal-700 active:scale-95 transition-all flex items-center justify-center gap-2">
+                <button type="submit" disabled={!selectedGuruName} className="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl font-bold shadow-lg hover:from-emerald-700 hover:to-teal-700 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
                   <User size={17}/> Masuk sebagai Guru
                 </button>
               </form>
