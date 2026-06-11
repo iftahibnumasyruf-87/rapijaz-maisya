@@ -1119,7 +1119,7 @@ const Login = () => {
     const validPasswords = uniqueNames.map(nid => generateGuruPassword(selectedGuruName, nid));
     if (validPasswords.length === 0) { showNotification('Guru ini belum ditugaskan mengajar mapel apapun. Hubungi admin.', 'error'); return; }
     if (!validPasswords.includes(guruPassword)) { showNotification('Password salah. Hubungi admin untuk mendapatkan password Anda.', 'error'); return; }
-    const guruUser = { id: teacher.id, name: teacher.nama, username: teacher.nama, role: 'guru', teacherId: teacher.id, assignedSubjectIds: assignments.subjects.map(s => s.id), assignedClassIds: assignments.classes };
+    const guruUser = { id: teacher.id, nama: teacher.nama, name: teacher.nama, username: teacher.nama, role: 'guru', teacherId: teacher.id, assignedSubjectIds: assignments.subjects.map(s => s.id), assignedClassIds: assignments.classes };
     setCurrentUser(guruUser);
     showNotification(`Selamat datang, ${teacher.nama}!`);
     try { await supabase.from('logs').upsert([{ id: Date.now().toString(), payload: { message: 'Login berhasil (Guru Mapel)', timestamp: Date.now(), user: teacher.nama } }]); } catch(err) { console.error(err); }
@@ -7454,8 +7454,12 @@ const InputNilai = ({ activeInputTab }) => {
     const studentsInClass = getStudentsInClass(activeStudents, rawClassesData, selectedClass);
     const subjectsInClass = useMemo(() => {
         let subjects = filterSubjectsByClass(data.subjects, selectedClass, rawClassesData);
-        if (currentUser?.role === 'guru' && currentUser?.assignedSubjectIds) {
-            subjects = subjects.filter(s => currentUser.assignedSubjectIds.includes(s.id));
+        if (currentUser?.role === 'guru') {
+            // Filter by teacher name (lebih andal dari ID yang bisa beda antar semester)
+            subjects = subjects.filter(s => 
+                s.guru === currentUser.nama || 
+                (currentUser.assignedSubjectIds?.includes(s.id))
+            );
         }
         return sortSubjectsByCategory(subjects, data.subjectCategories);
     }, [data.subjects, data.subjectCategories, selectedClass, rawClassesData, currentUser]);
