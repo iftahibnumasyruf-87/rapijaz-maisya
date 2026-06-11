@@ -1074,7 +1074,8 @@ const Login = () => {
 
   const guruMapel = useMemo(() => {
     if (!selectedGuruName) return [];
-    return allSubjects.filter(s => s.guru === selectedGuruName);
+    const trimmedName = selectedGuruName.trim();
+    return allSubjects.filter(s => (s.guru || '').trim() === trimmedName);
   }, [selectedGuruName, allSubjects]);
 
   const uniqueGuruMapel = useMemo(() => {
@@ -1183,7 +1184,12 @@ const Login = () => {
 
                 {selectedGuruName && uniqueGuruMapel.length > 0 && (
                   <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs text-emerald-700">
-                    ✅ <span className="font-semibold">{uniqueGuruMapel.length} mata pelajaran</span> ditemukan untuk guru ini.
+                    <div className="font-semibold mb-1">✅ {uniqueGuruMapel.length} mata pelajaran ditemukan:</div>
+                    <ul className="list-disc list-inside space-y-0.5">
+                      {uniqueGuruMapel.map((s, i) => (
+                        <li key={i}>{s.nameId || s.name || s.id}</li>
+                      ))}
+                    </ul>
                   </div>
                 )}
 
