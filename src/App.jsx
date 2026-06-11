@@ -430,6 +430,41 @@ const makeShortKey = (name, usedKeys) => {
     return key;
 };
 
+// ==========================================
+// GURU PASSWORD UTILITIES
+// ==========================================
+
+// Generate inisial dari sebuah nama: ambil huruf pertama tiap kata, maks maxLen huruf, lowercase latin
+const getInitials = (name, maxLen = 4) => {
+    const clean = (name || '').trim().replace(/[^a-zA-Z\s]/g, '').toLowerCase();
+    const words = clean.split(/\s+/).filter(Boolean);
+    let initials = words.map(w => w[0] || '').join('').slice(0, maxLen);
+    return initials || 'x';
+};
+
+// Generate password guru: inisial nama guru (maks 4) + '-' + inisial nameId mapel (maks 3)
+const generateGuruPassword = (teacherName, subjectNameId) => {
+    const namaInitials = getInitials(teacherName, 4);
+    const mapelInitials = getInitials(subjectNameId, 3);
+    return `${namaInitials}-${mapelInitials}`;
+};
+
+// Dapatkan semua mapel dan kelas yang diampu oleh seorang guru berdasarkan nama
+const getGuruAssignments = (teacherName, subjects = [], classes = []) => {
+    if (!teacherName) return { subjects: [], classes: [] };
+    const assignedSubjects = subjects.filter(s => s.guru === teacherName);
+    const classIdSet = new Set();
+    assignedSubjects.forEach(s => {
+        const kelasArr = Array.isArray(s.kelas) ? s.kelas : (s.kelas ? [s.kelas] : []);
+        kelasArr.forEach(k => classIdSet.add(k));
+        if (kelasArr.length === 0) classes.forEach(c => classIdSet.add(c.id));
+    });
+    return {
+        subjects: assignedSubjects,
+        classes: Array.from(classIdSet)
+    };
+};
+
 // Generate stable 2-char codes for subjects globally to ensure exact 3-char variable names
 // Returns map with MULTIPLE keys for same code: by id, by nameId, by nameId.toLowerCase()
 const getGlobalSubjectShortCodes = (subjects) => {
@@ -1003,51 +1038,194 @@ const PageRefreshButton = ({ activeMenu }) => {
 };
 
 const Login = () => {
-  const { data, setCurrentUser, showNotification, addLog } = useContext(AppContext);
+  const { data, allData, setCurrentUser, showNotification } = useContext(AppContext);
+  const [loginMode, setLoginMode] = useState('guru');
+
+  // Admin mode state
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleLogin = async (e) => {
+  // Guru mode state
+  const [selectedGuruName, setSelectedGuruName] = useState('');
+  const [guruSearchText, setGuruSearchText] = useState('');
+  const [showGuruDropdown, setShowGuruDropdown] = useState(false);
+  const [selectedMapelId, setSelectedMapelId] = useState('');
+  const [guruPassword, setGuruPassword] = useState('');
+  const [showGuruPassword, setShowGuruPassword] = useState(false);
+  const guruDropdownRef = useRef(null);
+
+  const allTeachers = useMemo(() => [...(allData?.teachers || data?.teachers || [])].sort((a,b) => (a.nama||'').localeCompare(b.nama||'')), [allData, data]);
+  const allSubjects = useMemo(() => allData?.subjects || data?.subjects || [], [allData, data]);
+  const allClasses  = useMemo(() => allData?.classes  || data?.classes  || [], [allData, data]);
+
+  const filteredTeachers = useMemo(() => {
+    if (!guruSearchText.trim()) return allTeachers;
+    return allTeachers.filter(t => (t.nama||'').toLowerCase().includes(guruSearchText.toLowerCase()));
+  }, [allTeachers, guruSearchText]);
+
+  const guruMapel = useMemo(() => {
+    if (!selectedGuruName) return [];
+    return allSubjects.filter(s => s.guru === selectedGuruName);
+  }, [selectedGuruName, allSubjects]);
+
+  const uniqueGuruMapel = useMemo(() => {
+    const seen = new Set();
+    return guruMapel.filter(s => { if (seen.has(s.nameId)) return false; seen.add(s.nameId); return true; });
+  }, [guruMapel]);
+
+  useEffect(() => {
+    if (uniqueGuruMapel.length > 0) {
+      const first = uniqueGuruMapel[0];
+      setSelectedMapelId(first.nameId);
+      setGuruPassword(generateGuruPassword(selectedGuruName, first.nameId));
+    } else { setSelectedMapelId(''); setGuruPassword(''); }
+  }, [selectedGuruName, uniqueGuruMapel]);
+
+  useEffect(() => {
+    if (selectedMapelId && selectedGuruName) setGuruPassword(generateGuruPassword(selectedGuruName, selectedMapelId));
+  }, [selectedMapelId, selectedGuruName]);
+
+  useEffect(() => {
+    const handleClick = (e) => { if (guruDropdownRef.current && !guruDropdownRef.current.contains(e.target)) setShowGuruDropdown(false); };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  const handleAdminLogin = async (e) => {
     e.preventDefault();
     const user = data.users.find(u => u.username === username && u.password === password);
     if (user) {
       setCurrentUser(user);
       showNotification(`Selamat datang, ${user.name}`);
-      try {
-        const logId = Date.now().toString();
-        await supabase.from('logs').upsert([{
-          id: logId, 
-          payload: { message: `Login berhasil`, timestamp: Date.now(), user: user.name }
-        }]);
-      } catch(err) {
-        console.error("Gagal menyimpan log login", err);
-      }
-    } else {
-      showNotification('Username atau password salah', 'error');
-    }
+      try { await supabase.from('logs').upsert([{ id: Date.now().toString(), payload: { message: 'Login berhasil (Admin)', timestamp: Date.now(), user: user.name } }]); } catch(err) { console.error(err); }
+    } else { showNotification('Username atau password salah', 'error'); }
+  };
+
+  const handleGuruLogin = async (e) => {
+    e.preventDefault();
+    if (!selectedGuruName) { showNotification('Pilih nama guru terlebih dahulu', 'error'); return; }
+    const teacher = allTeachers.find(t => t.nama === selectedGuruName);
+    if (!teacher) { showNotification('Guru tidak ditemukan', 'error'); return; }
+    const assignments = getGuruAssignments(selectedGuruName, allSubjects, allClasses);
+    const uniqueNames = [...new Set(assignments.subjects.map(s => s.nameId).filter(Boolean))];
+    const validPasswords = uniqueNames.map(nid => generateGuruPassword(selectedGuruName, nid));
+    if (validPasswords.length === 0) { showNotification('Guru ini belum ditugaskan mengajar mapel apapun. Hubungi admin.', 'error'); return; }
+    if (!validPasswords.includes(guruPassword)) { showNotification('Password salah. Hubungi admin untuk mendapatkan password Anda.', 'error'); return; }
+    const guruUser = { id: teacher.id, name: teacher.nama, username: teacher.nama, role: 'guru', teacherId: teacher.id, assignedSubjectIds: assignments.subjects.map(s => s.id), assignedClassIds: assignments.classes };
+    setCurrentUser(guruUser);
+    showNotification(`Selamat datang, ${teacher.nama}!`);
+    try { await supabase.from('logs').upsert([{ id: Date.now().toString(), payload: { message: 'Login berhasil (Guru Mapel)', timestamp: Date.now(), user: teacher.nama } }]); } catch(err) { console.error(err); }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-800 to-emerald-600 p-4">
-      <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="mx-auto w-36 h-36 flex items-center justify-center mb-2">
-            <img src={APP_CONFIG.logoUrl || "https://i.ibb.co.com/DfZSFRsP/Chat-GPT-Image-3-Mei-2026-04-08-56.png"} alt="Logo Ponpes" className="w-full h-full object-contain drop-shadow-md" />
+    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden" style={{background:'linear-gradient(135deg,#064e3b 0%,#065f46 50%,#047857 100%)'}}>
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-24 -left-24 w-96 h-96 bg-white/5 rounded-full blur-3xl"/>
+        <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-emerald-300/10 rounded-full blur-3xl"/>
+      </div>
+      <div className="relative w-full max-w-md z-10">
+        <div className="text-center mb-6">
+          <div className="mx-auto w-20 h-20 flex items-center justify-center mb-4 bg-white rounded-2xl shadow-2xl p-2">
+            <img src={APP_CONFIG.logoUrl || 'https://i.ibb.co.com/DfZSFRsP/Chat-GPT-Image-3-Mei-2026-04-08-56.png'} alt="Logo" className="w-full h-full object-contain" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-800 tracking-tight">{getFullAppName()}</h1>
-          <p className="text-gray-500 mt-2 text-sm">{APP_CONFIG.loginDescription}<br/>{APP_CONFIG.institutionName}</p>
+          <h1 className="text-3xl font-bold text-white tracking-tight drop-shadow-sm">{getFullAppName()}</h1>
+          <p className="text-emerald-100/70 mt-1 text-sm">{APP_CONFIG.institutionName}</p>
         </div>
-        <form onSubmit={handleLogin} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
-            <input type="text" required className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" value={username} onChange={e => setUsername(e.target.value)} />
+
+        <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
+          <div className="flex border-b border-gray-100">
+            <button type="button" onClick={() => setLoginMode('guru')} className={`flex-1 py-4 text-sm font-bold flex items-center justify-center gap-2 transition-all ${loginMode==='guru' ? 'bg-emerald-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}>
+              <User size={15}/> Login Guru
+            </button>
+            <button type="button" onClick={() => setLoginMode('admin')} className={`flex-1 py-4 text-sm font-bold flex items-center justify-center gap-2 transition-all ${loginMode==='admin' ? 'bg-gray-800 text-white' : 'text-gray-500 hover:bg-gray-50'}`}>
+              <Lock size={15}/> Login Admin
+            </button>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-            <input type="password" required className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" value={password} onChange={e => setPassword(e.target.value)} />
+
+          <div className="p-7">
+            {loginMode === 'guru' && (
+              <form onSubmit={handleGuruLogin} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Nama Guru</label>
+                  <div className="relative" ref={guruDropdownRef}>
+                    <input type="text" placeholder="Ketik atau pilih nama guru..." className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-emerald-500 outline-none transition"
+                      value={selectedGuruName || guruSearchText}
+                      onChange={e => { setGuruSearchText(e.target.value); setSelectedGuruName(''); setShowGuruDropdown(true); }}
+                      onFocus={() => setShowGuruDropdown(true)}
+                    />
+                    {showGuruDropdown && filteredTeachers.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-50 max-h-48 overflow-y-auto">
+                        {filteredTeachers.map(t => (
+                          <button key={t.id} type="button" className="w-full text-left px-4 py-2.5 hover:bg-emerald-50 text-sm text-gray-700 hover:text-emerald-700 font-medium transition"
+                            onClick={() => { setSelectedGuruName(t.nama); setGuruSearchText(''); setShowGuruDropdown(false); }}>
+                            {t.nama}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {showGuruDropdown && guruSearchText && filteredTeachers.length === 0 && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-50 p-4 text-sm text-gray-400 text-center">Guru tidak ditemukan</div>
+                    )}
+                  </div>
+                </div>
+
+                {selectedGuruName && uniqueGuruMapel.length > 1 && (
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">Mapel (untuk password)</label>
+                    <select className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-emerald-500 outline-none transition" value={selectedMapelId} onChange={e => setSelectedMapelId(e.target.value)}>
+                      {uniqueGuruMapel.map(s => <option key={s.nameId} value={s.nameId}>{s.nameId}</option>)}
+                    </select>
+                    <p className="text-xs text-gray-400 mt-1">Pilih mapel sesuai password yang diberikan admin.</p>
+                  </div>
+                )}
+
+                {selectedGuruName && uniqueGuruMapel.length === 0 && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-700">
+                    ⚠️ Guru ini belum ditugaskan mengajar mapel apapun. Hubungi admin.
+                  </div>
+                )}
+
+                {selectedGuruName && guruPassword && (
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs text-emerald-700">
+                    💡 <span className="font-semibold">Format password:</span> inisial nama ({getInitials(selectedGuruName,4)}) + '-' + inisial mapel
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Password</label>
+                  <div className="relative">
+                    <input type={showGuruPassword ? 'text' : 'password'} required placeholder="Masukkan password..." className="w-full px-4 py-3 pr-12 border-2 border-gray-200 rounded-xl focus:border-emerald-500 outline-none transition font-mono"
+                      value={guruPassword} onChange={e => setGuruPassword(e.target.value)} />
+                    <button type="button" onClick={() => setShowGuruPassword(p => !p)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                      {showGuruPassword ? <EyeOff size={18}/> : <Eye size={18}/>}
+                    </button>
+                  </div>
+                </div>
+
+                <button type="submit" className="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl font-bold shadow-lg hover:from-emerald-700 hover:to-teal-700 active:scale-95 transition-all flex items-center justify-center gap-2">
+                  <User size={17}/> Masuk sebagai Guru
+                </button>
+              </form>
+            )}
+
+            {loginMode === 'admin' && (
+              <form onSubmit={handleAdminLogin} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Username</label>
+                  <input type="text" required className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-gray-600 outline-none transition" value={username} onChange={e => setUsername(e.target.value)} />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Password</label>
+                  <input type="password" required className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-gray-600 outline-none transition" value={password} onChange={e => setPassword(e.target.value)} />
+                </div>
+                <button type="submit" className="w-full py-3.5 bg-gray-800 text-white rounded-xl font-bold shadow-lg hover:bg-gray-900 active:scale-95 transition-all flex items-center justify-center gap-2">
+                  <Lock size={17}/> Masuk sebagai Admin
+                </button>
+              </form>
+            )}
           </div>
-          <button type="submit" className="w-full bg-emerald-600 text-white py-2 rounded-lg font-semibold hover:bg-emerald-700 transition">Masuk</button>
-        </form>
+        </div>
+        <p className="text-center text-emerald-200/50 text-xs mt-5">{APP_CONFIG.loginDescription}</p>
       </div>
     </div>
   );
@@ -3324,13 +3502,56 @@ const MasterData = ({ activeTab }) => {
                 <p className="text-[10px] text-gray-500 italic">*Kolom Arab akan otomatis terisi menggunakan Google Translate saat Anda selesai mengetik atau memilih.</p>
             </div>
         );
-        case 'teachers': return (
-            <div className="space-y-4">
-                <input className="w-full p-2 border rounded" placeholder="Nama Lengkap Guru" value={formData.nama || ''} onChange={e => setFormData({...formData, nama: e.target.value})} />
-                <input className="w-full p-2 border rounded" placeholder="NIP / NUPTK (Opsional)" value={formData.nip || ''} onChange={e => setFormData({...formData, nip: e.target.value})} />
-                <input className="w-full p-2 border rounded" placeholder="Posisi/Jabatan (Opsional)" value={formData.posisi || ''} onChange={e => setFormData({...formData, posisi: e.target.value})} />
-            </div>
-        );
+        case 'teachers': {
+            const assignments = getGuruAssignments(formData.nama, data.subjects, data.classes);
+            const uniqueMapelNames = [...new Set(assignments.subjects.map(s => s.nameId).filter(Boolean))];
+            
+            return (
+                <div className="space-y-4">
+                    <input className="w-full p-2 border rounded" placeholder="Nama Lengkap Guru" value={formData.nama || ''} onChange={e => setFormData({...formData, nama: e.target.value})} />
+                    <input className="w-full p-2 border rounded" placeholder="NIP / NUPTK (Opsional)" value={formData.nip || ''} onChange={e => setFormData({...formData, nip: e.target.value})} />
+                    <input className="w-full p-2 border rounded" placeholder="Posisi/Jabatan (Opsional)" value={formData.posisi || ''} onChange={e => setFormData({...formData, posisi: e.target.value})} />
+                    
+                    {formData.nama && (
+                        <div className="mt-6 border border-emerald-200 bg-emerald-50 rounded-xl p-4">
+                            <h4 className="font-bold text-emerald-800 mb-2 flex items-center gap-2"><Lock size={16}/> Info Login Guru</h4>
+                            <p className="text-sm text-emerald-700 mb-3">Password di-generate otomatis oleh sistem berdasarkan nama guru dan mapel yang diajarkan.</p>
+                            
+                            {uniqueMapelNames.length > 0 ? (
+                                <div className="space-y-2">
+                                    {uniqueMapelNames.map(mapel => {
+                                        const pw = generateGuruPassword(formData.nama, mapel);
+                                        return (
+                                            <div key={mapel} className="flex items-center justify-between bg-white border border-emerald-100 rounded-lg p-2">
+                                                <div className="text-sm font-semibold text-gray-700">Mapel: {mapel}</div>
+                                                <div className="flex items-center gap-2">
+                                                    <code className="bg-gray-100 px-2 py-1 rounded text-sm text-emerald-700 font-mono select-all">{pw}</code>
+                                                    <button type="button" onClick={() => { navigator.clipboard.writeText(pw); showNotification('Password dicopy!'); }} className="p-1 hover:bg-emerald-100 rounded text-emerald-600 transition" title="Copy Password">
+                                                        <Copy size={14}/>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                    <p className="text-xs text-emerald-600 mt-2">*Berikan salah satu password di atas kepada guru yang bersangkutan.</p>
+                                </div>
+                            ) : (
+                                <div className="text-sm text-amber-600 bg-amber-50 p-2 rounded-lg border border-amber-200">
+                                    ⚠️ Guru ini belum ditugaskan mengajar mapel apapun di tab Pelajaran.
+                                </div>
+                            )}
+
+                            {assignments.classes.length > 0 && (
+                                <div className="mt-4 text-xs text-gray-600 border-t border-emerald-200/50 pt-2">
+                                    <span className="font-bold">Mengajar di {assignments.classes.length} kelas:</span>{' '}
+                                    {assignments.classes.map(cid => data.classes.find(c => c.id === cid)?.name || cid).join(', ')}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            );
+        }
         case 'subjectCategories': return (
             <div className="space-y-4">
                 <input className="w-full p-2 border rounded font-semibold" placeholder="Kategori Pelajaran (ID)" value={formData.name || ''} 
@@ -7189,10 +7410,27 @@ const InputNilai = ({ activeInputTab }) => {
 
     const activeSetting = data.settings.find(s => s.isActive);
     const activeStudents = getStudentsForYear(data.studentSnapshots, activeSetting, data.students);
-    const classesData = allData?.classes || data.classes;
-    const studentsInClass = getStudentsInClass(activeStudents, classesData, selectedClass);
-    const subjectsInClass = useMemo(() => sortSubjectsByCategory(filterSubjectsByClass(data.subjects, selectedClass, classesData), data.subjectCategories), [data.subjects, data.subjectCategories, selectedClass, classesData]);
-    const gradeDocId = getGradeDocId(selectedClass, classesData, activeSetting, data.grades);
+    const rawClassesData = allData?.classes || data.classes;
+    
+    // Filter classes if user is guru
+    const { currentUser } = useContext(AppContext);
+    const availableClasses = useMemo(() => {
+        if (currentUser?.role === 'guru' && currentUser?.assignedClassIds) {
+            return rawClassesData.filter(c => currentUser.assignedClassIds.includes(c.id));
+        }
+        return rawClassesData;
+    }, [currentUser, rawClassesData]);
+
+    // Ensure selected class is valid
+    useEffect(() => {
+        if (selectedClass && availableClasses.length > 0 && !availableClasses.find(c => c.id === selectedClass)) {
+            setSelectedClass('');
+        }
+    }, [selectedClass, availableClasses]);
+
+    const studentsInClass = getStudentsInClass(activeStudents, rawClassesData, selectedClass);
+    const subjectsInClass = useMemo(() => sortSubjectsByCategory(filterSubjectsByClass(data.subjects, selectedClass, rawClassesData), data.subjectCategories), [data.subjects, data.subjectCategories, selectedClass, rawClassesData]);
+    const gradeDocId = getGradeDocId(selectedClass, rawClassesData, activeSetting, data.grades);
 
     // Build short key map: shortKey -> { realId, dataType }
     const shortKeyMap = useMemo(() => {
@@ -7437,10 +7675,20 @@ const InputNilai = ({ activeInputTab }) => {
                                         if (raport !== '') { rowRaportTotal += raport; rowRaportCount++; classTotals[sub.id] += raport; classCounts[sub.id]++; }
                                         const isRed = raport !== '' && raport < Number(sub.kkm || 0);
                                         return (
-                                        <td key={sub.id} className="p-2 border-r bg-white hover:bg-emerald-50">
+                                        <td key={sub.id} className={`p-2 border-r bg-white hover:bg-emerald-50`}>
                                                 <div className="grid grid-cols-3 gap-1 items-center">
-                                                    <input type="text" dir="auto" title="Nilai UTS (angka)" placeholder="UTS" className="w-full min-w-[56px] p-2 border rounded text-center text-base font-bold outline-none text-gray-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-300" value={uts} onChange={e => handleGradeChange(st.id, sub.id, e.target.value, 'uts')} />
-                                                    <input type="text" dir="auto" title="Nilai UAS (angka)" placeholder="UAS" className="w-full min-w-[56px] p-2 border rounded text-center text-base font-bold outline-none text-gray-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-300" value={uas} onChange={e => handleGradeChange(st.id, sub.id, e.target.value, 'uas')} />
+                                                    <input 
+                                                        type="text" dir="auto" title="Nilai UTS (angka)" placeholder="UTS" 
+                                                        className="w-full min-w-[56px] p-2 border rounded text-center text-base font-bold outline-none text-gray-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-300 disabled:bg-gray-100 disabled:text-gray-400" 
+                                                        value={uts} onChange={e => handleGradeChange(st.id, sub.id, e.target.value, 'uts')} 
+                                                        disabled={currentUser?.role === 'guru' && !currentUser?.assignedSubjectIds?.includes(sub.id)}
+                                                    />
+                                                    <input 
+                                                        type="text" dir="auto" title="Nilai UAS (angka)" placeholder="UAS" 
+                                                        className="w-full min-w-[56px] p-2 border rounded text-center text-base font-bold outline-none text-gray-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-300 disabled:bg-gray-100 disabled:text-gray-400" 
+                                                        value={uas} onChange={e => handleGradeChange(st.id, sub.id, e.target.value, 'uas')} 
+                                                        disabled={currentUser?.role === 'guru' && !currentUser?.assignedSubjectIds?.includes(sub.id)}
+                                                    />
                                                     <div className={`rounded border p-2 text-base font-bold text-center min-w-[56px] ${isRed ? 'text-red-600 bg-red-50 border-red-200' : 'text-gray-800 bg-gray-50 border-gray-200'}`}>
                                                         {raport === '' ? '-' : raport}
                                                     </div>
@@ -7664,7 +7912,7 @@ const InputNilai = ({ activeInputTab }) => {
                     <div className="flex gap-4 items-center bg-gray-50 p-3 rounded-xl border flex-1">
                         <div className="flex-1 flex items-center gap-2">
                             <label className="text-sm font-medium text-gray-700 whitespace-nowrap">Pilih Kelas:</label>
-                            <select className="w-full p-2 border rounded-lg focus:ring-2 outline-none font-bold" value={selectedClass} onChange={e => setSelectedClass(e.target.value)}><option value="">-- Kelas --</option>{data.classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+                            <select className="w-full p-2 border rounded-lg focus:ring-2 outline-none font-bold" value={selectedClass} onChange={e => setSelectedClass(e.target.value)}><option value="">-- Kelas --</option>{availableClasses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
                         </div>
                         <div className="px-4 border-l border-r"><p className="text-xs text-gray-500">Tahun Ajaran</p><p className="font-bold text-gray-800">{activeSetting.tahun}</p></div>
                         <div className="px-4"><p className="text-xs text-gray-500">Semester</p><p className="font-bold text-gray-800">{activeSetting.semester}</p></div>
@@ -9457,9 +9705,9 @@ const Dashboard = () => {
       { id: 'master_data', label: 'Master Data', icon: Users, roles: ['admin'], subItems: masterDataSubItems },
       { id: 'layout_builder', label: 'Desain Layout', icon: LayoutTemplate, roles: ['admin'], subItems: layoutBuilderSubItems },
     { id: 'input_nilai', label: 'Input Nilai', icon: CheckSquare, roles: ['admin', 'guru', 'user'], subItems: inputNilaiSubItems },
-    { id: 'input_ijazah', label: 'Kelola Nilai Ijazah', icon: FileSignature, roles: ['admin', 'guru', 'user'] },
-    { id: 'legger', label: 'Legger Kelas', icon: BookOpen, roles: ['admin', 'guru', 'user'] },
-    { id: 'cetak_raport', label: 'Cetak Raport', icon: Printer, roles: ['admin', 'guru', 'user'] },
+    { id: 'input_ijazah', label: 'Kelola Nilai Ijazah', icon: FileSignature, roles: ['admin', 'user'] },
+    { id: 'legger', label: 'Legger Kelas', icon: BookOpen, roles: ['admin', 'user'] },
+    { id: 'cetak_raport', label: 'Cetak Raport', icon: Printer, roles: ['admin', 'user'] },
     { id: 'cetak_ijazah', label: 'Cetak Ijazah', icon: Printer, roles: ['admin'] },
   ];
 
