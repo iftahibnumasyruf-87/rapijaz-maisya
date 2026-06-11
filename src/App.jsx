@@ -2071,47 +2071,7 @@ const BackupRestorePanel = () => {
         setIsProcessing(false);
     };
 
-    const handleSyncPlotting = async () => {
-        if (!activeSetting) return;
-        const currentSubjects = data.subjects || [];
-        if (currentSubjects.length === 0) {
-            showNotification('Tidak ada data plotting di semester aktif saat ini.', 'error');
-            return;
-        }
-        
-        if (!confirm(`Tindakan ini akan menyalin seluruh konfigurasi Plotting Pelajaran dari semester aktif (${activeSetting.tahun} ${activeSetting.semester}) ke SEMUA semester lainnya. Plotting yang sudah ada di semester lain akan diperbarui/ditambahkan. Lanjutkan?`)) return;
 
-        setIsProcessing(true);
-        let count = 0;
-        try {
-            const otherSettings = allData.settings.filter(s => s.id !== activeSetting.id);
-            
-            for (const setting of otherSettings) {
-                const targetSubjects = allData.subjects.filter(s => s.tahun === setting.tahun && s.semester === setting.semester);
-                
-                for (const currentSub of currentSubjects) {
-                    const existing = targetSubjects.find(s => s.nameId === currentSub.nameId && s.kelas === currentSub.kelas);
-                    
-                    if (existing) {
-                        const payload = { ...existing, guru: currentSub.guru, kategori: currentSub.kategori, order: currentSub.order, tahun: setting.tahun, semester: setting.semester };
-                        // eslint-disable-next-line no-await-in-loop
-                        await saveToDb('subjects', existing.id, payload, true);
-                    } else {
-                        const { id: _oldId, tahun: _oldTahun, semester: _oldSemester, ...rest } = currentSub;
-                        const newId = `subjects_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-                        const payload = { ...rest, id: newId, tahun: setting.tahun, semester: setting.semester };
-                        // eslint-disable-next-line no-await-in-loop
-                        await saveToDb('subjects', newId, payload, true);
-                    }
-                    count++;
-                }
-            }
-            showNotification(`Berhasil menyinkronkan ${count} data plotting ke semua semester!`);
-        } catch (err) {
-            showNotification('Gagal menyinkronkan data: ' + err.message, 'error');
-        }
-        setIsProcessing(false);
-    };
 
     return (
         <div className="space-y-6 max-w-4xl p-2">
@@ -2291,6 +2251,48 @@ const MasterData = ({ activeTab }) => {
     const [subjectClassFilter, setSubjectClassFilter] = useState([]);
     const [isIjazahOrderMode, setIsIjazahOrderMode] = useState(false);
     const [tempIjazahOrders, setTempIjazahOrders] = useState({});
+
+    const handleSyncPlotting = async () => {
+        if (!activeSetting) return;
+        const currentSubjects = data.subjects || [];
+        if (currentSubjects.length === 0) {
+            showNotification('Tidak ada data plotting di semester aktif saat ini.', 'error');
+            return;
+        }
+        
+        if (!confirm(`Tindakan ini akan menyalin seluruh konfigurasi Plotting Pelajaran dari semester aktif (${activeSetting.tahun} ${activeSetting.semester}) ke SEMUA semester lainnya. Plotting yang sudah ada di semester lain akan diperbarui/ditambahkan. Lanjutkan?`)) return;
+
+        setIsBulkProcessing(true);
+        let count = 0;
+        try {
+            const otherSettings = allData.settings.filter(s => s.id !== activeSetting.id);
+            
+            for (const setting of otherSettings) {
+                const targetSubjects = allData.subjects.filter(s => s.tahun === setting.tahun && s.semester === setting.semester);
+                
+                for (const currentSub of currentSubjects) {
+                    const existing = targetSubjects.find(s => s.nameId === currentSub.nameId && s.kelas === currentSub.kelas);
+                    
+                    if (existing) {
+                        const payload = { ...existing, guru: currentSub.guru, kategori: currentSub.kategori, order: currentSub.order, tahun: setting.tahun, semester: setting.semester };
+                        // eslint-disable-next-line no-await-in-loop
+                        await saveToDb('subjects', existing.id, payload, true);
+                    } else {
+                        const { id: _oldId, tahun: _oldTahun, semester: _oldSemester, ...rest } = currentSub;
+                        const newId = `subjects_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+                        const payload = { ...rest, id: newId, tahun: setting.tahun, semester: setting.semester };
+                        // eslint-disable-next-line no-await-in-loop
+                        await saveToDb('subjects', newId, payload, true);
+                    }
+                    count++;
+                }
+            }
+            showNotification(`Berhasil menyinkronkan ${count} data plotting ke semua semester!`);
+        } catch (err) {
+            showNotification('Gagal menyinkronkan data: ' + err.message, 'error');
+        }
+        setIsBulkProcessing(false);
+    };
 
   // Default pengurutan tabel berdasarkan menu (alfabetis secara bawaan)
   const getDefaultSortKey = (tab) => {
@@ -3856,8 +3858,8 @@ const MasterData = ({ activeTab }) => {
         {activeTab !== 'backup_restore' && activeTab !== 'variables_list' && (
           <div className="flex gap-2">
             {activeTab === 'subjects' && (
-              <button onClick={handleSyncPlotting} disabled={isProcessing} className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 shadow-sm transition" title="Sinkronkan Plotting Pelajaran ke Semua Semester">
-                <RefreshCw size={18} className={isProcessing ? 'animate-spin' : ''} /> Sync ke Semua Semester
+              <button onClick={handleSyncPlotting} disabled={isBulkProcessing} className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 shadow-sm transition" title="Sinkronkan Plotting Pelajaran ke Semua Semester">
+                <RefreshCw size={18} className={isBulkProcessing ? 'animate-spin' : ''} /> Sync ke Semua Semester
               </button>
             )}
             <button onClick={() => handleOpenModal()} className="bg-emerald-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-emerald-700 shadow-sm transition"><Plus size={18} /> Tambah Data</button>
