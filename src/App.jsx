@@ -1184,11 +1184,23 @@ const Login = () => {
 
                 {selectedGuruName && uniqueGuruMapel.length > 0 && (
                   <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs text-emerald-700">
-                    <div className="font-semibold mb-1">✅ {uniqueGuruMapel.length} mata pelajaran ditemukan:</div>
-                    <ul className="list-disc list-inside space-y-0.5">
-                      {uniqueGuruMapel.map((s, i) => (
-                        <li key={i}>{s.nameId || s.name || s.id}</li>
-                      ))}
+                    <div className="font-semibold mb-1.5">✅ {uniqueGuruMapel.length} mata pelajaran ditemukan:</div>
+                    <ul className="space-y-1">
+                      {uniqueGuruMapel.map((s, i) => {
+                        // Kumpulkan semua baris untuk mapel ini (bisa di beberapa kelas)
+                        const allRowsForSubject = guruMapel.filter(g => g.nameId === s.nameId);
+                        const kelasLabel = allRowsForSubject.map(g => getSubjectClassLabel(g, allClasses)).filter(Boolean).join(', ') || getSubjectClassLabel(s, allClasses);
+                        const jumlahKelas = allRowsForSubject.length;
+                        return (
+                          <li key={i} className="flex items-start gap-1.5">
+                            <span className="mt-0.5">📖</span>
+                            <span>
+                              <span className="font-semibold">{s.nameId || s.name || s.id}</span>
+                              <span className="text-emerald-600"> — {jumlahKelas} kelas: {kelasLabel}</span>
+                            </span>
+                          </li>
+                        );
+                      })}
                     </ul>
                   </div>
                 )}
