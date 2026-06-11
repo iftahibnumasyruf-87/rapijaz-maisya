@@ -1054,7 +1054,15 @@ const Login = () => {
   const [showGuruPassword, setShowGuruPassword] = useState(false);
   const guruDropdownRef = useRef(null);
 
-  const allTeachers = useMemo(() => [...(allData?.teachers || data?.teachers || [])].sort((a,b) => (a.nama||'').localeCompare(b.nama||'')), [allData, data]);
+  const allTeachers = useMemo(() => {
+    const raw = allData?.teachers || data?.teachers || [];
+    const uniqueMap = new Map();
+    raw.forEach(t => {
+      if (t.nama && !uniqueMap.has(t.nama)) uniqueMap.set(t.nama, t);
+    });
+    return Array.from(uniqueMap.values()).sort((a,b) => (a.nama||'').localeCompare(b.nama||''));
+  }, [allData, data]);
+  
   const allSubjects = useMemo(() => allData?.subjects || data?.subjects || [], [allData, data]);
   const allClasses  = useMemo(() => allData?.classes  || data?.classes  || [], [allData, data]);
 
@@ -7425,7 +7433,7 @@ const InputNilai = ({ activeInputTab }) => {
 
     const activeSetting = data.settings.find(s => s.isActive);
     const activeStudents = getStudentsForYear(data.studentSnapshots, activeSetting, data.students);
-    const rawClassesData = allData?.classes || data.classes;
+    const rawClassesData = data.classes || [];
     
     // Filter classes if user is guru
     const { currentUser } = useContext(AppContext);
