@@ -7249,6 +7249,9 @@ const exportGradesToExcel = (grades, studentsInClass, subjectsInClass, className
         subjectsInClass.forEach(sub => {
             headers.push(`${sub.nameId} - UTS`);
             headers.push(`${sub.nameId} - UAS`);
+            headers.push(`${sub.nameId} - Sakit`);
+            headers.push(`${sub.nameId} - Izin`);
+            headers.push(`${sub.nameId} - Alpa`);
             cols.push(sub.id);
         });
     } else if (activeInputTab === 'presensi') {
@@ -7270,6 +7273,9 @@ const exportGradesToExcel = (grades, studentsInClass, subjectsInClass, className
             subjectsInClass.forEach(sub => {
                 row.push(grades[st.id]?.[sub.id]?.uts || '');
                 row.push(grades[st.id]?.[sub.id]?.uas || '');
+                row.push(grades[st.id]?.[sub.id]?.sakit || '');
+                row.push(grades[st.id]?.[sub.id]?.izin || '');
+                row.push(grades[st.id]?.[sub.id]?.alpa || '');
             });
         } else if (['presensi', 'sikap', 'ekskul'].includes(activeInputTab)) {
             cols.forEach(colId => {
@@ -7284,7 +7290,7 @@ const exportGradesToExcel = (grades, studentsInClass, subjectsInClass, className
     const ws = XLSX.utils.aoa_to_sheet(rows);
     const colWidths = [8, 15, 25];
     cols.forEach(() => {
-        if (activeInputTab === 'pelajaran') { colWidths.push(12, 12); }
+        if (activeInputTab === 'pelajaran') { colWidths.push(12, 12, 10, 10, 10); }
         else if (activeInputTab === 'catatan_wali') { colWidths.push(50); }
         else { colWidths.push(15); }
     });
@@ -7342,14 +7348,23 @@ const importGradesFromExcel = async (file, studentsInClass, subjectsInClass, act
                         subjectsInClass.forEach(sub => {
                             const utsKey = Object.keys(row).find(k => k.includes(sub.nameId) && k.includes('UTS'));
                             const uasKey = Object.keys(row).find(k => k.includes(sub.nameId) && k.includes('UAS'));
+                            const sakitKey = Object.keys(row).find(k => k.includes(sub.nameId) && k.toLowerCase().includes('sakit'));
+                            const izinKey = Object.keys(row).find(k => k.includes(sub.nameId) && k.toLowerCase().includes('izin'));
+                            const alpaKey = Object.keys(row).find(k => k.includes(sub.nameId) && k.toLowerCase().includes('alpa'));
                             
                             const uts = utsKey ? String(row[utsKey]).trim() : '';
                             const uas = uasKey ? String(row[uasKey]).trim() : '';
+                            const sakit = sakitKey ? String(row[sakitKey]).trim() : '';
+                            const izin = izinKey ? String(row[izinKey]).trim() : '';
+                            const alpa = alpaKey ? String(row[alpaKey]).trim() : '';
                             
-                            if (uts || uas) {
+                            if (uts || uas || sakit || izin || alpa) {
                                 importedGrades[student.id][sub.id] = {
                                     uts: uts ? convertArabicToLatin(uts) : '',
-                                    uas: uas ? convertArabicToLatin(uas) : ''
+                                    uas: uas ? convertArabicToLatin(uas) : '',
+                                    sakit: sakit ? convertArabicToLatin(sakit) : '',
+                                    izin: izin ? convertArabicToLatin(izin) : '',
+                                    alpa: alpa ? convertArabicToLatin(alpa) : ''
                                 };
                             }
                         });
@@ -7429,8 +7444,20 @@ const InputNilai = ({ activeInputTab }) => {
     }, [selectedClass, availableClasses]);
 
     const studentsInClass = getStudentsInClass(activeStudents, rawClassesData, selectedClass);
-    const subjectsInClass = useMemo(() => sortSubjectsByCategory(filterSubjectsByClass(data.subjects, selectedClass, rawClassesData), data.subjectCategories), [data.subjects, data.subjectCategories, selectedClass, rawClassesData]);
+    const subjectsInClass = useMemo(() => {
+        let subjects = filterSubjectsByClass(data.subjects, selectedClass, rawClassesData);
+        if (currentUser?.role === 'guru' && currentUser?.assignedSubjectIds) {
+            subjects = subjects.filter(s => currentUser.assignedSubjectIds.includes(s.id));
+        }
+        return sortSubjectsByCategory(subjects, data.subjectCategories);
+    }, [data.subjects, data.subjectCategories, selectedClass, rawClassesData, currentUser]);
     const gradeDocId = getGradeDocId(selectedClass, rawClassesData, activeSetting, data.grades);
+    
+    const isWaliKelas = useMemo(() => {
+        if (!selectedClass || currentUser?.role !== 'guru') return false;
+        const cls = rawClassesData.find(c => c.id === selectedClass);
+        return cls?.wali === currentUser.nama;
+    }, [selectedClass, rawClassesData, currentUser]);
 
     // Build short key map: shortKey -> { realId, dataType }
     const shortKeyMap = useMemo(() => {
@@ -7460,10 +7487,10 @@ const InputNilai = ({ activeInputTab }) => {
             Object.entries(raw).forEach(([key, value]) => {
                 const isSubject = data.subjects.some(sub => sub.id === key);
                 if (isSubject) {
-                    if (value && typeof value === 'object' && ('uts' in value || 'uas' in value)) {
-                        normalized[key] = { uts: value.uts || '', uas: value.uas || '', ...value };
+                    if (value && typeof value === 'object' && ('uts' in value || 'uas' in value || 'sakit' in value)) {
+                        normalized[key] = { uts: value.uts || '', uas: value.uas || '', sakit: value.sakit || '', izin: value.izin || '', alpa: value.alpa || '', ...value };
                     } else {
-                        normalized[key] = { uts: value == null ? '' : String(value), uas: '' };
+                        normalized[key] = { uts: value == null ? '' : String(value), uas: '', sakit: '', izin: '', alpa: '' };
                     }
                 } else {
                     normalized[key] = value;
@@ -7560,6 +7587,37 @@ const InputNilai = ({ activeInputTab }) => {
         } finally {
             setIsImporting(false);
         }
+    };
+
+    const handleRekapPresensi = () => {
+        if (!window.confirm('Yakin ingin merekap kehadiran dari semua mata pelajaran? Ini akan menimpa isian Anda di tab Presensi.')) return;
+        
+        const newGrades = { ...localGrades };
+        const pSakit = data.presences.find(p => p.name.toLowerCase().includes('sakit'));
+        const pIzin = data.presences.find(p => p.name.toLowerCase().includes('izin'));
+        const pAlpa = data.presences.find(p => p.name.toLowerCase().includes('alpa'));
+
+        studentsInClass.forEach(st => {
+            let totalSakit = 0, totalIzin = 0, totalAlpa = 0;
+            subjectsInClass.forEach(sub => {
+                const sVal = newGrades[st.id]?.[sub.id]?.sakit;
+                const iVal = newGrades[st.id]?.[sub.id]?.izin;
+                const aVal = newGrades[st.id]?.[sub.id]?.alpa;
+                
+                // Convert Arabic numbers if needed and cast to number
+                if (sVal) totalSakit += Number(convertArabicToLatin(String(sVal))) || 0;
+                if (iVal) totalIzin += Number(convertArabicToLatin(String(iVal))) || 0;
+                if (aVal) totalAlpa += Number(convertArabicToLatin(String(aVal))) || 0;
+            });
+            
+            if (!newGrades[st.id]) newGrades[st.id] = {};
+            if (pSakit) newGrades[st.id][pSakit.id] = totalSakit > 0 ? String(totalSakit) : '';
+            if (pIzin) newGrades[st.id][pIzin.id] = totalIzin > 0 ? String(totalIzin) : '';
+            if (pAlpa) newGrades[st.id][pAlpa.id] = totalAlpa > 0 ? String(totalAlpa) : '';
+        });
+        
+        setLocalGrades(newGrades);
+        showNotification('Rekap presensi berhasil! Klik Simpan Manual.', 'success');
     };
 
     const handleZoom = (direction) => {
@@ -7671,26 +7729,36 @@ const InputNilai = ({ activeInputTab }) => {
                                     {subjectsInClass.map(sub => {
                                         const uts = localGrades[st.id]?.[sub.id]?.uts || '';
                                         const uas = localGrades[st.id]?.[sub.id]?.uas || '';
+                                        const sakit = localGrades[st.id]?.[sub.id]?.sakit || '';
+                                        const izin = localGrades[st.id]?.[sub.id]?.izin || '';
+                                        const alpa = localGrades[st.id]?.[sub.id]?.alpa || '';
                                         const raport = computeRaportScore(uts, uas);
                                         if (raport !== '') { rowRaportTotal += raport; rowRaportCount++; classTotals[sub.id] += raport; classCounts[sub.id]++; }
                                         const isRed = raport !== '' && raport < Number(sub.kkm || 0);
                                         return (
                                         <td key={sub.id} className={`p-2 border-r bg-white hover:bg-emerald-50`}>
-                                                <div className="grid grid-cols-3 gap-1 items-center">
-                                                    <input 
-                                                        type="text" dir="auto" title="Nilai UTS (angka)" placeholder="UTS" 
-                                                        className="w-full min-w-[56px] p-2 border rounded text-center text-base font-bold outline-none text-gray-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-300 disabled:bg-gray-100 disabled:text-gray-400" 
-                                                        value={uts} onChange={e => handleGradeChange(st.id, sub.id, e.target.value, 'uts')} 
-                                                        disabled={currentUser?.role === 'guru' && !currentUser?.assignedSubjectIds?.includes(sub.id)}
-                                                    />
-                                                    <input 
-                                                        type="text" dir="auto" title="Nilai UAS (angka)" placeholder="UAS" 
-                                                        className="w-full min-w-[56px] p-2 border rounded text-center text-base font-bold outline-none text-gray-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-300 disabled:bg-gray-100 disabled:text-gray-400" 
-                                                        value={uas} onChange={e => handleGradeChange(st.id, sub.id, e.target.value, 'uas')} 
-                                                        disabled={currentUser?.role === 'guru' && !currentUser?.assignedSubjectIds?.includes(sub.id)}
-                                                    />
-                                                    <div className={`rounded border p-2 text-base font-bold text-center min-w-[56px] ${isRed ? 'text-red-600 bg-red-50 border-red-200' : 'text-gray-800 bg-gray-50 border-gray-200'}`}>
-                                                        {raport === '' ? '-' : raport}
+                                                <div className="flex flex-col gap-1">
+                                                    <div className="grid grid-cols-3 gap-1 items-center">
+                                                        <input 
+                                                            type="text" dir="auto" title="Nilai UTS (angka)" placeholder="UTS" 
+                                                            className="w-full min-w-[48px] p-1.5 border rounded text-center text-sm font-bold outline-none text-gray-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-300 disabled:bg-gray-100 disabled:text-gray-400" 
+                                                            value={uts} onChange={e => handleGradeChange(st.id, sub.id, e.target.value, 'uts')} 
+                                                            disabled={currentUser?.role === 'guru' && !currentUser?.assignedSubjectIds?.includes(sub.id)}
+                                                        />
+                                                        <input 
+                                                            type="text" dir="auto" title="Nilai UAS (angka)" placeholder="UAS" 
+                                                            className="w-full min-w-[48px] p-1.5 border rounded text-center text-sm font-bold outline-none text-gray-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-300 disabled:bg-gray-100 disabled:text-gray-400" 
+                                                            value={uas} onChange={e => handleGradeChange(st.id, sub.id, e.target.value, 'uas')} 
+                                                            disabled={currentUser?.role === 'guru' && !currentUser?.assignedSubjectIds?.includes(sub.id)}
+                                                        />
+                                                        <div className={`rounded border p-1.5 text-sm font-bold text-center min-w-[48px] ${isRed ? 'text-red-600 bg-red-50 border-red-200' : 'text-gray-800 bg-gray-50 border-gray-200'}`}>
+                                                            {raport === '' ? '-' : raport}
+                                                        </div>
+                                                    </div>
+                                                    <div className="grid grid-cols-3 gap-1 items-center">
+                                                        <input type="text" dir="auto" title="Sakit (angka)" placeholder="S" className="w-full min-w-[48px] p-1 border rounded text-center text-xs font-semibold outline-none text-yellow-700 bg-yellow-50 focus:border-emerald-500 disabled:bg-gray-100 disabled:text-gray-400" value={sakit} onChange={e => handleGradeChange(st.id, sub.id, e.target.value, 'sakit')} disabled={currentUser?.role === 'guru' && !currentUser?.assignedSubjectIds?.includes(sub.id)} />
+                                                        <input type="text" dir="auto" title="Izin (angka)" placeholder="I" className="w-full min-w-[48px] p-1 border rounded text-center text-xs font-semibold outline-none text-blue-700 bg-blue-50 focus:border-emerald-500 disabled:bg-gray-100 disabled:text-gray-400" value={izin} onChange={e => handleGradeChange(st.id, sub.id, e.target.value, 'izin')} disabled={currentUser?.role === 'guru' && !currentUser?.assignedSubjectIds?.includes(sub.id)} />
+                                                        <input type="text" dir="auto" title="Alpa (angka)" placeholder="A" className="w-full min-w-[48px] p-1 border rounded text-center text-xs font-semibold outline-none text-red-700 bg-red-50 focus:border-emerald-500 disabled:bg-gray-100 disabled:text-gray-400" value={alpa} onChange={e => handleGradeChange(st.id, sub.id, e.target.value, 'alpa')} disabled={currentUser?.role === 'guru' && !currentUser?.assignedSubjectIds?.includes(sub.id)} />
                                                     </div>
                                                 </div>
                                             </td>
@@ -7714,6 +7782,11 @@ const InputNilai = ({ activeInputTab }) => {
                     </tfoot>
                 </table>
             );
+        }
+        if (['presensi', 'sikap', 'catatan_wali'].includes(activeInputTab)) {
+            if (currentUser?.role === 'guru' && !isWaliKelas) {
+                return <div className="flex items-center justify-center h-64 text-red-500 font-bold bg-red-50 border border-red-200 rounded-lg">Maaf, tab ini hanya dapat diakses oleh Wali Kelas untuk kelas ini.</div>;
+            }
         }
         
         if (activeInputTab === 'presensi') {
@@ -7927,7 +8000,7 @@ const InputNilai = ({ activeInputTab }) => {
                     <div className="flex gap-3 items-center bg-blue-50 p-3 rounded-xl border border-blue-200">
                         <button 
                             onClick={handleExportGrades}
-                            disabled={!selectedClass || subjectsInClass.length === 0}
+                            disabled={!selectedClass || (activeInputTab === 'pelajaran' && subjectsInClass.length === 0)}
                             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 disabled:opacity-50 transition"
                         >
                             <Download size={16}/> Unduh Template Excel
@@ -7939,9 +8012,18 @@ const InputNilai = ({ activeInputTab }) => {
                                 accept=".xlsx,.xls" 
                                 className="hidden" 
                                 onChange={handleImportGrades}
-                                disabled={!selectedClass || subjectsInClass.length === 0 || isImporting}
+                                disabled={!selectedClass || (activeInputTab === 'pelajaran' && subjectsInClass.length === 0) || isImporting}
                             />
                         </label>
+                        {activeInputTab === 'presensi' && (
+                            <button 
+                                onClick={handleRekapPresensi}
+                                disabled={!selectedClass || subjectsInClass.length === 0}
+                                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 disabled:opacity-50 transition ml-4"
+                            >
+                                <CheckSquare size={16}/> Rekap dari Mata Pelajaran
+                            </button>
+                        )}
                         <p className="text-xs text-gray-600 ml-auto">💡 Unduh template, isi nilainya, lalu impor kembali untuk update massal</p>
                     </div>
                 )}
@@ -9687,13 +9769,26 @@ const Dashboard = () => {
     { id: 'backup_restore', label: 'Backup & Restore' }
   ];
 
-  const inputNilaiSubItems = [
-    { id: 'pelajaran', label: 'Nilai Pelajaran' },
-    { id: 'presensi', label: 'Presensi' },
-    { id: 'sikap', label: 'Sikap & Kesantrian' },
-    { id: 'ekskul', label: 'Ekstrakurikuler' },
-    { id: 'catatan', label: 'Catatan Wali Kelas' }
-  ];
+  const isWaliKelasAny = useMemo(() => {
+    if (currentUser?.role !== 'guru') return false;
+    const classes = allData?.classes || data.classes || [];
+    return classes.some(c => c.wali === currentUser.nama);
+  }, [currentUser, allData, data.classes]);
+
+  const inputNilaiSubItems = useMemo(() => {
+    const items = [
+      { id: 'pelajaran', label: 'Nilai Pelajaran' }
+    ];
+    if (currentUser?.role === 'admin' || isWaliKelasAny) {
+      items.push({ id: 'presensi', label: 'Presensi' });
+      items.push({ id: 'sikap', label: 'Sikap & Kesantrian' });
+      items.push({ id: 'catatan', label: 'Catatan Wali Kelas' });
+    }
+    if (currentUser?.role === 'admin') {
+      items.push({ id: 'ekskul', label: 'Ekstrakurikuler' });
+    }
+    return items;
+  }, [currentUser, isWaliKelasAny]);
 
     const layoutBuilderSubItems = [
       { id: 'layout_raport', label: 'Layout Raport' },
