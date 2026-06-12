@@ -7485,10 +7485,11 @@ const InputNilai = ({ activeInputTab }) => {
     const { currentUser } = useContext(AppContext);
     const availableClasses = useMemo(() => {
         if (currentUser?.role === 'guru' && currentUser?.assignedClassIds) {
-            return rawClassesData.filter(c => currentUser.assignedClassIds.includes(c.id));
+            const assignedNames = currentUser.assignedClassIds.map(id => getClassNameFromValue(allData?.classes || rawClassesData, id));
+            return rawClassesData.filter(c => currentUser.assignedClassIds.includes(c.id) || assignedNames.includes(c.name));
         }
         return rawClassesData;
-    }, [currentUser, rawClassesData]);
+    }, [currentUser, rawClassesData, allData]);
 
     // Ensure selected class is valid
     useEffect(() => {
@@ -7499,7 +7500,7 @@ const InputNilai = ({ activeInputTab }) => {
 
     const studentsInClass = getStudentsInClass(activeStudents, rawClassesData, selectedClass);
     const subjectsInClass = useMemo(() => {
-        let subjects = filterSubjectsByClass(data.subjects, selectedClass, rawClassesData);
+        let subjects = filterSubjectsByClass(data.subjects, selectedClass, allData?.classes || rawClassesData);
         if (currentUser?.role === 'guru') {
             // Filter by teacher name (lebih andal dari ID yang bisa beda antar semester)
             subjects = subjects.filter(s => 
@@ -7508,7 +7509,7 @@ const InputNilai = ({ activeInputTab }) => {
             );
         }
         return sortSubjectsByCategory(subjects, data.subjectCategories);
-    }, [data.subjects, data.subjectCategories, selectedClass, rawClassesData, currentUser]);
+    }, [data.subjects, data.subjectCategories, selectedClass, rawClassesData, currentUser, allData]);
     const gradeDocId = getGradeDocId(selectedClass, rawClassesData, activeSetting, data.grades);
     
     const isWaliKelas = useMemo(() => {
