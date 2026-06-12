@@ -1189,7 +1189,7 @@ const Login = () => {
                       {uniqueGuruMapel.map((s, i) => {
                         // Kumpulkan semua baris untuk mapel ini (bisa di beberapa kelas)
                         const allRowsForSubject = guruMapel.filter(g => g.nameId === s.nameId);
-                        const kelasLabel = allRowsForSubject.map(g => getSubjectClassLabel(g, allClasses)).filter(Boolean).join(', ') || getSubjectClassLabel(s, allClasses);
+                        const kelasLabel = allRowsForSubject.map(g => getSubjectClassLabel(g, allData?.classes || allClasses)).filter(Boolean).join(', ') || getSubjectClassLabel(s, allData?.classes || allClasses);
                         const jumlahKelas = allRowsForSubject.length;
                         return (
                           <li key={i} className="flex items-start gap-1.5">
