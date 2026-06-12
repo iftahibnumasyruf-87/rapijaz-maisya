@@ -7625,7 +7625,7 @@ const InputNilai = ({ activeInputTab }) => {
             showNotification('Pilih kelas dan pastikan ada mata pelajaran.', 'error');
             return;
         }
-        const className = getClassNameFromValue(classesData, selectedClass);
+        const className = getClassNameFromValue(allData?.classes || rawClassesData, selectedClass);
         exportGradesToExcel(localGrades, studentsInClass, subjectsInClass, className, activeInputTab, data);
     };
 
