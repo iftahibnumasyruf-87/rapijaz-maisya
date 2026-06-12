@@ -7299,7 +7299,7 @@ const exportGradesToExcel = (grades, studentsInClass, subjectsInClass, className
     let headers = ['No', 'NIS', 'Nama Santri'];
     let cols = [];
     
-    if (activeInputTab === 'pelajaran') {
+    if (activeInputTab.startsWith('pelajaran')) {
         subjectsInClass.forEach(sub => {
             headers.push(`${sub.nameId} - UTS`);
             headers.push(`${sub.nameId} - UAS`);
@@ -7323,7 +7323,7 @@ const exportGradesToExcel = (grades, studentsInClass, subjectsInClass, className
     const rows = [headers];
     studentsInClass.forEach((st, idx) => {
         const row = [idx + 1, st.nis || '', st.nama];
-        if (activeInputTab === 'pelajaran') {
+        if (activeInputTab.startsWith('pelajaran')) {
             subjectsInClass.forEach(sub => {
                 row.push(grades[st.id]?.[sub.id]?.uts || '');
                 row.push(grades[st.id]?.[sub.id]?.uas || '');
@@ -7344,7 +7344,7 @@ const exportGradesToExcel = (grades, studentsInClass, subjectsInClass, className
     const ws = XLSX.utils.aoa_to_sheet(rows);
     const colWidths = [8, 15, 25];
     cols.forEach(() => {
-        if (activeInputTab === 'pelajaran') { colWidths.push(12, 12, 10, 10, 10); }
+        if (activeInputTab.startsWith('pelajaran')) { colWidths.push(12, 12, 10, 10, 10); }
         else if (activeInputTab === 'catatan_wali') { colWidths.push(50); }
         else { colWidths.push(15); }
     });
@@ -7398,7 +7398,7 @@ const importGradesFromExcel = async (file, studentsInClass, subjectsInClass, act
                         importedGrades[student.id] = {};
                     }
                     
-                    if (activeInputTab === 'pelajaran') {
+                    if (activeInputTab.startsWith('pelajaran')) {
                         subjectsInClass.forEach(sub => {
                             const utsKey = Object.keys(row).find(k => k.includes(sub.nameId) && k.includes('UTS'));
                             const uasKey = Object.keys(row).find(k => k.includes(sub.nameId) && k.includes('UAS'));
@@ -7481,15 +7481,26 @@ const InputNilai = ({ activeInputTab }) => {
     const activeStudents = getStudentsForYear(data.studentSnapshots, activeSetting, data.students);
     const rawClassesData = data.classes || [];
     
+    const activeSubjectName = activeInputTab.startsWith('pelajaran_') ? decodeURIComponent(activeInputTab.substring(10)) : null;
+
     // Filter classes if user is guru
     const { currentUser } = useContext(AppContext);
     const availableClasses = useMemo(() => {
         if (currentUser?.role === 'guru' && currentUser?.assignedClassIds) {
-            const assignedNames = currentUser.assignedClassIds.map(id => getClassNameFromValue(allData?.classes || rawClassesData, id));
-            return rawClassesData.filter(c => currentUser.assignedClassIds.includes(c.id) || assignedNames.includes(c.name));
+            let filteredClasses = rawClassesData.filter(c => {
+                const assignedNames = currentUser.assignedClassIds.map(id => getClassNameFromValue(allData?.classes || rawClassesData, id));
+                return currentUser.assignedClassIds.includes(c.id) || assignedNames.includes(c.name);
+            });
+            if (activeSubjectName) {
+                filteredClasses = filteredClasses.filter(c => {
+                    const subjects = filterSubjectsByClass(data.subjects, c.id, allData?.classes || rawClassesData);
+                    return subjects.some(s => (s.nameId || s.name || '').trim() === activeSubjectName && s.guru === currentUser.nama);
+                });
+            }
+            return filteredClasses;
         }
         return rawClassesData;
-    }, [currentUser, rawClassesData, allData]);
+    }, [currentUser, rawClassesData, allData, activeSubjectName, data.subjects]);
 
     // Ensure selected class is valid
     useEffect(() => {
@@ -7508,8 +7519,11 @@ const InputNilai = ({ activeInputTab }) => {
                 (currentUser.assignedSubjectIds?.includes(s.id))
             );
         }
+        if (activeSubjectName) {
+            subjects = subjects.filter(s => (s.nameId || s.name || '').trim() === activeSubjectName);
+        }
         return sortSubjectsByCategory(subjects, data.subjectCategories);
-    }, [data.subjects, data.subjectCategories, selectedClass, rawClassesData, currentUser, allData]);
+    }, [data.subjects, data.subjectCategories, selectedClass, rawClassesData, currentUser, allData, activeSubjectName]);
     const gradeDocId = getGradeDocId(selectedClass, rawClassesData, activeSetting, data.grades);
     
     const isWaliKelas = useMemo(() => {
@@ -7607,7 +7621,7 @@ const InputNilai = ({ activeInputTab }) => {
     };
 
     const handleExportGrades = () => {
-        if (!selectedClass || (activeInputTab === 'pelajaran' && subjectsInClass.length === 0)) {
+        if (!selectedClass || (activeInputTab.startsWith('pelajaran') && subjectsInClass.length === 0)) {
             showNotification('Pilih kelas dan pastikan ada mata pelajaran.', 'error');
             return;
         }
@@ -7619,7 +7633,7 @@ const InputNilai = ({ activeInputTab }) => {
         const file = e.target.files?.[0];
         if (!file) return;
         
-        if (!selectedClass || (activeInputTab === 'pelajaran' && subjectsInClass.length === 0)) {
+        if (!selectedClass || (activeInputTab.startsWith('pelajaran') && subjectsInClass.length === 0)) {
             showNotification('Pilih kelas dan pastikan ada mata pelajaran.', 'error');
             return;
         }
@@ -7729,7 +7743,7 @@ const InputNilai = ({ activeInputTab }) => {
     subjectsInClass.forEach(sub => { classTotals[sub.id] = 0; classCounts[sub.id] = 0; });
 
     const renderTableContent = () => {
-        if (activeInputTab === 'pelajaran' && subjectsInClass.length === 0) {
+        if (activeInputTab.startsWith('pelajaran') && subjectsInClass.length === 0) {
             return (
                 <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 text-center">
                     <h3 className="text-lg font-semibold text-gray-800">Belum ada mata pelajaran untuk kelas ini</h3>
@@ -7737,7 +7751,7 @@ const InputNilai = ({ activeInputTab }) => {
                 </div>
             );
         }
-        if (activeInputTab === 'pelajaran') {
+        if (activeInputTab.startsWith('pelajaran')) {
             const groupedSubjects = groupBy(subjectsInClass, 'kategori');
             const orderedGroups = Object.entries(groupedSubjects).sort(([aKey], [bKey]) => {
                 const aIs = isReligiousCategory(aKey);
@@ -8059,7 +8073,7 @@ const InputNilai = ({ activeInputTab }) => {
                     <div className="flex gap-3 items-center bg-blue-50 p-3 rounded-xl border border-blue-200">
                         <button 
                             onClick={handleExportGrades}
-                            disabled={!selectedClass || (activeInputTab === 'pelajaran' && subjectsInClass.length === 0)}
+                            disabled={!selectedClass || (activeInputTab.startsWith('pelajaran') && subjectsInClass.length === 0)}
                             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 disabled:opacity-50 transition"
                         >
                             <Download size={16}/> Unduh Template Excel
@@ -8071,7 +8085,7 @@ const InputNilai = ({ activeInputTab }) => {
                                 accept=".xlsx,.xls" 
                                 className="hidden" 
                                 onChange={handleImportGrades}
-                                disabled={!selectedClass || (activeInputTab === 'pelajaran' && subjectsInClass.length === 0) || isImporting}
+                                disabled={!selectedClass || (activeInputTab.startsWith('pelajaran') && subjectsInClass.length === 0) || isImporting}
                             />
                         </label>
                         {activeInputTab === 'presensi' && (
@@ -9839,6 +9853,21 @@ const Dashboard = () => {
     const items = [
       { id: 'pelajaran', label: 'Nilai Pelajaran' }
     ];
+    if (currentUser?.role === 'guru') {
+      const activeSubjects = data?.subjects || [];
+      const filtered = activeSubjects.filter(s => s.guru === currentUser.nama);
+      const seen = new Set();
+      filtered.forEach(sub => {
+        const name = (sub.nameId || sub.name || '').trim();
+        if (name && !seen.has(name)) {
+          seen.add(name);
+          items.push({ 
+            id: `pelajaran_${encodeURIComponent(name)}`, 
+            label: `↳ ${name}` 
+          });
+        }
+      });
+    }
     if (currentUser?.role === 'admin' || isWaliKelasAny) {
       items.push({ id: 'presensi', label: 'Presensi' });
       items.push({ id: 'sikap', label: 'Sikap & Kesantrian' });
@@ -9848,7 +9877,7 @@ const Dashboard = () => {
       items.push({ id: 'ekskul', label: 'Ekstrakurikuler' });
     }
     return items;
-  }, [currentUser, isWaliKelasAny]);
+  }, [currentUser, isWaliKelasAny, data?.subjects]);
 
     const layoutBuilderSubItems = [
       { id: 'layout_raport', label: 'Layout Raport' },
@@ -9899,7 +9928,7 @@ const Dashboard = () => {
           if (m.id === activeMenu) return m.label;
           if (m.subItems) {
               let sub = m.subItems.find(s => s.id === activeMenu);
-              if (sub) return `${m.label} / ${sub.label}`;
+              if (sub) return `${m.label} / ${sub.label.replace('↳ ', '')}`;
           }
       }
       return 'Menu';
