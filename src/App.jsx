@@ -2660,7 +2660,9 @@ const MasterData = ({ activeTab }) => {
             const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
             const total = rows.length;
             setBulkProgressTotal(total);
-            let count = 0;
+            let countAdded = 0;
+            let countUpdated = 0;
+            let countSkipped = 0;
             for (let i = 0; i < rows.length; i++) {
                 const row = rows[i];
                 const item = {};
@@ -2673,15 +2675,58 @@ const MasterData = ({ activeTab }) => {
                     else if (key === 'kelas') item.kelas = val;
                     else item[key] = val;
                 });
-                item.id = Date.now().toString() + i;
-                setBulkProgressText(`Mengimpor santri: ${item.nama || `Data ke-${i+1}`}`);
-                setBulkProgressCurrent(i + 1);
-                // eslint-disable-next-line no-await-in-loop
-                await saveToDb(type, item.id, item, true);
-                count++;
+
+                // === UPSERT LOGIC: cari berdasarkan NIS ===
+                const nisStr = item.nis !== undefined && item.nis !== '' ? String(item.nis).trim() : null;
+                const existingStudent = nisStr
+                    ? (data.students || []).find(s => String(s.nis || '').trim() === nisStr)
+                    : null;
+
+                if (existingStudent) {
+                    // Cek field mana yang berubah
+                    const changedFields = {};
+                    let hasChange = false;
+                    Object.keys(item).forEach(field => {
+                        const newVal = String(item[field] ?? '').trim();
+                        const oldVal = String(existingStudent[field] ?? '').trim();
+                        if (newVal !== oldVal) {
+                            changedFields[field] = item[field];
+                            hasChange = true;
+                        }
+                    });
+
+                    if (hasChange) {
+                        // Gabungkan data lama + field yang berubah saja
+                        const updatedItem = { ...existingStudent, ...changedFields };
+                        setBulkProgressText(`Memperbarui: ${updatedItem.nama || `Data ke-${i+1}`}`);
+                        setBulkProgressCurrent(i + 1);
+                        // eslint-disable-next-line no-await-in-loop
+                        await saveToDb(type, existingStudent.id, updatedItem, true);
+                        countUpdated++;
+                    } else {
+                        // Tidak ada perubahan, lewati
+                        setBulkProgressText(`Tidak berubah: ${existingStudent.nama || `Data ke-${i+1}`}`);
+                        setBulkProgressCurrent(i + 1);
+                        countSkipped++;
+                        // eslint-disable-next-line no-await-in-loop
+                        await new Promise(r => setTimeout(r, 10));
+                    }
+                } else {
+                    // NIS belum ada — tambah sebagai data baru
+                    item.id = Date.now().toString() + i;
+                    setBulkProgressText(`Menambah baru: ${item.nama || `Data ke-${i+1}`}`);
+                    setBulkProgressCurrent(i + 1);
+                    // eslint-disable-next-line no-await-in-loop
+                    await saveToDb(type, item.id, item, true);
+                    countAdded++;
+                }
             }
             setBulkProgressText('Selesai!');
-            showNotification(`${count} data berhasil diimpor dari Excel!`);
+            const parts = [];
+            if (countAdded > 0) parts.push(`✅ ${countAdded} ditambah`);
+            if (countUpdated > 0) parts.push(`🔄 ${countUpdated} diperbarui`);
+            if (countSkipped > 0) parts.push(`⏭️ ${countSkipped} tidak berubah`);
+            showNotification(`Import selesai — ${parts.join(', ')}.`);
         } catch (err) {
             console.error(err);
             showNotification('Gagal memproses file Excel. Pastikan format benar.', 'error');
