@@ -2643,6 +2643,66 @@ const MasterData = ({ activeTab }) => {
         URL.revokeObjectURL(url);
     };
 
+    const exportStudentsToExcel = () => {
+        const students = data.students || [];
+        if (students.length === 0) {
+            showNotification('Tidak ada data santri untuk diekspor.', 'error');
+            return;
+        }
+
+        // Bangun header kolom tetap + kolom custom (studentFields)
+        const fixedHeaders = ['NIS', 'Nama Lengkap', 'Nama Arab', 'Kelas'];
+        const extraFields = [];
+        try {
+            (data.studentFields || []).forEach(f => {
+                if (f && f.name) extraFields.push(f.name);
+            });
+        } catch (e) {}
+        const allHeaders = [...fixedHeaders, ...extraFields];
+
+        // Bangun baris data
+        const rows = students.map(s => {
+            const row = [
+                s.nis ?? '',
+                s.nama ?? '',
+                s.nama_arab ?? '',
+                s.kelas ?? '',
+            ];
+            extraFields.forEach(fieldName => {
+                const key = fieldName.toString().trim().toLowerCase();
+                row.push(s[key] ?? '');
+            });
+            return row;
+        });
+
+        const ws = XLSX.utils.aoa_to_sheet([allHeaders, ...rows]);
+
+        // Style lebar kolom otomatis
+        ws['!cols'] = allHeaders.map((h, i) => {
+            const maxLen = Math.max(
+                h.length,
+                ...rows.map(r => String(r[i] ?? '').length)
+            );
+            return { wch: Math.min(maxLen + 4, 40) };
+        });
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Data Santri');
+        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([wbout], { type: 'application/octet-stream' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const now = new Date();
+        const dateStr = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
+        a.download = `data_santri_${dateStr}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        showNotification(`✅ ${students.length} data santri berhasil diekspor ke Excel!`);
+    };
+
     const handleImportExcel = async (e, type) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -3419,6 +3479,7 @@ const MasterData = ({ activeTab }) => {
                         <div className="relative print:static">
                             <div className="mb-4 flex flex-wrap gap-2 items-center">
                                 <button disabled={isBulkProcessing} onClick={() => generateExcelTemplate('students')} className="bg-emerald-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-emerald-700 shadow-sm disabled:opacity-50"><Download size={16}/> Download Template Excel</button>
+                                <button disabled={isBulkProcessing} onClick={exportStudentsToExcel} className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 shadow-sm disabled:opacity-50 transition"><Download size={16}/> Export Excel</button>
                                 <label className={`bg-emerald-100 text-emerald-700 px-4 py-2 rounded-lg cursor-pointer flex items-center gap-2 hover:bg-emerald-200 ${isBulkProcessing ? 'opacity-50 pointer-events-none' : ''}`}>
                                     <Upload size={18} /> Impor Excel <input type="file" accept=".xlsx,.xls" className="hidden" onChange={(e) => handleImportExcel(e, 'students')} />
                                 </label>
