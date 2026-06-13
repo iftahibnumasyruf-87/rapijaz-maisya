@@ -2267,6 +2267,8 @@ const MasterData = ({ activeTab }) => {
     const [isNumberSortMode, setIsNumberSortMode] = useState(false);
     const [tempSubjectOrders, setTempSubjectOrders] = useState({});
     const [searchQuery, setSearchQuery] = useState('');
+    const [exportClassFilter, setExportClassFilter] = useState('__all__');
+    const [showExportDropdown, setShowExportDropdown] = useState(false);
     const [subjectClassFilter, setSubjectClassFilter] = useState([]);
     const [isIjazahOrderMode, setIsIjazahOrderMode] = useState(false);
     const [tempIjazahOrders, setTempIjazahOrders] = useState({});
@@ -2643,10 +2645,20 @@ const MasterData = ({ activeTab }) => {
         URL.revokeObjectURL(url);
     };
 
-    const exportStudentsToExcel = () => {
-        const students = data.students || [];
-        if (students.length === 0) {
+    const exportStudentsToExcel = (filterKelas = '__all__') => {
+        const allStudents = data.students || [];
+        if (allStudents.length === 0) {
             showNotification('Tidak ada data santri untuk diekspor.', 'error');
+            return;
+        }
+
+        // Filter berdasarkan kelas jika dipilih
+        const students = filterKelas === '__all__'
+            ? allStudents
+            : allStudents.filter(s => String(s.kelas ?? '').trim() === String(filterKelas).trim());
+
+        if (students.length === 0) {
+            showNotification(`Tidak ada santri di kelas ${filterKelas}.`, 'error');
             return;
         }
 
@@ -2687,7 +2699,8 @@ const MasterData = ({ activeTab }) => {
         });
 
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'Data Santri');
+        const sheetName = filterKelas === '__all__' ? 'Data Santri' : `Kelas ${filterKelas}`;
+        XLSX.utils.book_append_sheet(wb, ws, sheetName);
         const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
         const blob = new Blob([wbout], { type: 'application/octet-stream' });
         const url = URL.createObjectURL(blob);
@@ -2695,12 +2708,15 @@ const MasterData = ({ activeTab }) => {
         a.href = url;
         const now = new Date();
         const dateStr = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
-        a.download = `data_santri_${dateStr}.xlsx`;
+        const kelasLabel = filterKelas === '__all__' ? 'semua_kelas' : `kelas_${String(filterKelas).replace(/\s+/g, '_')}`;
+        a.download = `data_santri_${kelasLabel}_${dateStr}.xlsx`;
         document.body.appendChild(a);
         a.click();
         a.remove();
         URL.revokeObjectURL(url);
-        showNotification(`✅ ${students.length} data santri berhasil diekspor ke Excel!`);
+        const label = filterKelas === '__all__' ? 'semua kelas' : `kelas ${filterKelas}`;
+        showNotification(`✅ ${students.length} santri (${label}) berhasil diekspor ke Excel!`);
+        setShowExportDropdown(false);
     };
 
     const handleImportExcel = async (e, type) => {
@@ -3479,7 +3495,51 @@ const MasterData = ({ activeTab }) => {
                         <div className="relative print:static">
                             <div className="mb-4 flex flex-wrap gap-2 items-center">
                                 <button disabled={isBulkProcessing} onClick={() => generateExcelTemplate('students')} className="bg-emerald-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-emerald-700 shadow-sm disabled:opacity-50"><Download size={16}/> Download Template Excel</button>
-                                <button disabled={isBulkProcessing} onClick={exportStudentsToExcel} className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 shadow-sm disabled:opacity-50 transition"><Download size={16}/> Export Excel</button>
+                                <div className="relative">
+                                    <button
+                                        disabled={isBulkProcessing}
+                                        onClick={() => setShowExportDropdown(v => !v)}
+                                        className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 shadow-sm disabled:opacity-50 transition"
+                                    >
+                                        <Download size={16}/> Export Excel
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                                    </button>
+                                    {showExportDropdown && (
+                                        <div
+                                            className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-50 min-w-[200px] py-1 overflow-hidden"
+                                            onMouseLeave={() => setShowExportDropdown(false)}
+                                        >
+                                            <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider border-b">Pilih Kelas</div>
+                                            <button
+                                                onClick={() => exportStudentsToExcel('__all__')}
+                                                className="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 hover:text-blue-700 transition flex items-center gap-2 font-medium"
+                                            >
+                                                <span className="text-blue-500">📋</span> Semua Kelas ({data.students?.length || 0} santri)
+                                            </button>
+                                            <div className="border-t my-1"/>
+                                            {[...new Set((data.students || []).map(s => String(s.kelas ?? '').trim()).filter(Boolean))]
+                                                .sort((a, b) => {
+                                                    const na = parseFloat(a), nb = parseFloat(b);
+                                                    if (!isNaN(na) && !isNaN(nb)) return na - nb;
+                                                    return a.localeCompare(b);
+                                                })
+                                                .map(kelas => {
+                                                    const count = (data.students || []).filter(s => String(s.kelas ?? '').trim() === kelas).length;
+                                                    return (
+                                                        <button
+                                                            key={kelas}
+                                                            onClick={() => exportStudentsToExcel(kelas)}
+                                                            className="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 hover:text-blue-700 transition flex items-center justify-between gap-2"
+                                                        >
+                                                            <span>Kelas {kelas}</span>
+                                                            <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{count}</span>
+                                                        </button>
+                                                    );
+                                                })
+                                            }
+                                        </div>
+                                    )}
+                                </div>
                                 <label className={`bg-emerald-100 text-emerald-700 px-4 py-2 rounded-lg cursor-pointer flex items-center gap-2 hover:bg-emerald-200 ${isBulkProcessing ? 'opacity-50 pointer-events-none' : ''}`}>
                                     <Upload size={18} /> Impor Excel <input type="file" accept=".xlsx,.xls" className="hidden" onChange={(e) => handleImportExcel(e, 'students')} />
                                 </label>
