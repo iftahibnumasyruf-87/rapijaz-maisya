@@ -8888,6 +8888,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
     const [printRangeEnd, setPrintRangeEnd] = useState('');
     const [aiAnalysisLoading, setAiAnalysisLoading] = useState(false);
     const [aiAnalysisResults, setAiAnalysisResults] = useState({});
+    const [localApiKey, setLocalApiKey] = useState(localStorage.getItem('geminiApiKey') || '');
     
     const activeSetting = data.settings.find(s => s.isActive) || {};
     const activeStudents = getStudentsForYear(data.studentSnapshots, activeSetting, data.students);
@@ -9051,9 +9052,9 @@ const CetakDokumen = ({ mode = 'raport' }) => {
 
     const handleGenerateAI = async () => {
         if (!selectedStudent || !studentData) return;
-        const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+        const apiKey = import.meta.env.VITE_GEMINI_API_KEY || localApiKey;
         if (!apiKey) {
-            alert("API Key Gemini belum disetting di file .env (VITE_GEMINI_API_KEY). Silakan tambahkan terlebih dahulu.");
+            alert("API Key Gemini belum diisi. Silakan masukkan API Key Anda pada kolom yang tersedia.");
             return;
         }
 
@@ -9669,6 +9670,22 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                         <p className="text-[10px] text-gray-400 mt-1 leading-tight">Default 100% agar pas (sejajar) saat Simpan ke PDF. Jika printer fisik memotong tepi kertas, kecilkan skalanya.</p>
                     </div>
                     <div className="pt-4 flex flex-col gap-3">
+                        {!import.meta.env.VITE_GEMINI_API_KEY && (
+                            <div className="bg-purple-50 p-3 rounded-lg border border-purple-200">
+                                <label className="text-xs font-bold text-purple-800 mb-1 block">API Key Gemini (Manual Input):</label>
+                                <input 
+                                    type="password" 
+                                    value={localApiKey} 
+                                    onChange={(e) => {
+                                        setLocalApiKey(e.target.value);
+                                        localStorage.setItem('geminiApiKey', e.target.value);
+                                    }}
+                                    placeholder="Paste API Key Anda (AIzaSy...)"
+                                    className="w-full p-2 border border-purple-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500"
+                                />
+                                <p className="text-[9px] text-purple-600 mt-1 leading-tight">Key disimpan aman di browser Anda. Dapatkan key di <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="underline">Google AI Studio</a>.</p>
+                            </div>
+                        )}
                         <button onClick={handleGenerateAI} disabled={!selectedStudent || aiAnalysisLoading} className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2.5 rounded-lg font-bold flex justify-center items-center gap-2 transition shadow-sm border border-purple-800">
                             {aiAnalysisLoading ? <RefreshCw size={18} className="animate-spin" /> : <span className="flex items-center gap-2">✨ Generate Analisa AI</span>}
                         </button>
