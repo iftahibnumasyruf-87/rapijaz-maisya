@@ -8886,6 +8886,8 @@ const CetakDokumen = ({ mode = 'raport' }) => {
     const [previewZoom, setPreviewZoom] = useState(0.7);
     const [printRangeStart, setPrintRangeStart] = useState('');
     const [printRangeEnd, setPrintRangeEnd] = useState('');
+    const [aiAnalysisLoading, setAiAnalysisLoading] = useState(false);
+    const [aiAnalysisResults, setAiAnalysisResults] = useState({});
     
     const activeSetting = data.settings.find(s => s.isActive) || {};
     const activeStudents = getStudentsForYear(data.studentSnapshots, activeSetting, data.students);
@@ -9046,6 +9048,74 @@ const CetakDokumen = ({ mode = 'raport' }) => {
     }, [rawClassGradesDoc, gradeDocId]);
 
     const [isExporting, setIsExporting] = useState(false);
+
+    const handleGenerateAI = async () => {
+        if (!selectedStudent || !studentData) return;
+        const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+        if (!apiKey) {
+            alert("API Key Gemini belum disetting di file .env (VITE_GEMINI_API_KEY). Silakan tambahkan terlebih dahulu.");
+            return;
+        }
+
+        setAiAnalysisLoading(true);
+        try {
+            const className = getClassNameFromValue(classesData, selectedClass);
+            let textData = `Nama Santri: ${studentData.nama}\nKelas: ${className}\n`;
+            textData += `Tahun Ajaran: ${activeSetting.tahun || '-'} Semester: ${activeSetting.semester || '-'}\n\n`;
+
+            textData += "NILAI AKADEMIK:\n";
+            const relevantSubjects = data.subjects?.filter(s => isSubjectVisibleInClass(s, selectedClass, classesData)) || [];
+            relevantSubjects.forEach(s => {
+                const gradeObj = studentGrades[s.id];
+                let val = '-';
+                if (gradeObj && typeof gradeObj === 'object') {
+                    const r = computeRaportScore(gradeObj.uts, gradeObj.uas);
+                    val = r !== '' ? r : '-';
+                } else if (gradeObj !== undefined && gradeObj !== '') {
+                    val = gradeObj;
+                }
+                const kkm = s.kkm || '-';
+                const rata = classAverages[s.id] || '-';
+                textData += `- ${s.nameId}: Nilai ${val} (KKM: ${kkm}, Rata-rata Kelas: ${rata})\n`;
+            });
+
+            textData += "\nKEHADIRAN:\n";
+            (data.presences || []).forEach(p => {
+                const val = studentGrades[p.id] || '0';
+                textData += `- ${p.name}: ${val} hari\n`;
+            });
+
+            textData += "\nKEPRIBADIAN / SIKAP:\n";
+            (data.characterTraits || []).forEach(p => {
+                const val = studentGrades[p.id] || '-';
+                textData += `- ${p.name}: ${val}\n`;
+            });
+
+            const prompt = `Sebagai pendidik dan wali kelas yang bijak, buatlah ulasan naratif singkat (analisis) untuk lampiran raport santri berdasarkan data berikut:\n\n${textData}\n\nBuatlah dalam Bahasa Indonesia yang formal, empatik, namun memotivasi. Format output harus berupa HTML murni (hanya tag <p>, <ul>, <li>, <strong>, <br>) tanpa bungkus tag markdown \`\`\`html. Susunannya:\n1. Paragraf pembuka menyapa wali murid dan mengapresiasi ananda.\n2. Poin-poin "Yang Sudah Sangat Baik" (akademik, kehadiran, atau sikap).\n3. Poin-poin "Yang Memerlukan Perhatian / Bimbingan Khusus".\n4. Paragraf penutup berisi harapan, doa, dan imbauan kerjasama orangtua.`;
+
+            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }],
+                    generationConfig: { temperature: 0.7 }
+                })
+            });
+
+            if (!res.ok) throw new Error("Gagal menghubungi API Gemini. Pastikan API Key valid.");
+            const resData = await res.json();
+            let aiHtml = resData.candidates?.[0]?.content?.parts?.[0]?.text || "Gagal menghasilkan analisis.";
+            aiHtml = aiHtml.replace(/```html/gi, '').replace(/```/g, '').trim();
+
+            setAiAnalysisResults(prev => ({ ...prev, [selectedStudent]: aiHtml }));
+            addLog(`Generate Analisa AI berhasil untuk ${studentData.nama}`);
+        } catch (error) {
+            console.error(error);
+            alert("Terjadi kesalahan saat men-generate Analisis AI: " + error.message);
+        } finally {
+            setAiAnalysisLoading(false);
+        }
+    };
 
     const handlePrint = () => { 
         document.title = "Cetak_Dokumen"; 
@@ -9599,6 +9669,9 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                         <p className="text-[10px] text-gray-400 mt-1 leading-tight">Default 100% agar pas (sejajar) saat Simpan ke PDF. Jika printer fisik memotong tepi kertas, kecilkan skalanya.</p>
                     </div>
                     <div className="pt-4 flex flex-col gap-3">
+                        <button onClick={handleGenerateAI} disabled={!selectedStudent || aiAnalysisLoading} className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2.5 rounded-lg font-bold flex justify-center items-center gap-2 transition shadow-sm border border-purple-800">
+                            {aiAnalysisLoading ? <RefreshCw size={18} className="animate-spin" /> : <span className="flex items-center gap-2">✨ Generate Analisa AI</span>}
+                        </button>
                         <button onClick={handlePrint} disabled={!selectedStudent} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-bold flex justify-center items-center gap-2 transition"><Printer size={18}/> Print Langsung</button>
                         <button onClick={handleSavePDF} disabled={!selectedStudent} className="w-full bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-lg font-bold flex justify-center items-center gap-2 transition"><Download size={18}/> Simpan sbg PDF</button>
                         <button onClick={handleWA} disabled={!selectedStudent} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-lg font-bold flex justify-center items-center gap-2 transition"><Share2 size={18}/> Kirim Info via WA</button>
@@ -9644,6 +9717,14 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                                         </div>
                                     );
                                 })}
+                                {aiAnalysisResults[std.id] && (
+                                    <div key={`${std.id}-ai`} className={`print-container bg-white relative print:shadow-none print:!m-0 ${isExporting ? '!m-0 shadow-none' : 'shadow-xl'}`} style={{ width: `${canvasWidth}px`, height: `${canvasHeight}px`, pageBreakAfter: stdIndex === studentsToRender.length - 1 ? 'auto' : 'always', marginTop: isExporting ? 0 : '32px', flexShrink: 0 }}>
+                                        <div style={{ position: 'absolute', left: `${printMargins.left}mm`, top: `${printMargins.top}mm`, right: `${printMargins.right}mm`, bottom: `${printMargins.bottom}mm`, overflow: 'hidden', padding: '40px', boxSizing: 'border-box' }}>
+                                            <h2 style={{ textAlign: 'center', fontSize: '24px', fontWeight: 'bold', marginBottom: '30px', borderBottom: '2px solid #000', paddingBottom: '10px' }}>LAMPIRAN: CATATAN PERKEMBANGAN SANTRI</h2>
+                                            <div dangerouslySetInnerHTML={{ __html: aiAnalysisResults[std.id] }} style={{ fontSize: '16px', lineHeight: '1.8', color: '#000', fontFamily: 'serif' }} />
+                                        </div>
+                                    </div>
+                                )}
                             </React.Fragment>
                         ))}
                     </div>
