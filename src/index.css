@@ -54,3 +54,19 @@ table th {
     line-height: 1.25 !important;
   }
 }
+
+/* Flash green animation for copy-paste */
+@keyframes flash-green {
+  0% {
+    background-color: #d1fae5 !important; /* bg-emerald-100 */
+    box-shadow: 0 0 0 2px #10b981 !important; /* ring-emerald-500 */
+  }
+  100% {
+    background-color: inherit;
+    box-shadow: inherit;
+  }
+}
+
+.animate-flash-green {
+  animation: flash-green 1.5s ease-out;
+}

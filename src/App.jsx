@@ -7697,7 +7697,7 @@ const importGradesFromExcel = async (file, studentsInClass, subjectsInClass, act
                         for (let i = 0; i < headerRow1.length; i++) {
                             if (headerRow0[i]) {
                                 const subName = String(headerRow0[i]).trim().toLowerCase();
-                                const sub = subjectsInClass.find(s => (s.nameId || s.name).toLowerCase() === subName);
+                                const sub = subjectsInClass.find(s => (s.nameId || s.name).toLowerCase() === subName) || [...subjectsInClass].sort((a,b) => (b.nameId || b.name).length - (a.nameId || a.name).length).find(s => subName.includes((s.nameId || s.name).toLowerCase()));
                                 if (sub) currentSubId = sub.id;
                                 else if (!subName.includes('no') && !subName.includes('nis') && !subName.includes('nama')) currentSubId = null;
                             }
@@ -8086,6 +8086,390 @@ const InputNilai = ({ activeInputTab }) => {
         return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
     }, []);
 
+    // ============================================================
+    // PASTE FROM EXCEL HANDLER
+    // Supports 3 strategies:
+    //   A) Header-based: clipboard has headers (NIS/Nama/UTS/UAS...)
+    //   B) Student-based: first col matches student NIS/Nama
+    //   C) Positional: plain numbers pasted from focused cell
+    // ============================================================
+    const handlePaste = (e) => {
+        const activeEl = document.activeElement;
+        if (!activeEl || activeEl.dataset.cellType !== 'grade-input') return;
+        if (activeEl.disabled) return;
+
+        e.preventDefault();
+
+        const clipboardData = e.clipboardData || window.clipboardData;
+        const pastedText = clipboardData.getData('text/plain') || clipboardData.getData('Text');
+        if (!pastedText) return;
+
+        // Parse clipboard: rows separated by \n, cols by \t
+        const rawRows = pastedText.split(/\r?\n/);
+        const rows = rawRows
+            .map(r => r.split('\t'))
+            .filter(r => r.length > 1 || (r.length === 1 && r[0].trim() !== ''));
+
+        if (rows.length === 0) return;
+
+        // Flash effect helper
+        const flashElement = (el) => {
+            if (!el) return;
+            el.classList.remove('animate-flash-green');
+            void el.offsetWidth; // force reflow
+            el.classList.add('animate-flash-green');
+            setTimeout(() => el.classList.remove('animate-flash-green'), 1600);
+        };
+
+        // Flatten all grade-input elements in DOM order
+        const getAllInputs = () => {
+            return Array.from(
+                document.querySelectorAll('[data-cell-type="grade-input"]:not(:disabled)')
+            );
+        };
+
+        let updatedCount = 0;
+
+        // ---- Strategy A & B: Does clipboard contain student identifiers? ----
+        const headerRow = rows[0].map(c => String(c).toLowerCase().trim());
+        const nisColIdx = headerRow.findIndex(h => h === 'nis' || h.includes('nis'));
+        const namaColIdx = headerRow.findIndex(h => h === 'nama santri' || h === 'nama' || h.includes('nama'));
+
+        // Check if ANY row's first/second cell matches a known student NIS or name
+        const hasStudentData = (startRow) => {
+            return rows.slice(startRow).some(row => {
+                const v0 = String(row[0] || '').trim();
+                const v1 = String(row[1] || '').trim();
+                return studentsInClass.some(st =>
+                    (st.nis && (String(st.nis) === v0 || String(st.nis) === v1)) ||
+                    (st.nama && (st.nama.toLowerCase().includes(v0.toLowerCase()) && v0.length > 3))
+                );
+            });
+        };
+
+        const isHeaderRow = headerRow.some(h =>
+            ['nis', 'nama', 'no', 'uts', 'uas', 'raport'].includes(h)
+        );
+
+        // Determine if Strategy A (headers present) or B (no headers but has student data)
+        const dataStartRow = isHeaderRow ? 1 : 0;
+        const useStudentMatching = isHeaderRow ? (nisColIdx >= 0 || namaColIdx >= 0) : hasStudentData(0);
+
+        if (useStudentMatching) {
+            // ---- Strategy A / B: Map by student identity ----
+
+            // Build column map from header (Strategy A)
+            const colMap = {}; // colIndex -> { type, id }
+            if (isHeaderRow) {
+                if (activeInputTab.startsWith('pelajaran')) {
+                    // 2-row header: row0=subject name, row1=UTS/UAS/S/I/A
+                    const headerRow1 = rows[1] ? rows[1].map(c => String(c).toLowerCase().trim()) : [];
+                    const isNewFormat = headerRow1.some(h => ['uts', 'uas'].includes(h));
+                    if (isNewFormat && rows.length > 1) {
+                        let currentSubId = null;
+                        rows[0].forEach((cell, i) => {
+                            if (String(cell).trim()) {
+                                const subName = String(cell).trim().toLowerCase();
+                                const sub = subjectsInClass.find(s => (s.nameId || s.name).toLowerCase() === subName);
+                                if (sub) currentSubId = sub.id;
+                            }
+                            if (currentSubId) {
+                                const typeVal = String(rows[1]?.[i] || '').trim().toUpperCase();
+                                if (typeVal === 'UTS') colMap[i] = { subId: currentSubId, type: 'uts' };
+                                else if (typeVal === 'UAS') colMap[i] = { subId: currentSubId, type: 'uas' };
+                                else if (['S', 'SAKIT'].includes(typeVal)) colMap[i] = { subId: currentSubId, type: 'sakit' };
+                                else if (['I', 'IZIN'].includes(typeVal)) colMap[i] = { subId: currentSubId, type: 'izin' };
+                                else if (['A', 'ALPA'].includes(typeVal)) colMap[i] = { subId: currentSubId, type: 'alpa' };
+                            }
+                        });
+                    } else {
+                        // Single-row header with combined names
+                        rows[0].forEach((cell, i) => {
+                            const val = String(cell).toLowerCase();
+                            subjectsInClass.forEach(sub => {
+                                const subName = (sub.nameId || sub.name).toLowerCase();
+                                if (val.includes(subName)) {
+                                    if (val.includes('uts')) colMap[i] = { subId: sub.id, type: 'uts' };
+                                    else if (val.includes('uas')) colMap[i] = { subId: sub.id, type: 'uas' };
+                                    else if (val.includes('sakit')) colMap[i] = { subId: sub.id, type: 'sakit' };
+                                    else if (val.includes('izin')) colMap[i] = { subId: sub.id, type: 'izin' };
+                                    else if (val.includes('alpa')) colMap[i] = { subId: sub.id, type: 'alpa' };
+                                }
+                            });
+                        });
+                    }
+                } else if (activeInputTab === 'presensi') {
+                    rows[0].forEach((cell, i) => {
+                        const val = String(cell).toLowerCase();
+                        data.presences.forEach(p => {
+                            if (val.includes(p.name.toLowerCase())) colMap[i] = { presId: p.id };
+                        });
+                    });
+                } else if (activeInputTab === 'sikap') {
+                    rows[0].forEach((cell, i) => {
+                        const val = String(cell).toLowerCase();
+                        data.characterTraits.forEach(p => {
+                            if (val.includes(p.name.toLowerCase())) colMap[i] = { traitId: p.id };
+                        });
+                    });
+                } else if (activeInputTab === 'ekskul') {
+                    rows[0].forEach((cell, i) => {
+                        const val = String(cell).toLowerCase();
+                        if (val.includes('ekskul 1') && val.includes('nama')) colMap[i] = { eksKey: 'ekskul1_nama' };
+                        else if (val.includes('ekskul 1') && val.includes('nilai')) colMap[i] = { eksKey: 'ekskul1_nilai' };
+                        else if (val.includes('ekskul 2') && val.includes('nama')) colMap[i] = { eksKey: 'ekskul2_nama' };
+                        else if (val.includes('ekskul 2') && val.includes('nilai')) colMap[i] = { eksKey: 'ekskul2_nilai' };
+                    });
+                } else if (activeInputTab === 'catatan' || activeInputTab === 'catatan_wali') {
+                    rows[0].forEach((cell, i) => {
+                        const val = String(cell).toLowerCase();
+                        if (val.includes('catatan')) colMap[i] = { catatanKey: 'catatan_wali' };
+                    });
+                }
+            }
+
+            const newGrades = {};
+            const actualDataRows = isHeaderRow
+                ? (rows[1] && rows[1].some(c => ['uts','uas'].includes(String(c).toLowerCase())) ? rows.slice(2) : rows.slice(1))
+                : rows;
+
+            actualDataRows.forEach(row => {
+                const v0 = String(row[0] || '').trim();
+                const v1 = String(row[1] || '').trim();
+
+                // Find matching student by NIS or name
+                let student = null;
+                if (isHeaderRow && nisColIdx >= 0) {
+                    const nis = String(row[nisColIdx] || '').trim();
+                    const nama = namaColIdx >= 0 ? String(row[namaColIdx] || '').trim() : '';
+                    student = studentsInClass.find(st =>
+                        (st.nis && String(st.nis) === nis) ||
+                        (nama && st.nama && st.nama.toLowerCase().includes(nama.toLowerCase()) && nama.length > 2)
+                    );
+                } else {
+                    // Strategy B: first or second cell is NIS/name
+                    student = studentsInClass.find(st =>
+                        (st.nis && (String(st.nis) === v0 || String(st.nis) === v1)) ||
+                        (st.nama && st.nama.toLowerCase().includes(v0.toLowerCase()) && v0.length > 3) ||
+                        (st.nama && st.nama.toLowerCase().includes(v1.toLowerCase()) && v1.length > 3)
+                    );
+                }
+
+                if (!student) return;
+                if (!newGrades[student.id]) newGrades[student.id] = {};
+
+                if (isHeaderRow && Object.keys(colMap).length > 0) {
+                    // Map via colMap (Strategy A)
+                    Object.entries(colMap).forEach(([ci, mapData]) => {
+                        const val = String(row[Number(ci)] || '').trim();
+                        if (!val || val === '-') return;
+                        if (activeInputTab.startsWith('pelajaran')) {
+                            if (val.toLowerCase() === 'raport') return; // skip raport col
+                            if (!newGrades[student.id][mapData.subId]) newGrades[student.id][mapData.subId] = {};
+                            newGrades[student.id][mapData.subId][mapData.type] = val;
+                            updatedCount++;
+                        } else if (activeInputTab === 'presensi' && mapData.presId) {
+                            newGrades[student.id][mapData.presId] = val;
+                            updatedCount++;
+                        } else if (activeInputTab === 'sikap' && mapData.traitId) {
+                            newGrades[student.id][mapData.traitId] = val;
+                            updatedCount++;
+                        } else if (activeInputTab === 'ekskul' && mapData.eksKey) {
+                            newGrades[student.id][mapData.eksKey] = val;
+                            updatedCount++;
+                        } else if ((activeInputTab === 'catatan' || activeInputTab === 'catatan_wali') && mapData.catatanKey) {
+                            newGrades[student.id][mapData.catatanKey] = val;
+                            updatedCount++;
+                        }
+                    });
+                } else {
+                    // Strategy B: positional mapping after identity columns
+                    // Skip leading No/NIS/Nama columns
+                    const dataStartCol = isHeaderRow ? (Math.max(nisColIdx, namaColIdx) + 1) : (() => {
+                        // Find where numeric/actual data starts
+                        let col = 0;
+                        if (v0 && !isNaN(Number(v0)) && Number(v0) < 1000) col = 1; // Skip 'No'
+                        if (studentsInClass.some(st => st.nis && String(st.nis) === row[col])) col++;
+                        if (studentsInClass.some(st => st.nama && st.nama.toLowerCase().includes(String(row[col] || '').toLowerCase()) && String(row[col] || '').length > 3)) col++;
+                        return col;
+                    })();
+
+                    const dataVals = row.slice(dataStartCol).map(c => String(c).trim()).filter(c => c !== '');
+
+                    if (activeInputTab.startsWith('pelajaran')) {
+                        let valIdx = 0;
+                        subjectsInClass.forEach(sub => {
+                            ['uts', 'uas'].forEach(field => {
+                                if (valIdx < dataVals.length) {
+                                    const val = dataVals[valIdx++];
+                                    if (val && val.toLowerCase() !== 'raport') {
+                                        if (!newGrades[student.id][sub.id]) newGrades[student.id][sub.id] = {};
+                                        newGrades[student.id][sub.id][field] = val;
+                                        updatedCount++;
+                                    }
+                                }
+                            });
+                            valIdx++; // skip Raport col
+                        });
+                    } else if (activeInputTab === 'presensi') {
+                        data.presences.forEach((p, pi) => {
+                            if (pi < dataVals.length && dataVals[pi]) {
+                                newGrades[student.id][p.id] = dataVals[pi];
+                                updatedCount++;
+                            }
+                        });
+                    } else if (activeInputTab === 'sikap') {
+                        data.characterTraits.forEach((p, pi) => {
+                            if (pi < dataVals.length && dataVals[pi]) {
+                                newGrades[student.id][p.id] = dataVals[pi];
+                                updatedCount++;
+                            }
+                        });
+                    } else if (activeInputTab === 'ekskul') {
+                        const eksKeys = ['ekskul1_nama', 'ekskul1_nilai', 'ekskul2_nama', 'ekskul2_nilai'];
+                        eksKeys.forEach((key, ki) => {
+                            if (ki < dataVals.length && dataVals[ki]) {
+                                newGrades[student.id][key] = dataVals[ki];
+                                updatedCount++;
+                            }
+                        });
+                    } else if (activeInputTab === 'catatan' || activeInputTab === 'catatan_wali') {
+                        if (dataVals[0]) {
+                            newGrades[student.id]['catatan_wali'] = dataVals[0];
+                            updatedCount++;
+                        }
+                    }
+                }
+            });
+
+            if (updatedCount > 0) {
+                setLocalGrades(prev => {
+                    const merged = { ...prev };
+                    Object.entries(newGrades).forEach(([sid, sGrades]) => {
+                        if (activeInputTab.startsWith('pelajaran')) {
+                            const existing = { ...prev[sid] };
+                            Object.entries(sGrades).forEach(([subId, subGrades]) => {
+                                existing[subId] = { ...(existing[subId] || {}), ...subGrades };
+                            });
+                            merged[sid] = existing;
+                        } else {
+                            merged[sid] = { ...(prev[sid] || {}), ...sGrades };
+                        }
+                    });
+                    return merged;
+                });
+
+                // Flash all affected inputs after React re-render
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        getAllInputs().forEach(el => {
+                            const sid = el.dataset.studentId;
+                            if (newGrades[sid]) flashElement(el);
+                        });
+                    });
+                });
+                showNotification(`✓ ${updatedCount} data nilai berhasil ditempelkan dari Excel`, 'success');
+            } else {
+                showNotification('Tidak ada data yang cocok ditemukan. Pastikan nama/NIS siswa sesuai.', 'warning');
+            }
+            return;
+        }
+
+        // ---- Strategy C: Positional paste from focused cell ----
+        const allInputs = getAllInputs();
+        const focusedIdx = allInputs.indexOf(activeEl);
+        if (focusedIdx < 0) return;
+
+        // Build ordered list of inputs grouped by student row
+        // Each row in clipboard -> one student row of inputs
+        let globalIdx = focusedIdx;
+        const newGradesC = {};
+
+        rows.forEach(row => {
+            const dataVals = row.map(c => String(c).trim());
+            let localColOffset = 0;
+
+            while (localColOffset < dataVals.length && globalIdx < allInputs.length) {
+                const el = allInputs[globalIdx];
+                const val = dataVals[localColOffset];
+                const sid = el.dataset.studentId;
+                const fieldType = el.dataset.fieldType;
+
+                // Don't paste into raport div (it's readonly anyway)
+                if (!val || val === '-') {
+                    localColOffset++;
+                    globalIdx++;
+                    continue;
+                }
+
+                if (!newGradesC[sid]) newGradesC[sid] = {};
+
+                if (fieldType === 'uts' || fieldType === 'uas') {
+                    const subId = el.dataset.subjectId;
+                    if (!newGradesC[sid][subId]) newGradesC[sid][subId] = {};
+                    newGradesC[sid][subId][fieldType] = val;
+                    updatedCount++;
+                } else if (fieldType === 'sakit' || fieldType === 'izin' || fieldType === 'alpa') {
+                    const subId = el.dataset.subjectId;
+                    if (!newGradesC[sid][subId]) newGradesC[sid][subId] = {};
+                    newGradesC[sid][subId][fieldType] = val;
+                    updatedCount++;
+                } else if (fieldType === 'presensi') {
+                    const presId = el.dataset.presenceId;
+                    newGradesC[sid][presId] = val;
+                    updatedCount++;
+                } else if (fieldType === 'sikap') {
+                    const traitId = el.dataset.traitId;
+                    newGradesC[sid][traitId] = val;
+                    updatedCount++;
+                } else if (fieldType === 'ekskul_nama' || fieldType === 'ekskul_nilai') {
+                    const eksKey = el.dataset.ekskulKey;
+                    newGradesC[sid][eksKey] = val;
+                    updatedCount++;
+                } else if (fieldType === 'catatan_wali') {
+                    newGradesC[sid]['catatan_wali'] = val;
+                    updatedCount++;
+                }
+
+                flashElement(el);
+                localColOffset++;
+                globalIdx++;
+            }
+
+            // Move to start of next student row (find next element with different student)
+            const currentEl = allInputs[globalIdx - 1];
+            if (currentEl) {
+                const currentSid = currentEl.dataset.studentId;
+                while (globalIdx < allInputs.length && allInputs[globalIdx].dataset.studentId === currentSid) {
+                    globalIdx++;
+                }
+            }
+        });
+
+        if (updatedCount > 0) {
+            setLocalGrades(prev => {
+                const merged = { ...prev };
+                Object.entries(newGradesC).forEach(([sid, sGrades]) => {
+                    if (activeInputTab.startsWith('pelajaran')) {
+                        const existing = { ...prev[sid] };
+                        Object.entries(sGrades).forEach(([subId, subGrades]) => {
+                            if (typeof subGrades === 'object') {
+                                existing[subId] = { ...(existing[subId] || {}), ...subGrades };
+                            } else {
+                                existing[subId] = subGrades;
+                            }
+                        });
+                        merged[sid] = existing;
+                    } else {
+                        merged[sid] = { ...(prev[sid] || {}), ...sGrades };
+                    }
+                });
+                return merged;
+            });
+            showNotification(`✓ ${updatedCount} data nilai berhasil ditempelkan dari Excel`, 'success');
+        }
+    };
+
     if (!activeSetting) return (
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 text-center py-12"><AlertCircle className="mx-auto text-yellow-500 mb-4" size={48} /><h3 className="text-xl font-bold text-gray-800 mb-2">Tahun Ajaran Belum Aktif</h3><p className="text-gray-500">Silakan Minta Admin mengaktifkan Tahun Ajaran di Master Data.</p></div>
     );
@@ -8168,21 +8552,23 @@ const InputNilai = ({ activeInputTab }) => {
                                                             className="w-full min-w-[48px] p-1.5 border rounded text-center text-sm font-bold outline-none text-gray-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-300 disabled:bg-gray-100 disabled:text-gray-400" 
                                                             value={uts} onChange={e => handleGradeChange(st.id, sub.id, e.target.value, 'uts')} 
                                                             disabled={currentUser?.role === 'guru' && !currentUser?.assignedSubjectIds?.includes(sub.id)}
+                                                            data-cell-type="grade-input" data-student-id={st.id} data-subject-id={sub.id} data-field-type="uts"
                                                         />
                                                         <input 
                                                             type="text" dir="auto" title="Nilai UAS (angka)" placeholder="UAS" 
                                                             className="w-full min-w-[48px] p-1.5 border rounded text-center text-sm font-bold outline-none text-gray-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-300 disabled:bg-gray-100 disabled:text-gray-400" 
                                                             value={uas} onChange={e => handleGradeChange(st.id, sub.id, e.target.value, 'uas')} 
                                                             disabled={currentUser?.role === 'guru' && !currentUser?.assignedSubjectIds?.includes(sub.id)}
+                                                            data-cell-type="grade-input" data-student-id={st.id} data-subject-id={sub.id} data-field-type="uas"
                                                         />
                                                         <div className={`rounded border p-1.5 text-sm font-bold text-center min-w-[48px] ${isRed ? 'text-red-600 bg-red-50 border-red-200' : 'text-gray-800 bg-gray-50 border-gray-200'}`}>
                                                             {raport === '' ? '-' : raport}
                                                         </div>
                                                     </div>
                                                     <div className="grid grid-cols-3 gap-1 items-center">
-                                                        <input type="text" dir="auto" title="Sakit (angka)" placeholder="S" className="w-full min-w-[48px] p-1 border rounded text-center text-xs font-semibold outline-none text-yellow-700 bg-yellow-50 focus:border-emerald-500 disabled:bg-gray-100 disabled:text-gray-400" value={sakit} onChange={e => handleGradeChange(st.id, sub.id, e.target.value, 'sakit')} disabled={currentUser?.role === 'guru' && !currentUser?.assignedSubjectIds?.includes(sub.id)} />
-                                                        <input type="text" dir="auto" title="Izin (angka)" placeholder="I" className="w-full min-w-[48px] p-1 border rounded text-center text-xs font-semibold outline-none text-blue-700 bg-blue-50 focus:border-emerald-500 disabled:bg-gray-100 disabled:text-gray-400" value={izin} onChange={e => handleGradeChange(st.id, sub.id, e.target.value, 'izin')} disabled={currentUser?.role === 'guru' && !currentUser?.assignedSubjectIds?.includes(sub.id)} />
-                                                        <input type="text" dir="auto" title="Alpa (angka)" placeholder="A" className="w-full min-w-[48px] p-1 border rounded text-center text-xs font-semibold outline-none text-red-700 bg-red-50 focus:border-emerald-500 disabled:bg-gray-100 disabled:text-gray-400" value={alpa} onChange={e => handleGradeChange(st.id, sub.id, e.target.value, 'alpa')} disabled={currentUser?.role === 'guru' && !currentUser?.assignedSubjectIds?.includes(sub.id)} />
+                                                        <input type="text" dir="auto" title="Sakit (angka)" placeholder="S" className="w-full min-w-[48px] p-1 border rounded text-center text-xs font-semibold outline-none text-yellow-700 bg-yellow-50 focus:border-emerald-500 disabled:bg-gray-100 disabled:text-gray-400" value={sakit} onChange={e => handleGradeChange(st.id, sub.id, e.target.value, 'sakit')} disabled={currentUser?.role === 'guru' && !currentUser?.assignedSubjectIds?.includes(sub.id)} data-cell-type="grade-input" data-student-id={st.id} data-subject-id={sub.id} data-field-type="sakit" />
+                                                        <input type="text" dir="auto" title="Izin (angka)" placeholder="I" className="w-full min-w-[48px] p-1 border rounded text-center text-xs font-semibold outline-none text-blue-700 bg-blue-50 focus:border-emerald-500 disabled:bg-gray-100 disabled:text-gray-400" value={izin} onChange={e => handleGradeChange(st.id, sub.id, e.target.value, 'izin')} disabled={currentUser?.role === 'guru' && !currentUser?.assignedSubjectIds?.includes(sub.id)} data-cell-type="grade-input" data-student-id={st.id} data-subject-id={sub.id} data-field-type="izin" />
+                                                        <input type="text" dir="auto" title="Alpa (angka)" placeholder="A" className="w-full min-w-[48px] p-1 border rounded text-center text-xs font-semibold outline-none text-red-700 bg-red-50 focus:border-emerald-500 disabled:bg-gray-100 disabled:text-gray-400" value={alpa} onChange={e => handleGradeChange(st.id, sub.id, e.target.value, 'alpa')} disabled={currentUser?.role === 'guru' && !currentUser?.assignedSubjectIds?.includes(sub.id)} data-cell-type="grade-input" data-student-id={st.id} data-subject-id={sub.id} data-field-type="alpa" />
                                                     </div>
                                                 </div>
                                             </td>
@@ -8238,7 +8624,8 @@ const InputNilai = ({ activeInputTab }) => {
                                 {data.presences.map(p => (
                                     <td key={p.id} className="p-2 border-r bg-white hover:bg-indigo-50">
                                         <input type="text" dir="auto" title="Ketik angka Arab atau Latin (٠-٩ atau 0-9)" className="w-full p-2 border rounded text-center font-bold outline-none focus:border-indigo-500 text-indigo-900"
-                                            value={localGrades[st.id]?.[p.id] || ''} onChange={e => handleGradeChange(st.id, p.id, e.target.value)} placeholder="-" />
+                                            value={localGrades[st.id]?.[p.id] || ''} onChange={e => handleGradeChange(st.id, p.id, e.target.value)} placeholder="-"
+                                            data-cell-type="grade-input" data-student-id={st.id} data-presence-id={p.id} data-field-type="presensi" />
                                     </td>
                                 ))}
                             </tr>
@@ -8273,7 +8660,8 @@ const InputNilai = ({ activeInputTab }) => {
                                 {data.characterTraits.map(p => (
                                     <td key={p.id} className="p-2 border-r bg-white hover:bg-blue-50">
                                         <input type="text" dir="auto" title="Ketik nilai (A/B/C atau angka Arab/Latin)" className="w-full p-2 border rounded text-center font-bold outline-none focus:border-blue-500 text-blue-900"
-                                            value={localGrades[st.id]?.[p.id] || ''} onChange={e => handleGradeChange(st.id, p.id, e.target.value)} placeholder="A/B/C" />
+                                            value={localGrades[st.id]?.[p.id] || ''} onChange={e => handleGradeChange(st.id, p.id, e.target.value)} placeholder="A/B/C"
+                                            data-cell-type="grade-input" data-student-id={st.id} data-trait-id={p.id} data-field-type="sikap" />
                                     </td>
                                 ))}
                             </tr>
@@ -8330,6 +8718,7 @@ const InputNilai = ({ activeInputTab }) => {
                                                 className="w-full p-2 border rounded text-sm outline-none focus:border-orange-500 bg-white text-gray-800"
                                                 value={localGrades[st.id]?.[slot.namaKey] || ''}
                                                 onChange={e => handleGradeChange(st.id, slot.namaKey, e.target.value)}
+                                                data-cell-type="grade-input" data-student-id={st.id} data-ekskul-key={slot.namaKey} data-field-type="ekskul_nama"
                                             >
                                                 <option value="">-- Pilih Ekskul --</option>
                                                 {data.extracurriculars.map(ekskul => (
@@ -8346,6 +8735,7 @@ const InputNilai = ({ activeInputTab }) => {
                                                 value={localGrades[st.id]?.[slot.nilaiKey] || ''}
                                                 onChange={e => handleGradeChange(st.id, slot.nilaiKey, e.target.value)}
                                                 placeholder="A/B/C"
+                                                data-cell-type="grade-input" data-student-id={st.id} data-ekskul-key={slot.nilaiKey} data-field-type="ekskul_nilai"
                                             />
                                         </td>
                                     </React.Fragment>
@@ -8379,7 +8769,8 @@ const InputNilai = ({ activeInputTab }) => {
                                 <td className="p-3 font-semibold bg-white border-r">{st.nama}</td>
                                 <td className="p-2 bg-white">
                                     <textarea className="w-full p-2 border rounded font-medium outline-none focus:border-pink-500 text-pink-900 min-h-[60px]"
-                                        value={localGrades[st.id]?.catatan_wali || ''} onChange={e => handleGradeChange(st.id, 'catatan_wali', e.target.value)} placeholder="Tulis pesan penyemangat..." />
+                                        value={localGrades[st.id]?.catatan_wali || ''} onChange={e => handleGradeChange(st.id, 'catatan_wali', e.target.value)} placeholder="Tulis pesan penyemangat..."
+                                        data-cell-type="grade-input" data-student-id={st.id} data-field-type="catatan_wali" />
                                 </td>
                             </tr>
                         ))}
@@ -8390,7 +8781,7 @@ const InputNilai = ({ activeInputTab }) => {
     };
 
     return (
-        <div ref={containerRef} className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 flex flex-col h-[85vh]">
+        <div ref={containerRef} onPaste={handlePaste} className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 flex flex-col h-[85vh]">
             <div className="flex flex-col gap-3 mb-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex flex-wrap gap-2">
