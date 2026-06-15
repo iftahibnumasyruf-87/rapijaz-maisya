@@ -2267,6 +2267,8 @@ const MasterData = ({ activeTab }) => {
     const [isNumberSortMode, setIsNumberSortMode] = useState(false);
     const [tempSubjectOrders, setTempSubjectOrders] = useState({});
     const [searchQuery, setSearchQuery] = useState('');
+    const [selectedStudents, setSelectedStudents] = useState([]);
+    const [studentClassFilter, setStudentClassFilter] = useState('');
     const [exportClassFilter, setExportClassFilter] = useState('__all__');
     const [showExportDropdown, setShowExportDropdown] = useState(false);
     const [subjectClassFilter, setSubjectClassFilter] = useState([]);
@@ -2369,6 +2371,14 @@ const MasterData = ({ activeTab }) => {
                   (st.nama && String(st.nama).toLowerCase().includes(lowerQuery)) ||
                   (st.nama_arab && String(st.nama_arab).toLowerCase().includes(lowerQuery))
               );
+          });
+      }
+
+      // Filter by class for students tab
+      if (activeTab === 'students' && studentClassFilter && studentClassFilter !== '') {
+          sortableItems = sortableItems.filter(st => {
+              const classId = getClassIdFromValue(allData?.classes || data.classes, st.kelas);
+              return classId === studentClassFilter;
           });
       }
 
@@ -2813,6 +2823,36 @@ const MasterData = ({ activeTab }) => {
             setBulkProgressTotal(0);
         }
     };
+
+  const handleBulkDeleteStudents = async () => {
+      if (selectedStudents.length === 0) return;
+      if (!window.confirm(`Yakin ingin menghapus ${selectedStudents.length} santri terpilih?`)) return;
+      
+      setIsBulkProcessing(true);
+      setBulkProgressTotal(selectedStudents.length);
+      setBulkProgressCurrent(0);
+      setBulkProgressText('Menghapus data santri terpilih...');
+      
+      try {
+          for (let i = 0; i < selectedStudents.length; i++) {
+              const id = selectedStudents[i];
+              await supabase.from('students').delete().eq('id', id);
+              setBulkProgressCurrent(i + 1);
+          }
+          
+          setAllData(prev => ({
+              ...prev,
+              students: prev.students.filter(s => !selectedStudents.includes(s.id))
+          }));
+          setSelectedStudents([]);
+          showNotification(`Berhasil menghapus ${selectedStudents.length} santri.`);
+      } catch (err) {
+          showNotification('Gagal menghapus santri: ' + err.message, 'error');
+      } finally {
+          setIsBulkProcessing(false);
+          setBulkProgressText('');
+      }
+  };
 
   const handleDeleteAllStudents = async () => {
     const total = data.students?.length || 0;
@@ -3543,20 +3583,44 @@ const MasterData = ({ activeTab }) => {
                                 <label className={`bg-emerald-100 text-emerald-700 px-4 py-2 rounded-lg cursor-pointer flex items-center gap-2 hover:bg-emerald-200 ${isBulkProcessing ? 'opacity-50 pointer-events-none' : ''}`}>
                                     <Upload size={18} /> Impor Excel <input type="file" accept=".xlsx,.xls" className="hidden" onChange={(e) => handleImportExcel(e, 'students')} />
                                 </label>
-                                <div className="relative flex-1 min-w-[200px] max-w-xs ml-auto">
-                                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                                    <input 
-                                        type="text" 
-                                        placeholder="Cari NIS atau Nama..." 
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                        className="w-full pl-9 pr-3 py-2 border rounded-lg focus:outline-none focus:border-emerald-500 bg-white"
-                                    />
+                                <div className="relative flex-1 min-w-[300px] ml-auto flex gap-2">
+                                    <select
+                                        className="w-1/2 px-3 py-2 border rounded-lg focus:outline-none focus:border-emerald-500 bg-white text-sm text-gray-700 font-medium"
+                                        value={studentClassFilter}
+                                        onChange={(e) => {
+                                            setStudentClassFilter(e.target.value);
+                                            setSelectedStudents([]);
+                                        }}
+                                    >
+                                        <option value="">Semua Kelas</option>
+                                        {(allData?.classes || data.classes).map(cls => (
+                                            <option key={cls.id} value={cls.id}>{cls.name}</option>
+                                        ))}
+                                    </select>
+                                    <div className="relative flex-1">
+                                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                        <input 
+                                            type="text" 
+                                            placeholder="Cari NIS atau Nama..." 
+                                            value={searchQuery}
+                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                            className="w-full pl-9 pr-3 py-2 border rounded-lg focus:outline-none focus:border-emerald-500 bg-white"
+                                        />
+                                    </div>
                                 </div>
+                                {selectedStudents.length > 0 && (
+                                    <button
+                                        onClick={handleBulkDeleteStudents}
+                                        disabled={isBulkProcessing}
+                                        className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm transition font-semibold disabled:opacity-50 text-sm whitespace-nowrap"
+                                    >
+                                        <Trash2 size={16}/> Hapus Terpilih ({selectedStudents.length})
+                                    </button>
+                                )}
                                 <button
                                     onClick={handleDeleteAllStudents}
                                     disabled={isBulkProcessing}
-                                    className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm transition font-semibold disabled:opacity-50"
+                                    className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm transition font-semibold disabled:opacity-50 text-sm whitespace-nowrap"
                                 >
                                     <Trash2 size={16}/> Hapus Semua ({data.students?.length || 0})
                                 </button>
@@ -3565,7 +3629,21 @@ const MasterData = ({ activeTab }) => {
                                 <table className="w-full text-left border-collapse whitespace-nowrap min-w-max">
                                     <thead className="sticky top-0 bg-gray-100 z-10">
                                         <tr className="text-sm">
-                                            <SortableHeader label="NIS" sortKey="nis" className="sticky left-0 bg-gray-100 z-20 shadow-[1px_0_0_0_#e5e7eb]" />
+                                            <th className="p-3 border-b text-center sticky left-0 bg-gray-100 z-20 shadow-[1px_0_0_0_#e5e7eb] w-12">
+                                                <input 
+                                                    type="checkbox" 
+                                                    className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                                                    checked={sortedData.length > 0 && selectedStudents.length === sortedData.length}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) {
+                                                            setSelectedStudents(sortedData.map(st => st.id));
+                                                        } else {
+                                                            setSelectedStudents([]);
+                                                        }
+                                                    }}
+                                                />
+                                            </th>
+                                            <SortableHeader label="NIS" sortKey="nis" />
                                             <SortableHeader label="Nama Santri" sortKey="nama" />
                                             <SortableHeader label="Nama Arab" sortKey="nama_arab" />
                                             <SortableHeader label="Kelas" sortKey="kelas" />
@@ -3580,8 +3658,22 @@ const MasterData = ({ activeTab }) => {
                                     </thead>
                                     <tbody>
                                         {sortedData.map(st => (
-                                            <tr key={st.id} className="border-b hover:bg-gray-50">
-                                                <td className="p-3 sticky left-0 bg-white group-hover:bg-gray-50 z-10 shadow-[1px_0_0_0_#e5e7eb] font-mono text-sm">{st.nis}</td>
+                                            <tr key={st.id} className={`border-b hover:bg-gray-50 ${selectedStudents.includes(st.id) ? 'bg-emerald-50/50' : ''}`}>
+                                                <td className={`p-3 sticky left-0 z-10 text-center shadow-[1px_0_0_0_#e5e7eb] transition-colors ${selectedStudents.includes(st.id) ? 'bg-emerald-50' : 'bg-white group-hover:bg-gray-50'}`}>
+                                                    <input 
+                                                        type="checkbox" 
+                                                        className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                                                        checked={selectedStudents.includes(st.id)}
+                                                        onChange={(e) => {
+                                                            if (e.target.checked) {
+                                                                setSelectedStudents([...selectedStudents, st.id]);
+                                                            } else {
+                                                                setSelectedStudents(selectedStudents.filter(id => id !== st.id));
+                                                            }
+                                                        }}
+                                                    />
+                                                </td>
+                                                <td className="p-3 font-mono text-sm">{st.nis}</td>
                                                 <td className="p-3 font-semibold">{st.nama}</td>
                                                 <td className="p-3 font-arabic" dir="rtl">{st.nama_arab}</td>
                                                 <td className="p-3">{getClassNameFromValue(allData?.classes || data.classes, st.kelas)}</td>
@@ -7461,7 +7553,7 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
 // ==========================================
 // UTILITY: EXCEL IMPORT/EXPORT FOR GRADES
 // ==========================================
-const exportGradesToExcel = (grades, studentsInClass, subjectsInClass, className, activeInputTab, data) => {
+const exportGradesToExcel = (grades, studentsInClass, subjectsInClass, className, activeInputTab, data, includePresensi = true) => {
     let headers = ['No', 'NIS', 'Nama Santri'];
     let cols = [];
     
@@ -7469,9 +7561,11 @@ const exportGradesToExcel = (grades, studentsInClass, subjectsInClass, className
         subjectsInClass.forEach(sub => {
             headers.push(`${sub.nameId} - UTS`);
             headers.push(`${sub.nameId} - UAS`);
-            headers.push(`${sub.nameId} - Sakit`);
-            headers.push(`${sub.nameId} - Izin`);
-            headers.push(`${sub.nameId} - Alpa`);
+            if (includePresensi) {
+                headers.push(`${sub.nameId} - Sakit`);
+                headers.push(`${sub.nameId} - Izin`);
+                headers.push(`${sub.nameId} - Alpa`);
+            }
             cols.push(sub.id);
         });
     } else if (activeInputTab === 'presensi') {
@@ -7493,9 +7587,11 @@ const exportGradesToExcel = (grades, studentsInClass, subjectsInClass, className
             subjectsInClass.forEach(sub => {
                 row.push(grades[st.id]?.[sub.id]?.uts || '');
                 row.push(grades[st.id]?.[sub.id]?.uas || '');
-                row.push(grades[st.id]?.[sub.id]?.sakit || '');
-                row.push(grades[st.id]?.[sub.id]?.izin || '');
-                row.push(grades[st.id]?.[sub.id]?.alpa || '');
+                if (includePresensi) {
+                    row.push(grades[st.id]?.[sub.id]?.sakit || '');
+                    row.push(grades[st.id]?.[sub.id]?.izin || '');
+                    row.push(grades[st.id]?.[sub.id]?.alpa || '');
+                }
             });
         } else if (['presensi', 'sikap', 'ekskul'].includes(activeInputTab)) {
             cols.forEach(colId => {
@@ -7510,7 +7606,13 @@ const exportGradesToExcel = (grades, studentsInClass, subjectsInClass, className
     const ws = XLSX.utils.aoa_to_sheet(rows);
     const colWidths = [8, 15, 25];
     cols.forEach(() => {
-        if (activeInputTab.startsWith('pelajaran')) { colWidths.push(12, 12, 10, 10, 10); }
+        if (activeInputTab.startsWith('pelajaran')) { 
+            if (includePresensi) {
+                colWidths.push(12, 12, 10, 10, 10); 
+            } else {
+                colWidths.push(12, 12);
+            }
+        }
         else if (activeInputTab === 'catatan_wali') { colWidths.push(50); }
         else { colWidths.push(15); }
     });
@@ -7638,6 +7740,7 @@ const InputNilai = ({ activeInputTab }) => {
     const [zoomLevel, setZoomLevel] = useState(100);
     const [isHeaderHidden, setIsHeaderHidden] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [includePresensiInExport, setIncludePresensiInExport] = useState(true);
     const containerRef = useRef(null);
     
     // Gunakan useRef untuk melacak status terakhir yang disave ke database (Debouncing Check)
@@ -7792,7 +7895,7 @@ const InputNilai = ({ activeInputTab }) => {
             return;
         }
         const className = getClassNameFromValue(allData?.classes || rawClassesData, selectedClass);
-        exportGradesToExcel(localGrades, studentsInClass, subjectsInClass, className, activeInputTab, data);
+        exportGradesToExcel(localGrades, studentsInClass, subjectsInClass, className, activeInputTab, data, includePresensiInExport);
     };
 
     const handleImportGrades = async (e) => {
@@ -8236,14 +8339,27 @@ const InputNilai = ({ activeInputTab }) => {
                 </div>
                 {/* Excel Import/Export Buttons */}
                 {selectedClass && (
-                    <div className="flex gap-3 items-center bg-blue-50 p-3 rounded-xl border border-blue-200">
-                        <button 
-                            onClick={handleExportGrades}
-                            disabled={!selectedClass || (activeInputTab.startsWith('pelajaran') && subjectsInClass.length === 0)}
-                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 disabled:opacity-50 transition"
-                        >
-                            <Download size={16}/> Unduh Template Excel
-                        </button>
+                    <div className="flex flex-wrap gap-3 items-center bg-blue-50 p-3 rounded-xl border border-blue-200">
+                        <div className="flex flex-col gap-1">
+                            <button 
+                                onClick={handleExportGrades}
+                                disabled={!selectedClass || (activeInputTab.startsWith('pelajaran') && subjectsInClass.length === 0)}
+                                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 disabled:opacity-50 transition"
+                            >
+                                <Download size={16}/> Unduh Template Excel
+                            </button>
+                            {activeInputTab.startsWith('pelajaran') && (
+                                <label className="flex items-center gap-1.5 text-[11px] text-blue-800 font-medium cursor-pointer ml-1 mt-0.5">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={includePresensiInExport} 
+                                        onChange={e => setIncludePresensiInExport(e.target.checked)}
+                                        className="rounded border-blue-300 text-blue-600 focus:ring-blue-500 w-3 h-3 cursor-pointer"
+                                    />
+                                    Sertakan Presensi (Sakit, Izin, Alpa)
+                                </label>
+                            )}
+                        </div>
                         <label className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 cursor-pointer disabled:opacity-50 transition">
                             <Upload size={16}/> {isImporting ? 'Mengimpor...' : 'Impor dari Excel'}
                             <input 
