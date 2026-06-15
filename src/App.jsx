@@ -7554,33 +7554,47 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
 // UTILITY: EXCEL IMPORT/EXPORT FOR GRADES
 // ==========================================
 const exportGradesToExcel = (grades, studentsInClass, subjectsInClass, className, activeInputTab, data, includePresensi = true) => {
-    let headers = ['No', 'NIS', 'Nama Santri'];
+    let headers1 = ['No', 'NIS', 'Nama Santri'];
+    let headers2 = ['', '', ''];
     let cols = [];
+    let merges = [];
     
     if (activeInputTab.startsWith('pelajaran')) {
+        let currentCol = 3;
+        merges.push({ s: { r: 0, c: 0 }, e: { r: 1, c: 0 } });
+        merges.push({ s: { r: 0, c: 1 }, e: { r: 1, c: 1 } });
+        merges.push({ s: { r: 0, c: 2 }, e: { r: 1, c: 2 } });
+
         subjectsInClass.forEach(sub => {
-            headers.push(`${sub.nameId} - UTS`);
-            headers.push(`${sub.nameId} - UAS`);
+            headers1.push(sub.nameId || sub.name);
+            headers2.push('UTS');
+            headers2.push('UAS');
             if (includePresensi) {
-                headers.push(`${sub.nameId} - Sakit`);
-                headers.push(`${sub.nameId} - Izin`);
-                headers.push(`${sub.nameId} - Alpa`);
+                headers1.push('', '', '', ''); // span 5
+                headers2.push('S', 'I', 'A');
+                merges.push({ s: { r: 0, c: currentCol }, e: { r: 0, c: currentCol + 4 } });
+                currentCol += 5;
+            } else {
+                headers1.push(''); // span 2
+                merges.push({ s: { r: 0, c: currentCol }, e: { r: 0, c: currentCol + 1 } });
+                currentCol += 2;
             }
             cols.push(sub.id);
         });
     } else if (activeInputTab === 'presensi') {
-        data.presences.forEach(p => { headers.push(p.name); cols.push(p.id); });
+        data.presences.forEach(p => { headers1.push(p.name); cols.push(p.id); });
     } else if (activeInputTab === 'sikap') {
-        data.characterTraits.forEach(p => { headers.push(p.name); cols.push(p.id); });
+        data.characterTraits.forEach(p => { headers1.push(p.name); cols.push(p.id); });
     } else if (activeInputTab === 'ekskul') {
-        headers.push('Ekskul 1 Nama', 'Ekskul 1 Nilai', 'Ekskul 2 Nama', 'Ekskul 2 Nilai');
+        headers1.push('Ekskul 1 Nama', 'Ekskul 1 Nilai', 'Ekskul 2 Nama', 'Ekskul 2 Nilai');
         cols.push('ekskul1_nama', 'ekskul1_nilai', 'ekskul2_nama', 'ekskul2_nilai');
     } else if (activeInputTab === 'catatan_wali') {
-        headers.push('Catatan Wali Kelas');
+        headers1.push('Catatan Wali Kelas');
         cols.push('catatan_wali');
     }
 
-    const rows = [headers];
+    const rows = activeInputTab.startsWith('pelajaran') ? [headers1, headers2] : [headers1];
+    
     studentsInClass.forEach((st, idx) => {
         const row = [idx + 1, st.nis || '', st.nama];
         if (activeInputTab.startsWith('pelajaran')) {
@@ -7604,6 +7618,10 @@ const exportGradesToExcel = (grades, studentsInClass, subjectsInClass, className
     });
     
     const ws = XLSX.utils.aoa_to_sheet(rows);
+    if (activeInputTab.startsWith('pelajaran') && merges.length > 0) {
+        ws['!merges'] = merges;
+    }
+    
     const colWidths = [8, 15, 25];
     cols.forEach(() => {
         if (activeInputTab.startsWith('pelajaran')) { 
@@ -7617,7 +7635,7 @@ const exportGradesToExcel = (grades, studentsInClass, subjectsInClass, className
         else { colWidths.push(15); }
     });
     ws['!cols'] = colWidths.map(w => ({ wch: w }));
-    ws['!freeze'] = { xSplit: 3, ySplit: 1 };
+    ws['!freeze'] = { xSplit: 3, ySplit: activeInputTab.startsWith('pelajaran') ? 2 : 1 };
     
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, `Data_${activeInputTab}`);
@@ -7642,81 +7660,137 @@ const importGradesFromExcel = async (file, studentsInClass, subjectsInClass, act
                 const workbook = XLSX.read(dataBuf, { type: 'array' });
                 const sheetName = workbook.SheetNames[0];
                 const sheet = workbook.Sheets[sheetName];
-                const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+                const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
                 
                 const importedGrades = {};
-                rows.forEach((row, rowIdx) => {
-                    const nisKey = Object.keys(row).find(k => k.toLowerCase().includes('nis'));
-                    const namaKey = Object.keys(row).find(k => k.toLowerCase().includes('nama') && !k.toLowerCase().includes('arab'));
+                let nisColIdx = -1;
+                let namaColIdx = -1;
+                const colMap = {};
+                
+                const headerRow0 = rows[0] || [];
+                const headerRow1 = rows[1] || [];
+                
+                let isNewFormat = false;
+                if (activeInputTab.startsWith('pelajaran') && headerRow1.some(cell => ['UTS', 'UAS'].includes(String(cell).toUpperCase().trim()))) {
+                    isNewFormat = true;
+                }
+                
+                [headerRow0, headerRow1].forEach(r => {
+                    r.forEach((cell, idx) => {
+                        const val = String(cell).toLowerCase();
+                        if (val.includes('nis') && nisColIdx === -1) nisColIdx = idx;
+                        if (val.includes('nama') && !val.includes('arab') && !val.includes('ekskul') && namaColIdx === -1) namaColIdx = idx;
+                    });
+                });
+                
+                if (activeInputTab.startsWith('pelajaran')) {
+                    if (isNewFormat) {
+                        let currentSubId = null;
+                        for (let i = 0; i < headerRow1.length; i++) {
+                            if (headerRow0[i]) {
+                                const subName = String(headerRow0[i]).trim().toLowerCase();
+                                const sub = subjectsInClass.find(s => (s.nameId || s.name).toLowerCase() === subName);
+                                if (sub) currentSubId = sub.id;
+                                else if (!subName.includes('no') && !subName.includes('nis') && !subName.includes('nama')) currentSubId = null;
+                            }
+                            if (currentSubId) {
+                                const typeVal = String(headerRow1[i]).trim().toUpperCase();
+                                if (typeVal === 'UTS') colMap[i] = { subId: currentSubId, type: 'uts' };
+                                if (typeVal === 'UAS') colMap[i] = { subId: currentSubId, type: 'uas' };
+                                if (typeVal === 'S' || typeVal === 'SAKIT') colMap[i] = { subId: currentSubId, type: 'sakit' };
+                                if (typeVal === 'I' || typeVal === 'IZIN') colMap[i] = { subId: currentSubId, type: 'izin' };
+                                if (typeVal === 'A' || typeVal === 'ALPA') colMap[i] = { subId: currentSubId, type: 'alpa' };
+                            }
+                        }
+                    } else {
+                        headerRow0.forEach((cell, i) => {
+                            const val = String(cell).toLowerCase();
+                            subjectsInClass.forEach(sub => {
+                                const subName = (sub.nameId || sub.name).toLowerCase();
+                                if (val.includes(subName)) {
+                                    if (val.includes('uts')) colMap[i] = { subId: sub.id, type: 'uts' };
+                                    if (val.includes('uas')) colMap[i] = { subId: sub.id, type: 'uas' };
+                                    if (val.includes('sakit')) colMap[i] = { subId: sub.id, type: 'sakit' };
+                                    if (val.includes('izin')) colMap[i] = { subId: sub.id, type: 'izin' };
+                                    if (val.includes('alpa')) colMap[i] = { subId: sub.id, type: 'alpa' };
+                                }
+                            });
+                        });
+                    }
+                } else if (activeInputTab === 'presensi') {
+                    headerRow0.forEach((cell, i) => {
+                        const val = String(cell).toLowerCase();
+                        data.presences.forEach(p => {
+                            if (val.includes(p.name.toLowerCase())) colMap[i] = p.id;
+                        });
+                    });
+                } else if (activeInputTab === 'sikap') {
+                    headerRow0.forEach((cell, i) => {
+                        const val = String(cell).toLowerCase();
+                        data.characterTraits.forEach(p => {
+                            if (val.includes(p.name.toLowerCase())) colMap[i] = p.id;
+                        });
+                    });
+                } else if (activeInputTab === 'ekskul') {
+                    headerRow0.forEach((cell, i) => {
+                        const val = String(cell).toLowerCase();
+                        if (val.includes('ekskul 1 nama')) colMap[i] = 'ekskul1_nama';
+                        if (val.includes('ekskul 1 nilai')) colMap[i] = 'ekskul1_nilai';
+                        if (val.includes('ekskul 2 nama')) colMap[i] = 'ekskul2_nama';
+                        if (val.includes('ekskul 2 nilai')) colMap[i] = 'ekskul2_nilai';
+                    });
+                } else if (activeInputTab === 'catatan_wali') {
+                    headerRow0.forEach((cell, i) => {
+                        const val = String(cell).toLowerCase();
+                        if (val.includes('catatan wali')) colMap[i] = 'catatan_wali';
+                    });
+                }
+
+                const dataStartIdx = isNewFormat ? 2 : 1;
+                for (let r = dataStartIdx; r < rows.length; r++) {
+                    const row = rows[r];
+                    if (!row || row.length === 0) continue;
                     
-                    const nis = row[nisKey] || '';
-                    const nama = row[namaKey] || '';
+                    const nis = String(row[nisColIdx] || '').trim();
+                    const nama = String(row[namaColIdx] || '').trim();
+                    if (!nis && !nama) continue;
                     
                     const student = studentsInClass.find(st => 
-                        (st.nis && String(st.nis) === String(nis)) ||
-                        (st.nama && st.nama.toLowerCase().includes(String(nama).toLowerCase()))
+                        (st.nis && String(st.nis) === nis) ||
+                        (st.nama && st.nama.toLowerCase().includes(nama.toLowerCase()))
                     );
                     
                     if (!student) {
                         console.warn(`Siswa dengan NIS ${nis} atau nama ${nama} tidak ditemukan.`);
-                        return;
+                        continue;
                     }
                     
-                    if (!importedGrades[student.id]) {
-                        importedGrades[student.id] = {};
-                    }
+                    if (!importedGrades[student.id]) importedGrades[student.id] = {};
                     
                     if (activeInputTab.startsWith('pelajaran')) {
-                        subjectsInClass.forEach(sub => {
-                            const utsKey = Object.keys(row).find(k => k.includes(sub.nameId) && k.includes('UTS'));
-                            const uasKey = Object.keys(row).find(k => k.includes(sub.nameId) && k.includes('UAS'));
-                            const sakitKey = Object.keys(row).find(k => k.includes(sub.nameId) && k.toLowerCase().includes('sakit'));
-                            const izinKey = Object.keys(row).find(k => k.includes(sub.nameId) && k.toLowerCase().includes('izin'));
-                            const alpaKey = Object.keys(row).find(k => k.includes(sub.nameId) && k.toLowerCase().includes('alpa'));
-                            
-                            const uts = utsKey ? String(row[utsKey]).trim() : '';
-                            const uas = uasKey ? String(row[uasKey]).trim() : '';
-                            const sakit = sakitKey ? String(row[sakitKey]).trim() : '';
-                            const izin = izinKey ? String(row[izinKey]).trim() : '';
-                            const alpa = alpaKey ? String(row[alpaKey]).trim() : '';
-                            
-                            if (uts || uas || sakit || izin || alpa) {
-                                importedGrades[student.id][sub.id] = {
-                                    uts: uts ? convertArabicToLatin(uts) : '',
-                                    uas: uas ? convertArabicToLatin(uas) : '',
-                                    sakit: sakit ? convertArabicToLatin(sakit) : '',
-                                    izin: izin ? convertArabicToLatin(izin) : '',
-                                    alpa: alpa ? convertArabicToLatin(alpa) : ''
-                                };
+                        Object.entries(colMap).forEach(([colIdxStr, mapData]) => {
+                            const colIdx = Number(colIdxStr);
+                            const val = String(row[colIdx] || '').trim();
+                            if (val) {
+                                if (!importedGrades[student.id][mapData.subId]) importedGrades[student.id][mapData.subId] = {};
+                                importedGrades[student.id][mapData.subId][mapData.type] = convertArabicToLatin(val);
                             }
                         });
-                    } else if (activeInputTab === 'presensi') {
-                        data.presences.forEach(p => {
-                            const valKey = Object.keys(row).find(k => k.toLowerCase().includes(p.name.toLowerCase()));
-                            if (valKey && row[valKey]) importedGrades[student.id][p.id] = convertArabicToLatin(String(row[valKey]).trim());
-                        });
-                    } else if (activeInputTab === 'sikap') {
-                        data.characterTraits.forEach(p => {
-                            const valKey = Object.keys(row).find(k => k.toLowerCase().includes(p.name.toLowerCase()));
-                            if (valKey && row[valKey]) importedGrades[student.id][p.id] = String(row[valKey]).trim();
-                        });
-                    } else if (activeInputTab === 'ekskul') {
-                        const ekskulImportMap = [
-                            { namaCol: 'ekskul 1 nama', nilaiCol: 'ekskul 1 nilai', namaKey: 'ekskul1_nama', nilaiKey: 'ekskul1_nilai' },
-                            { namaCol: 'ekskul 2 nama', nilaiCol: 'ekskul 2 nilai', namaKey: 'ekskul2_nama', nilaiKey: 'ekskul2_nilai' },
-                        ];
-                        ekskulImportMap.forEach(({ namaCol, nilaiCol, namaKey, nilaiKey }) => {
-                            const namaValKey = Object.keys(row).find(k => k.toLowerCase().includes(namaCol));
-                            const nilaiValKey = Object.keys(row).find(k => k.toLowerCase().includes(nilaiCol));
-                            if (namaValKey && row[namaValKey]) importedGrades[student.id][namaKey] = String(row[namaValKey]).trim();
-                            if (nilaiValKey && row[nilaiValKey]) importedGrades[student.id][nilaiKey] = String(row[nilaiValKey]).trim();
+                    } else if (['presensi', 'sikap', 'ekskul'].includes(activeInputTab)) {
+                        Object.entries(colMap).forEach(([colIdxStr, fieldId]) => {
+                            const colIdx = Number(colIdxStr);
+                            const val = String(row[colIdx] || '').trim();
+                            if (val) importedGrades[student.id][fieldId] = (activeInputTab === 'presensi') ? convertArabicToLatin(val) : val;
                         });
                     } else if (activeInputTab === 'catatan_wali') {
-                        const valKey = Object.keys(row).find(k => k.toLowerCase().includes('catatan wali'));
-                        if (valKey && row[valKey]) importedGrades[student.id]['catatan_wali'] = String(row[valKey]).trim();
+                        Object.entries(colMap).forEach(([colIdxStr, fieldId]) => {
+                            const colIdx = Number(colIdxStr);
+                            const val = String(row[colIdx] || '').trim();
+                            if (val) importedGrades[student.id][fieldId] = val;
+                        });
                     }
-                });
-                
+                }
+
                 resolve(importedGrades);
             } catch (err) {
                 reject(err);
