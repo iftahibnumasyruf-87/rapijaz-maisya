@@ -7554,6 +7554,8 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
 // UTILITY: EXCEL IMPORT/EXPORT FOR GRADES
 // ==========================================
 const exportGradesToExcel = (grades, studentsInClass, subjectsInClass, className, activeInputTab, data, includePresensi = true) => {
+    const safeVal = (v) => (v !== null && v !== undefined && v !== '') ? v : '';
+
     let headers1 = ['No', 'NIS', 'Nama Santri'];
     let headers2 = ['', '', ''];
     let cols = [];
@@ -7569,15 +7571,16 @@ const exportGradesToExcel = (grades, studentsInClass, subjectsInClass, className
             headers1.push(sub.nameId || sub.name);
             headers2.push('UTS');
             headers2.push('UAS');
+            headers2.push('Raport');
             if (includePresensi) {
-                headers1.push('', '', '', ''); // span 5
+                headers1.push('', '', '', '', ''); // span 6
                 headers2.push('S', 'I', 'A');
-                merges.push({ s: { r: 0, c: currentCol }, e: { r: 0, c: currentCol + 4 } });
-                currentCol += 5;
+                merges.push({ s: { r: 0, c: currentCol }, e: { r: 0, c: currentCol + 5 } });
+                currentCol += 6;
             } else {
-                headers1.push(''); // span 2
-                merges.push({ s: { r: 0, c: currentCol }, e: { r: 0, c: currentCol + 1 } });
-                currentCol += 2;
+                headers1.push('', ''); // span 3
+                merges.push({ s: { r: 0, c: currentCol }, e: { r: 0, c: currentCol + 2 } });
+                currentCol += 3;
             }
             cols.push(sub.id);
         });
@@ -7599,20 +7602,25 @@ const exportGradesToExcel = (grades, studentsInClass, subjectsInClass, className
         const row = [idx + 1, st.nis || '', st.nama];
         if (activeInputTab.startsWith('pelajaran')) {
             subjectsInClass.forEach(sub => {
-                row.push(grades[st.id]?.[sub.id]?.uts || '');
-                row.push(grades[st.id]?.[sub.id]?.uas || '');
+                const g = grades[st.id]?.[sub.id];
+                const uts = g && typeof g === 'object' ? safeVal(g.uts) : '';
+                const uas = g && typeof g === 'object' ? safeVal(g.uas) : '';
+                const raport = computeRaportScore(uts, uas);
+                row.push(uts);
+                row.push(uas);
+                row.push(raport !== '' ? raport : '');
                 if (includePresensi) {
-                    row.push(grades[st.id]?.[sub.id]?.sakit || '');
-                    row.push(grades[st.id]?.[sub.id]?.izin || '');
-                    row.push(grades[st.id]?.[sub.id]?.alpa || '');
+                    row.push(g && typeof g === 'object' ? safeVal(g.sakit) : '');
+                    row.push(g && typeof g === 'object' ? safeVal(g.izin) : '');
+                    row.push(g && typeof g === 'object' ? safeVal(g.alpa) : '');
                 }
             });
         } else if (['presensi', 'sikap', 'ekskul'].includes(activeInputTab)) {
             cols.forEach(colId => {
-                row.push(grades[st.id]?.[colId] || '');
+                row.push(safeVal(grades[st.id]?.[colId]));
             });
         } else if (activeInputTab === 'catatan_wali') {
-            row.push(grades[st.id]?.['catatan_wali'] || '');
+            row.push(safeVal(grades[st.id]?.['catatan_wali']));
         }
         rows.push(row);
     });
@@ -7626,9 +7634,9 @@ const exportGradesToExcel = (grades, studentsInClass, subjectsInClass, className
     cols.forEach(() => {
         if (activeInputTab.startsWith('pelajaran')) { 
             if (includePresensi) {
-                colWidths.push(12, 12, 10, 10, 10); 
+                colWidths.push(10, 10, 10, 8, 8, 8); // UTS, UAS, Raport, S, I, A
             } else {
-                colWidths.push(12, 12);
+                colWidths.push(10, 10, 10); // UTS, UAS, Raport
             }
         }
         else if (activeInputTab === 'catatan_wali') { colWidths.push(50); }
