@@ -7697,7 +7697,7 @@ const importGradesFromExcel = async (file, studentsInClass, subjectsInClass, act
                         for (let i = 0; i < headerRow1.length; i++) {
                             if (headerRow0[i]) {
                                 const subName = String(headerRow0[i]).trim().toLowerCase();
-                                const sub = subjectsInClass.find(s => (s.nameId || s.name).toLowerCase() === subName) || [...subjectsInClass].sort((a,b) => (b.nameId || b.name).length - (a.nameId || a.name).length).find(s => subName.includes((s.nameId || s.name).toLowerCase()));
+                                const sub = subjectsInClass.find(s => (s.nameId || s.name).trim().toLowerCase() === subName) || [...subjectsInClass].sort((a,b) => (b.nameId || b.name).trim().length - (a.nameId || a.name).trim().length).find(s => subName.includes((s.nameId || s.name).trim().toLowerCase()));
                                 if (sub) currentSubId = sub.id;
                                 else if (!subName.includes('no') && !subName.includes('nis') && !subName.includes('nama')) currentSubId = null;
                             }
@@ -7714,7 +7714,7 @@ const importGradesFromExcel = async (file, studentsInClass, subjectsInClass, act
                         headerRow0.forEach((cell, i) => {
                             const val = String(cell).toLowerCase();
                             subjectsInClass.forEach(sub => {
-                                const subName = (sub.nameId || sub.name).toLowerCase();
+                                const subName = (sub.nameId || sub.name).trim().toLowerCase();
                                 if (val.includes(subName)) {
                                     if (val.includes('uts')) colMap[i] = { subId: sub.id, type: 'uts' };
                                     if (val.includes('uas')) colMap[i] = { subId: sub.id, type: 'uas' };
