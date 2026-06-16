@@ -7796,10 +7796,16 @@ const importGradesFromExcel = async (file, studentsInClass, subjectsInClass, act
                     const nama = String(row[namaColIdx] || '').trim();
                     if (!nis && !nama) continue;
                     
-                    const student = studentsInClass.find(st => 
+                    let student = studentsInClass.find(st => 
                         (st.nis && String(st.nis) === nis) ||
-                        (st.nama && st.nama.toLowerCase().includes(nama.toLowerCase()))
+                        (st.nama && st.nama.toLowerCase() === nama.toLowerCase())
                     );
+                    
+                    if (!student) {
+                        student = studentsInClass.find(st => 
+                            (st.nama && st.nama.toLowerCase().includes(nama.toLowerCase()))
+                        );
+                    }
                     
                     if (!student) {
                         console.warn(`Siswa dengan NIS ${nis} atau nama ${nama} tidak ditemukan.`);
