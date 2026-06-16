@@ -7622,7 +7622,7 @@ const exportGradesToExcel = (grades, studentsInClass, subjectsInClass, className
     } else if (activeInputTab === 'ekskul') {
         headers1.push('Ekskul 1 Nama', 'Ekskul 1 Nama (Arab)', 'Ekskul 1 Nilai', 'Ekskul 2 Nama', 'Ekskul 2 Nama (Arab)', 'Ekskul 2 Nilai');
         cols.push('ekskul1_nama', 'ekskul1_nama_ar', 'ekskul1_nilai', 'ekskul2_nama', 'ekskul2_nama_ar', 'ekskul2_nilai');
-    } else if (activeInputTab === 'catatan_wali') {
+    } else if (activeInputTab === 'catatan' || activeInputTab === 'catatan_wali') {
         headers1.push('Catatan Wali Kelas');
         cols.push('catatan_wali');
     }
@@ -7650,7 +7650,7 @@ const exportGradesToExcel = (grades, studentsInClass, subjectsInClass, className
             cols.forEach(colId => {
                 row.push(safeVal(grades[st.id]?.[colId]));
             });
-        } else if (activeInputTab === 'catatan_wali') {
+        } else if (activeInputTab === 'catatan' || activeInputTab === 'catatan_wali') {
             row.push(safeVal(grades[st.id]?.['catatan_wali']));
         }
         rows.push(row);
@@ -7670,7 +7670,7 @@ const exportGradesToExcel = (grades, studentsInClass, subjectsInClass, className
                 colWidths.push(10, 10, 10); // UTS, UAS, Raport
             }
         }
-        else if (activeInputTab === 'catatan_wali') { colWidths.push(50); }
+        else if (activeInputTab === 'catatan' || activeInputTab === 'catatan_wali') { colWidths.push(50); }
         else { colWidths.push(15); }
     });
     ws['!cols'] = colWidths.map(w => ({ wch: w }));
