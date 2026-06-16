@@ -9,7 +9,7 @@ import {
   Columns, FileSignature, TrendingUp, UserX, Clock, Activity, ChevronDown,
   ZoomIn, ZoomOut, Maximize, Minimize, ChevronUp, Lock, Database, Copy, Undo, Redo, Eye, EyeOff, Scissors,
   AlignLeft, AlignCenter, AlignRight, AlignStartVertical, AlignCenterVertical, AlignEndVertical, BarChart2, AlignJustify, Layers, Calendar,
-  Minus, Square, Grid, Info, RefreshCw, Search, LockOpen, PanelLeftClose
+  Minus, Square, Grid, Info, RefreshCw, Search, LockOpen, PanelLeftClose, Brain
 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 import { APP_CONFIG, getFullAppName } from './config';
@@ -9549,6 +9549,255 @@ const InputIjazah = () => {
 };
 
 // ==========================================
+// ANALISA AI SANTRI (ADMIN ONLY)
+// ==========================================
+const AnalisaAISantri = () => {
+    const { 
+        classesData, allData, activeSetting, idToShortKey, addLog,
+        saveToDb, getClassNameFromValue, isSubjectVisibleInClass, getGradeDocId, filterSubjectsByClass, sortSubjectsByCategory
+    } = useContext(AppContext);
+    const [selectedClass, setSelectedClass] = useState('');
+    const [selectedStudent, setSelectedStudent] = useState('');
+    const [useKatrol, setUseKatrol] = useState(true);
+    const [isLoading, setIsLoading] = useState(false);
+    const [localApiKey, setLocalApiKey] = useState(localStorage.getItem('gemini_api_key') || '');
+    
+    // Derived values
+    const classObj = classesData.find(c => c.id === selectedClass);
+    const studentIds = classObj ? (classObj.students || []) : [];
+    const studentsInClass = (allData?.students || []).filter(s => studentIds.includes(s.id));
+    const gradeDocId = selectedClass && activeSetting ? getGradeDocId(selectedClass, classesData, activeSetting, allData?.grades || []) : null;
+    const rawClassGradesDoc = (allData?.grades || []).find(g => g.id === gradeDocId)?.data || {};
+
+    const topLevelSubjectsForClass = useMemo(() => {
+        return sortSubjectsByCategory(filterSubjectsByClass(allData?.subjects || [], selectedClass, classesData), allData?.subjectCategories || []);
+    }, [allData?.subjects, selectedClass, classesData, allData?.subjectCategories]);
+
+    const computeRaportScoreLocal = (uts, uas) => {
+        const uVal = uts !== undefined && uts !== '' ? Number(uts) : null;
+        const aVal = uas !== undefined && uas !== '' ? Number(uas) : null;
+        if (uVal !== null && aVal !== null) return ((uVal + aVal) / 2).toFixed(1);
+        if (uVal !== null) return uVal.toFixed(1);
+        if (aVal !== null) return aVal.toFixed(1);
+        return '';
+    };
+
+    const classGradesDoc = useMemo(() => {
+        if (!useKatrol) return rawClassGradesDoc;
+        const result = {};
+        Object.keys(rawClassGradesDoc).forEach(stdId => {
+            const sGrades = { ...rawClassGradesDoc[stdId] };
+            Object.keys(sGrades).forEach(k => {
+                const subObj = topLevelSubjectsForClass.find(s => s.id === k);
+                if (subObj && subObj.kkm) {
+                    const kkm = Number(subObj.kkm);
+                    const v = sGrades[k];
+                    let finalScore;
+                    if (v && typeof v === 'object') {
+                        const r = computeRaportScoreLocal(v.uts, v.uas);
+                        finalScore = r !== '' ? Number(r) : null;
+                    } else if (v !== undefined && v !== '' && !isNaN(v)) {
+                        finalScore = Number(v);
+                    }
+                    if (finalScore !== null && finalScore !== undefined && !isNaN(finalScore) && finalScore < kkm) {
+                        sGrades[k] = String(kkm); 
+                    }
+                }
+            });
+            result[stdId] = sGrades;
+        });
+        return result;
+    }, [rawClassGradesDoc, useKatrol, topLevelSubjectsForClass]);
+
+    const studentData = studentsInClass.find(s => s.id === selectedStudent);
+    const studentGrades = classGradesDoc[selectedStudent] || {};
+
+    const handleGenerateAI = async () => {
+        if (!selectedStudent || !studentData || !selectedClass) return;
+        const apiKey = import.meta.env.VITE_GEMINI_API_KEY || localApiKey;
+        if (!apiKey) {
+            alert("API Key Gemini belum diisi. Silakan masukkan API Key Anda (tersedia di menu Cetak Dokumen).");
+            return;
+        }
+
+        setIsLoading(true);
+        try {
+            const className = getClassNameFromValue(classesData, selectedClass);
+            let textData = `Nama Santri: ${studentData.nama}\nKelas: ${className}\n`;
+            textData += `Tahun Ajaran: ${activeSetting?.tahun || '-'} Semester: ${activeSetting?.semester || '-'}\n\n`;
+
+            textData += "NILAI AKADEMIK:\n";
+            const relevantSubjects = allData?.subjects?.filter(s => isSubjectVisibleInClass(s, selectedClass, classesData)) || [];
+            relevantSubjects.forEach(s => {
+                const gradeObj = studentGrades[s.id];
+                let val = '-';
+                if (gradeObj && typeof gradeObj === 'object') {
+                    const r = computeRaportScoreLocal(gradeObj.uts, gradeObj.uas);
+                    val = r !== '' ? r : '-';
+                } else if (gradeObj !== undefined && gradeObj !== '') {
+                    val = gradeObj;
+                }
+                const kkm = s.kkm || '-';
+                textData += `- ${s.nameId}: Nilai ${val} (KKM: ${kkm})\n`;
+            });
+
+            textData += "\nKEHADIRAN:\n";
+            (allData?.presences || []).forEach(p => {
+                const val = studentGrades[p.id] || '0';
+                textData += `- ${p.name}: ${val} hari\n`;
+            });
+
+            textData += "\nKEPRIBADIAN / SIKAP:\n";
+            (allData?.characterTraits || []).forEach(p => {
+                const val = studentGrades[p.id] || '-';
+                textData += `- ${p.name}: ${val}\n`;
+            });
+
+            textData += "\nEKSTRAKURIKULER:\n";
+            [1, 2].forEach(i => {
+                const n = studentGrades[`ekskul${i}_nama`];
+                const v = studentGrades[`ekskul${i}_nilai`];
+                if (n) textData += `- ${n}: ${v || '-'}\n`;
+            });
+
+            const cw = studentGrades.catatan_wali;
+            if (cw) {
+                textData += `\nCATATAN WALI KELAS:\n${cw}\n`;
+            }
+
+            const prompt = `Sebagai konselor pendidikan dan AI analis yang profesional, buatlah evaluasi komprehensif perkembangan santri berdasarkan data raport berikut:\n\n${textData}\n\nBuatlah dalam Bahasa Indonesia yang formal, empatik, objektif, dan suportif. Output harus berupa HTML murni (hanya menggunakan tag <div>, <h3>, <p>, <ul>, <li>, <strong>) tanpa dibungkus dengan tag markdown seperti \`\`\`html. Struktur yang WAJIB diikuti:\n\n<h3>Pencapaian yang Sudah Sangat Baik</h3>\n<ul>\n<li>(Sebutkan poin-poin keunggulan akademik maupun sikap)</li>\n</ul>\n\n<h3>Area yang Perlu Penguatan & Bimbingan</h3>\n<ul>\n<li>(Sebutkan poin-poin kelemahan yang butuh perhatian)</li>\n</ul>\n\n<h3>Saran Praktis untuk Orang Tua dan Guru</h3>\n<ul>\n<li>(Sebutkan saran aplikatif yang nyata dan mudah dilakukan)</li>\n</ul>`;
+
+            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }],
+                    generationConfig: { temperature: 0.7 }
+                })
+            });
+
+            if (!res.ok) throw new Error("Gagal menghubungi API Gemini. Pastikan API Key valid dan koneksi stabil.");
+            const resData = await res.json();
+            let aiHtml = resData.candidates?.[0]?.content?.parts?.[0]?.text || "<p>Gagal menghasilkan analisis.</p>";
+            aiHtml = aiHtml.replace(/```html/gi, '').replace(/```/g, '').trim();
+
+            // Simpan ke DB agar persisten
+            const updatedRawGrades = { ...rawClassGradesDoc };
+            if (!updatedRawGrades[selectedStudent]) updatedRawGrades[selectedStudent] = {};
+            updatedRawGrades[selectedStudent].ai_analysis_v2 = aiHtml; // simpan di ai_analysis_v2
+
+            await saveToDb('grades', gradeDocId, { data: updatedRawGrades, class: selectedClass, tahun: activeSetting.tahun, semester: activeSetting.semester }, true);
+
+            addLog(`Generate Analisa AI Khusus berhasil untuk ${studentData.nama}`);
+        } catch (error) {
+            console.error(error);
+            alert("Terjadi kesalahan: " + error.message);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleCopy = () => {
+        const text = document.getElementById('ai-result-content')?.innerText || '';
+        navigator.clipboard.writeText(text);
+        alert('Teks berhasil disalin!');
+    };
+
+    const currentAnalysis = rawClassGradesDoc[selectedStudent]?.ai_analysis_v2 || '';
+
+    return (
+        <div className="bg-white p-6 rounded-2xl shadow-sm border mb-6 flex flex-col h-[calc(100vh-140px)]">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                <div>
+                    <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                        <Brain size={24} className="text-purple-600" /> Analisa AI Santri
+                    </h2>
+                    <p className="text-sm text-gray-500 mt-1">Hasilkan laporan komprehensif perkembangan santri dengan bantuan Kecerdasan Buatan (Gemini).</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                    <select 
+                        className="p-2 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none min-w-[200px]"
+                        value={selectedClass} 
+                        onChange={e => { setSelectedClass(e.target.value); setSelectedStudent(''); }}
+                    >
+                        <option value="">-- Pilih Kelas --</option>
+                        {classesData.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+
+                    {selectedClass && (
+                        <select 
+                            className="p-2 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none min-w-[250px]"
+                            value={selectedStudent} 
+                            onChange={e => setSelectedStudent(e.target.value)}
+                        >
+                            <option value="">-- Pilih Santri --</option>
+                            {studentsInClass.map(s => <option key={s.id} value={s.id}>{s.nama} ({s.nis})</option>)}
+                        </select>
+                    )}
+                </div>
+            </div>
+
+            {selectedClass && selectedStudent ? (
+                <div className="flex-1 flex flex-col md:flex-row gap-6 overflow-hidden">
+                    <div className="md:w-1/3 flex flex-col gap-4 border-r pr-4 overflow-y-auto custom-scrollbar">
+                        <div className="bg-purple-50 p-4 rounded-xl border border-purple-100">
+                            <h3 className="font-bold text-purple-900 mb-2">Pengaturan Analisis</h3>
+                            <label className="flex items-center gap-2 cursor-pointer mt-3">
+                                <input type="checkbox" checked={useKatrol} onChange={e => setUseKatrol(e.target.checked)} className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500" />
+                                <span className="text-sm font-medium text-gray-700">Terapkan Katrol (KKM)</span>
+                            </label>
+                            <p className="text-[11px] text-purple-700 mt-1 ml-6 leading-relaxed">Jika aktif, nilai yang berada di bawah KKM akan disesuaikan menjadi KKM sebelum dianalisis oleh AI.</p>
+
+                            <button 
+                                onClick={handleGenerateAI} 
+                                disabled={isLoading}
+                                className="w-full mt-4 bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-lg font-bold flex justify-center items-center gap-2 transition disabled:opacity-50"
+                            >
+                                {isLoading ? (
+                                    <><div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div> Memproses AI...</>
+                                ) : (
+                                    <><Brain size={20}/> Generate Analisis AI</>
+                                )}
+                            </button>
+                            <p className="text-[11px] text-gray-500 mt-2 text-center">Data hasil analisis akan disimpan secara permanen.</p>
+                        </div>
+                    </div>
+
+                    <div className="md:w-2/3 flex flex-col overflow-hidden bg-gray-50 rounded-xl border relative">
+                        <div className="bg-white border-b px-4 py-3 flex justify-between items-center sticky top-0 z-10">
+                            <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                                <FileText size={18} className="text-blue-500"/> Hasil Analisis Evaluasi
+                            </h3>
+                            {currentAnalysis && (
+                                <button onClick={handleCopy} className="text-sm bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1.5 rounded-md font-semibold flex items-center gap-1 transition">
+                                    <Copy size={14}/> Salin Teks
+                                </button>
+                            )}
+                        </div>
+                        <div className="flex-1 p-6 overflow-y-auto custom-scrollbar prose prose-sm max-w-none prose-purple" id="ai-result-content">
+                            {currentAnalysis ? (
+                                <div dangerouslySetInnerHTML={{ __html: currentAnalysis }} />
+                            ) : (
+                                <div className="h-full flex flex-col items-center justify-center text-gray-400 opacity-60">
+                                    <Brain size={64} className="mb-4" />
+                                    <p className="font-medium text-lg text-center">Belum ada analisis untuk santri ini.</p>
+                                    <p className="text-sm mt-1 text-center max-w-md">Klik tombol "Generate Analisis AI" di sebelah kiri untuk membuat laporan evaluasi menggunakan Kecerdasan Buatan.</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            ) : (
+                <div className="flex-1 flex flex-col items-center justify-center text-gray-400 bg-gray-50 rounded-xl border border-dashed border-gray-200 p-8">
+                    <Brain size={48} className="mb-4 text-gray-300" />
+                    <p className="text-lg font-medium text-gray-500">Silakan pilih Kelas dan Nama Santri di atas untuk memulai analisis.</p>
+                </div>
+            )}
+        </div>
+    );
+};
+
+// ==========================================
 // CETAK RAPORT / IJAZAH
 // ==========================================
 const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = null }) => {
@@ -10873,6 +11122,7 @@ const Dashboard = () => {
     { id: 'legger', label: 'Legger Kelas', icon: BookOpen, roles: ['admin', 'user'] },
     { id: 'cetak_raport', label: 'Cetak Raport', icon: Printer, roles: ['admin', 'user'] },
     { id: 'cetak_ijazah', label: 'Cetak Ijazah', icon: Printer, roles: ['admin'] },
+    { id: 'analisa_ai', label: 'Analisa AI Santri', icon: Brain, roles: ['admin'] },
   ];
 
   const filteredMenu = menuItems.filter(m => {
@@ -10899,6 +11149,7 @@ const Dashboard = () => {
       case 'cetak_raport': return <ErrorBoundary key="eb-raport"><CetakDokumen key="raport" mode="raport" /></ErrorBoundary>;
       case 'cetak_ijazah': return <ErrorBoundary key="eb-ijazah"><CetakDokumen key="ijazah" mode="ijazah" /></ErrorBoundary>;
       case 'legger': return <LeggerKelas />;
+      case 'analisa_ai': return <AnalisaAISantri />;
       default: return <div className="p-8 text-center text-gray-500">Menu tidak ditemukan</div>;
     }
   };
