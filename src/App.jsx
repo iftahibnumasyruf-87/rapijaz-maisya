@@ -9927,6 +9927,35 @@ const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = 
     const [aiAnalysisLoading, setAiAnalysisLoading] = useState(false);
     const [aiAnalysisResults, setAiAnalysisResults] = useState({});
     const [localApiKey, setLocalApiKey] = useState(localStorage.getItem('geminiApiKey') || '');
+    const [testApiKeyLoading, setTestApiKeyLoading] = useState(false);
+
+    const testApiKey = async () => {
+        if (!localApiKey) {
+            showNotification('Masukkan API Key terlebih dahulu.', 'error');
+            return;
+        }
+        setTestApiKeyLoading(true);
+        try {
+            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${localApiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: "Ketik 'OK' jika kamu bisa membaca pesan ini." }] }]
+                })
+            });
+            if (res.ok) {
+                showNotification('API Key valid dan tersimpan!', 'success');
+                localStorage.setItem('geminiApiKey', localApiKey);
+            } else {
+                showNotification('API Key tidak valid atau limit habis.', 'error');
+            }
+        } catch(e) {
+            showNotification('Gagal terhubung ke API Google.', 'error');
+        } finally {
+            setTestApiKeyLoading(false);
+        }
+    };
+
     const dropdownClasses = useMemo(() => {
         if (mode !== 'ijazah') return classesData;
         return classesData.filter(c => {
@@ -10724,7 +10753,16 @@ const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = 
                                     placeholder="Paste API Key Anda (AIzaSy...)"
                                     className="w-full p-2 border border-purple-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500"
                                 />
-                                <p className="text-[9px] text-purple-600 mt-1 leading-tight">Key disimpan aman di browser Anda. Dapatkan key di <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="underline">Google AI Studio</a>.</p>
+                                <div className="mt-2 flex items-center justify-between">
+                                    <p className="text-[9px] text-purple-600 leading-tight flex-1 pr-2">Dapatkan key gratis di <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="underline font-bold">Google AI Studio</a>.</p>
+                                    <button 
+                                        onClick={testApiKey}
+                                        disabled={testApiKeyLoading}
+                                        className="bg-purple-600 text-white text-[10px] px-2 py-1.5 rounded font-bold hover:bg-purple-700 transition"
+                                    >
+                                        {testApiKeyLoading ? 'Menguji...' : 'Uji & Simpan'}
+                                    </button>
+                                </div>
                             </div>
                         )}
                         {!isPublicView && (
