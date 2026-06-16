@@ -9464,24 +9464,34 @@ const InputIjazah = () => {
 // ==========================================
 // CETAK RAPORT / IJAZAH
 // ==========================================
-const CetakDokumen = ({ mode = 'raport' }) => {
+const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = null }) => {
     const { data, allData, addLog } = useContext(AppContext);
-    const [selectedClass, setSelectedClass] = useState('');
-    const [selectedStudent, setSelectedStudent] = useState('');
+    
+    const activeSetting = data.settings.find(s => s.isActive) || {};
+    const activeStudents = getStudentsForYear(data.studentSnapshots, activeSetting, data.students);
+    const classesData = data.classes || [];
+
+    const [selectedClass, setSelectedClass] = useState(() => {
+        if (publicSantriId) {
+            const st = activeStudents.find(s => s.id === publicSantriId);
+            if (st && st.kelas) {
+                const cls = classesData.find(c => c.name === st.kelas || c.id === st.kelas);
+                return cls ? cls.id : st.kelas;
+            }
+        }
+        return '';
+    });
+    const [selectedStudent, setSelectedStudent] = useState(publicSantriId || '');
     const [useKatrol, setUseKatrol] = useState(false);
     const [isBatchMode, setIsBatchMode] = useState(false);
     const [printMargins, setPrintMargins] = useState({ top: 0, bottom: 0, left: 0, right: 0 });
     const [printScale, setPrintScale] = useState(1.0);
-    const [previewZoom, setPreviewZoom] = useState(0.7);
+    const [previewZoom, setPreviewZoom] = useState(isPublicView ? 0.45 : 0.7);
     const [printRangeStart, setPrintRangeStart] = useState('');
     const [printRangeEnd, setPrintRangeEnd] = useState('');
     const [aiAnalysisLoading, setAiAnalysisLoading] = useState(false);
     const [aiAnalysisResults, setAiAnalysisResults] = useState({});
     const [localApiKey, setLocalApiKey] = useState(localStorage.getItem('geminiApiKey') || '');
-    
-    const activeSetting = data.settings.find(s => s.isActive) || {};
-    const activeStudents = getStudentsForYear(data.studentSnapshots, activeSetting, data.students);
-    const classesData = data.classes || [];
     const dropdownClasses = useMemo(() => {
         if (mode !== 'ijazah') return classesData;
         return classesData.filter(c => {
@@ -9774,8 +9784,19 @@ const CetakDokumen = ({ mode = 'raport' }) => {
         });
         const avgVal = countVal > 0 ? String(Math.round(totalVal / countVal)) : '-';
 
-        const text = `\uD83C\uDF93 *Laporan Nilai ${mode === 'raport' ? 'Raport' : 'Ijazah'}*\nPonpes Imam Syafi'i Brebes\n\nAssalamu'alaikum Wr. Wb.\n\nDengan hormat, berikut adalah informasi nilai ananda:\n\nNama: *${studentData.nama}*\nKelas: *${className}*\nTA: *${tahun} | Semester ${semester}*\n\n\uD83D\uDCDA *Nilai Mata Pelajaran:*\n${gradeLines}\n\n\uD83D\uDCCA Rata-Rata: *${avgVal}*\n\nSemoga nilai ini menjadi motivasi untuk terus belajar. Silakan hubungi sekolah untuk pengambilan berkas fisik.\n\nWassalamu'alaikum Wr. Wb. \uD83E\uDD32`;
+        const publicLink = `${window.location.origin}${window.location.pathname}?public_raport=true&santri_id=${selectedStudent}`;
+        const text = `\uD83C\uDF93 *Laporan Nilai ${mode === 'raport' ? 'Raport' : 'Ijazah'}*\nPonpes Imam Syafi'i Brebes\n\nAssalamu'alaikum Wr. Wb.\n\nDengan hormat, berikut adalah informasi nilai ananda:\n\nNama: *${studentData.nama}*\nKelas: *${className}*\nTA: *${tahun} | Semester ${semester}*\n\n\uD83D\uDCDA *Nilai Mata Pelajaran:*\n${gradeLines}\n\n\uD83D\uDCCA Rata-Rata: *${avgVal}*\n\n\uD83D\uDCF1 *Lihat Rapor Online:*\n${publicLink}\n\nSemoga nilai ini menjadi motivasi untuk terus belajar.\n\nWassalamu'alaikum Wr. Wb. \uD83E\uDD32`;
         addLog(`Membagikan Info ${mode} via WA untuk ${studentData.nama}`);
+        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    };
+
+    const handleShareLinkWA = () => {
+        if (!studentData) return;
+        const publicLink = `${window.location.origin}${window.location.pathname}?public_raport=true&santri_id=${selectedStudent}`;
+        const tahun = activeSetting.tahun || '-';
+        const semester = activeSetting.semester || '-';
+        const text = `\uD83C\uDF93 *Rapor Online - Ponpes Imam Syafi'i Brebes*\n\nAssalamu'alaikum Wr. Wb.,\n\nYth. Orang Tua/Wali Santri *${studentData.nama}*\n\nBerikut link untuk melihat rapor ananda secara online:\n\n\uD83D\uDD17 ${publicLink}\n\nTA: *${tahun} | Semester ${semester}*\n\nLink ini dapat dibuka langsung dari HP tanpa perlu login.\n\nWassalamu'alaikum Wr. Wb. \uD83E\uDD32`;
+        addLog(`Membagikan Link Rapor via WA untuk ${studentData.nama}`);
         window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
     };
 
@@ -10221,13 +10242,16 @@ const CetakDokumen = ({ mode = 'raport' }) => {
 
     return (
         <div className="flex flex-col md:flex-row gap-6 flex-1 h-full min-h-0">
+            {(!isPublicView || !publicSantriId) && (
             <div className="w-full md:w-80 bg-white p-6 rounded-xl shadow-sm border border-gray-100 print:hidden shrink-0 h-full overflow-y-auto">
-                <h3 className="text-xl font-bold mb-4 capitalize">Cetak {mode}</h3>
+                <h3 className="text-xl font-bold mb-4 capitalize">{isPublicView ? 'Cari Rapor Santri' : `Cetak ${mode}`}</h3>
                 {!activeSetting.tahun && <div className="bg-yellow-50 text-yellow-800 p-3 rounded-lg text-sm mb-4 border border-yellow-200">Pastikan Admin mengaktifkan Tahun Ajaran di Master Data terlebih dahulu.</div>}
                 <div className="space-y-4">
                     <select className="w-full p-2 border rounded-lg" value={selectedClass} onChange={e => {setSelectedClass(e.target.value); setSelectedStudent('');}}><option value="">-- Kelas --</option>{dropdownClasses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
                     <select className="w-full p-2 border rounded-lg" value={selectedStudent} onChange={e => setSelectedStudent(e.target.value)} disabled={!selectedClass}><option value="">-- Santri --</option>{studentsInClass.map(s => <option key={s.id} value={s.id}>{s.nama}</option>)}</select>
                     
+                    {!isPublicView && (
+                    <>
                     {/* Pilihan Layout */}
                     <div className="pt-2 border-t">
                         <p className="text-xs font-bold text-gray-700 mb-1">Layout yang Digunakan</p>
@@ -10237,16 +10261,6 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                         {activeLayout.length === 0 && <p className="text-xs text-red-500 mt-1">⚠ Layout yang dipilih belum memiliki elemen. Silakan desain di Layout Builder terlebih dahulu.</p>}
                     </div>
                     <div className="pt-4 border-t"><label className="flex items-center gap-2 bg-yellow-50 p-3 rounded-lg border border-yellow-200 cursor-pointer"><input type="checkbox" className="w-5 h-5 text-yellow-600" checked={useKatrol} onChange={e => setUseKatrol(e.target.checked)} /><div><p className="font-bold text-yellow-800 text-sm">Gunakan Nilai Katrol</p><p className="text-xs text-yellow-700">Nilai merah otomatis menjadi KKM</p></div></label></div>
-                    <div className="pt-4 border-t">
-                        <p className="text-sm font-bold text-gray-700 mb-2">Penyesuaian Margin Printer (mm)</p>
-                        <div className="grid grid-cols-4 gap-2">
-                            <div className="flex flex-col"><label className="text-[10px] text-gray-500 mb-1">Atas</label><input type="number" value={printMargins.top} onChange={e=>setPrintMargins({...printMargins, top: Number(e.target.value)})} className="w-full p-2 border rounded text-xs" /></div>
-                            <div className="flex flex-col"><label className="text-[10px] text-gray-500 mb-1">Bawah</label><input type="number" value={printMargins.bottom} onChange={e=>setPrintMargins({...printMargins, bottom: Number(e.target.value)})} className="w-full p-2 border rounded text-xs" /></div>
-                            <div className="flex flex-col"><label className="text-[10px] text-gray-500 mb-1">Kiri</label><input type="number" value={printMargins.left} onChange={e=>setPrintMargins({...printMargins, left: Number(e.target.value)})} className="w-full p-2 border rounded text-xs" /></div>
-                            <div className="flex flex-col"><label className="text-[10px] text-gray-500 mb-1">Kanan</label><input type="number" value={printMargins.right} onChange={e=>setPrintMargins({...printMargins, right: Number(e.target.value)})} className="w-full p-2 border rounded text-xs" /></div>
-                        </div>
-                        <p className="text-[10px] text-gray-400 mt-1 leading-tight">Margin awal diambil dari master Layout. Setting ini akan menggeser cetakan secara fisik di kertas.</p>
-                    </div>
                     <div className="pt-4 border-t">
                         <p className="text-sm font-bold text-gray-700 mb-1">Skala Cetak (Print Scale)</p>
                         <div className="flex items-center gap-3">
@@ -10258,8 +10272,11 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                         </div>
                         <p className="text-[10px] text-gray-400 mt-1 leading-tight">Default 100% agar pas (sejajar) saat Simpan ke PDF. Jika printer fisik memotong tepi kertas, kecilkan skalanya.</p>
                     </div>
+                    </>
+                    )}
+
                     <div className="pt-4 flex flex-col gap-3">
-                        {!import.meta.env.VITE_GEMINI_API_KEY && (
+                        {!isPublicView && !import.meta.env.VITE_GEMINI_API_KEY && (
                             <div className="bg-purple-50 p-3 rounded-lg border border-purple-200">
                                 <label className="text-xs font-bold text-purple-800 mb-1 block">API Key Gemini (Manual Input):</label>
                                 <input 
@@ -10275,13 +10292,17 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                                 <p className="text-[9px] text-purple-600 mt-1 leading-tight">Key disimpan aman di browser Anda. Dapatkan key di <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="underline">Google AI Studio</a>.</p>
                             </div>
                         )}
+                        {!isPublicView && (
                         <button onClick={handleGenerateAI} disabled={!selectedStudent || aiAnalysisLoading} className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2.5 rounded-lg font-bold flex justify-center items-center gap-2 transition shadow-sm border border-purple-800">
                             {aiAnalysisLoading ? <RefreshCw size={18} className="animate-spin" /> : <span className="flex items-center gap-2">✨ Generate Analisa AI</span>}
                         </button>
-                        <button onClick={handlePrint} disabled={!selectedStudent} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-bold flex justify-center items-center gap-2 transition"><Printer size={18}/> Print Langsung</button>
+                        )}
+                        {!isPublicView && <button onClick={handlePrint} disabled={!selectedStudent} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-bold flex justify-center items-center gap-2 transition"><Printer size={18}/> Print Langsung</button>}
                         <button onClick={handleSavePDF} disabled={!selectedStudent} className="w-full bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-lg font-bold flex justify-center items-center gap-2 transition"><Download size={18}/> Simpan sbg PDF</button>
-                        <button onClick={handleWA} disabled={!selectedStudent} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-lg font-bold flex justify-center items-center gap-2 transition"><Share2 size={18}/> Kirim Info via WA</button>
+                        {!isPublicView && <button onClick={handleWA} disabled={!selectedStudent} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-lg font-bold flex justify-center items-center gap-2 transition"><Share2 size={18}/> Kirim Info via WA</button>}
+                        {!isPublicView && <button onClick={handleShareLinkWA} disabled={!selectedStudent} className="w-full bg-teal-500 hover:bg-teal-600 text-white py-2.5 rounded-lg font-bold flex justify-center items-center gap-2 transition"><Share2 size={18}/> 🔗 Bagikan Link Rapor via WA</button>}
                     </div>
+                    {!isPublicView && (
                     <div className="pt-2 border-t mt-4">
                         <p className="text-sm font-bold text-gray-700 mb-2">Cetak / Simpan Massal</p>
                         <div className="flex gap-2 items-center mb-3">
@@ -10298,10 +10319,28 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                             </button>
                         </div>
                     </div>
+                    )}
                 </div>
             </div>
-            <div className="flex-1 bg-gray-200 rounded-xl overflow-auto border border-gray-300 print:bg-white print:p-0 print:border-none print:overflow-visible relative print:static flex flex-col">
+            )}
+            <div className={`flex-1 ${isPublicView ? 'bg-transparent' : 'bg-gray-200 rounded-xl border border-gray-300'} overflow-auto print:bg-white print:p-0 print:border-none print:overflow-visible relative print:static flex flex-col`}>
                 {/* Zoom Controls Bar */}
+                {isPublicView ? (
+                <div className="print:hidden sticky top-0 z-20 bg-emerald-800/80 backdrop-blur border-b border-emerald-700/50 px-4 py-2 flex items-center gap-3 shrink-0 rounded-t-xl">
+                    {studentData && (
+                        <div className="flex-1 min-w-0">
+                            <p className="text-white text-sm font-bold truncate">📋 Rapor: {studentData.nama}</p>
+                        </div>
+                    )}
+                    <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-xs text-emerald-200">Ukuran:</span>
+                        <button onClick={() => setPreviewZoom(z => Math.max(0.2, +(z - 0.1).toFixed(1)))} className="bg-white/20 hover:bg-white/30 text-white rounded px-2 py-1 text-sm font-bold">−</button>
+                        <span className="text-xs font-mono text-white w-9 text-center">{Math.round(previewZoom * 100)}%</span>
+                        <button onClick={() => setPreviewZoom(z => Math.min(1.5, +(z + 0.1).toFixed(1)))} className="bg-white/20 hover:bg-white/30 text-white rounded px-2 py-1 text-sm font-bold">+</button>
+                        <button onClick={handleSavePDF} disabled={!selectedStudent} className="bg-white text-emerald-800 text-xs font-bold px-3 py-1.5 rounded-full hover:bg-emerald-50 transition ml-1 disabled:opacity-40">⬇ PDF</button>
+                    </div>
+                </div>
+                ) : (
                 <div className="print:hidden sticky top-0 z-20 bg-white/90 backdrop-blur border-b border-gray-200 px-4 py-2 flex items-center gap-3 shrink-0">
                     <span className="text-xs font-bold text-gray-600">Zoom Preview:</span>
                     <button onClick={() => setPreviewZoom(z => Math.max(0.3, +(z - 0.1).toFixed(1)))} className="bg-gray-100 hover:bg-gray-200 rounded px-2 py-1 text-sm font-bold">−</button>
@@ -10310,6 +10349,7 @@ const CetakDokumen = ({ mode = 'raport' }) => {
                     <button onClick={() => setPreviewZoom(0.7)} className="text-xs text-blue-600 hover:underline ml-1">Reset</button>
                     <button onClick={() => setPreviewZoom(1.0)} className="text-xs text-gray-500 hover:underline">100%</button>
                 </div>
+                )}
                 <div className="flex-1 overflow-auto p-8 flex flex-col items-center gap-8 print:p-0 print:gap-0 print:block">
                 {studentsToRender.length > 0 ? (
                     <div className={`print-wrapper flex flex-col print:block ${isExporting ? 'gap-0 items-start' : 'items-center gap-8 print:gap-0'}`} style={{ transformOrigin: 'top left', transform: isExporting ? 'none' : `scale(${previewZoom})`, marginBottom: isExporting ? '0px' : `${(previewZoom - 1) * canvasHeight * pages.length}px` }}>
@@ -10936,6 +10976,68 @@ const Dashboard = () => {
   );
 };
 
+// ==========================================
+// HALAMAN RAPOR PUBLIK (UNTUK ORANG TUA)
+// ==========================================
+const PublicRaportPage = ({ santriId }) => {
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-emerald-900 via-teal-800 to-green-900 flex flex-col">
+            {/* Header Pondok */}
+            <header className="bg-white/10 backdrop-blur-md border-b border-white/20 shadow-lg print:hidden">
+                <div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center shrink-0 text-2xl">
+                        🕌
+                    </div>
+                    <div>
+                        <h1 className="text-white font-bold text-base leading-tight">Ponpes Imam Syafi'i Brebes</h1>
+                        <p className="text-emerald-200 text-xs">Portal Rapor Online Santri</p>
+                    </div>
+                    <div className="ml-auto">
+                        <span className="bg-emerald-500/30 text-emerald-100 text-xs font-semibold px-3 py-1 rounded-full border border-emerald-400/40">
+                            📋 Rapor Digital
+                        </span>
+                    </div>
+                </div>
+            </header>
+
+            {/* Info Banner */}
+            {!santriId && (
+                <div className="max-w-5xl mx-auto w-full px-4 pt-6 print:hidden">
+                    <div className="bg-white/10 backdrop-blur border border-white/20 rounded-2xl p-5 text-white text-center">
+                        <div className="text-4xl mb-3">📚</div>
+                        <h2 className="text-lg font-bold mb-1">Selamat Datang di Portal Rapor Santri</h2>
+                        <p className="text-emerald-200 text-sm">Pilih kelas dan nama santri untuk melihat rapor.</p>
+                    </div>
+                </div>
+            )}
+
+            {/* Rapor Content */}
+            <main className="flex-1 max-w-5xl mx-auto w-full px-4 py-6 flex flex-col gap-4">
+                <AppProvider>
+                    <CetakDokumen
+                        mode="raport"
+                        isPublicView={true}
+                        publicSantriId={santriId || null}
+                    />
+                </AppProvider>
+            </main>
+
+            {/* Footer */}
+            <footer className="bg-black/20 border-t border-white/10 py-4 text-center print:hidden">
+                <p className="text-emerald-300 text-xs">© {new Date().getFullYear()} Ponpes Imam Syafi'i Brebes — Portal Rapor Digital</p>
+            </footer>
+        </div>
+    );
+};
+
 export default function App() {
-  return <AppProvider><AppContext.Consumer>{({ currentUser }) => currentUser ? <Dashboard /> : <Login />}</AppContext.Consumer></AppProvider>;
+    const params = new URLSearchParams(window.location.search);
+    const isPublicRaport = params.get('public_raport') === 'true';
+    const santriId = params.get('santri_id') || null;
+
+    if (isPublicRaport) {
+        return <PublicRaportPage santriId={santriId} />;
+    }
+
+    return <AppProvider><AppContext.Consumer>{({ currentUser }) => currentUser ? <Dashboard /> : <Login />}</AppContext.Consumer></AppProvider>;
 }
