@@ -8055,6 +8055,64 @@ const InputNilai = ({ activeInputTab }) => {
         setZoomLevel(100);
     };
 
+    // ──────────────────────────────────────────
+    // Hapus data: menentukan field apa saja yang
+    // perlu di-clear berdasarkan tab aktif.
+    // ──────────────────────────────────────────
+    const getFieldsForTab = (studentId) => {
+        if (activeInputTab.startsWith('pelajaran')) {
+            // semua key yang merupakan subjectId (nilai UTS/UAS) dan presensi per-mapel
+            const subjectIds = subjectsInClass.map(s => s.id);
+            return subjectIds;
+        }
+        if (activeInputTab === 'presensi') {
+            return data.presences.map(p => p.id);
+        }
+        if (activeInputTab === 'sikap') {
+            return data.characterTraits.map(t => t.id);
+        }
+        if (activeInputTab === 'ekskul') {
+            // ekskul slots: namaKey dan nilaiKey
+            const slots = data.extracurriculars.map((_, i) => ([`ekskul_${i}_nama`, `ekskul_${i}_nilai`])).flat();
+            return slots;
+        }
+        if (activeInputTab === 'catatan') {
+            return ['catatan_wali'];
+        }
+        return [];
+    };
+
+    const handleClearStudentData = (studentId, studentName) => {
+        if (!window.confirm(`Hapus semua data "${studentName}" di tab ini?`)) return;
+        setLocalGrades(prev => {
+            const newGrades = { ...prev };
+            const fields = getFieldsForTab(studentId);
+            if (!newGrades[studentId]) return prev;
+            const newStudentGrades = { ...newGrades[studentId] };
+            fields.forEach(f => { delete newStudentGrades[f]; });
+            newGrades[studentId] = newStudentGrades;
+            return newGrades;
+        });
+        showNotification(`Data ${studentName} di tab ini telah dihapus`, 'success');
+    };
+
+    const handleClearTabData = () => {
+        const tabLabel = activeInputTab.startsWith('pelajaran') ? 'Pelajaran' : activeInputTab.charAt(0).toUpperCase() + activeInputTab.slice(1);
+        if (!window.confirm(`Hapus SEMUA data tab "${tabLabel}" untuk seluruh santri di kelas ini?\n\nTindakan ini tidak dapat dibatalkan!`)) return;
+        setLocalGrades(prev => {
+            const newGrades = { ...prev };
+            studentsInClass.forEach(st => {
+                const fields = getFieldsForTab(st.id);
+                if (!newGrades[st.id]) return;
+                const newStudentGrades = { ...newGrades[st.id] };
+                fields.forEach(f => { delete newStudentGrades[f]; });
+                newGrades[st.id] = newStudentGrades;
+            });
+            return newGrades;
+        });
+        showNotification(`Semua data tab ini telah dihapus`, 'success');
+    };
+
     const toggleHeaderHidden = () => {
         setIsHeaderHidden(!isHeaderHidden);
     };
@@ -8504,6 +8562,7 @@ const InputNilai = ({ activeInputTab }) => {
                             {subjectsInClass.length > 0 && <th colSpan={subjectsInClass.length} className="p-2 border-b border-r border-emerald-600 text-center font-bold bg-emerald-800">NILAI MATA PELAJARAN</th>}
                             <th rowSpan={3} className="p-3 border-b border-r border-emerald-600 text-center w-20 bg-emerald-900">Total<br/>Raport</th>
                             <th rowSpan={3} className="p-3 border-b border-emerald-600 text-center w-20 bg-emerald-900">Rata-rata<br/>Raport</th>
+                            <th rowSpan={3} className="p-3 border-b border-emerald-600 text-center w-14 bg-red-900">Hapus</th>
                         </tr>
                         {subjectsInClass.length > 0 && (
                         <tr className="bg-emerald-600 text-white text-sm">
@@ -8575,7 +8634,10 @@ const InputNilai = ({ activeInputTab }) => {
                                         );
                                     })}
                                     <td className="p-3 text-center font-bold text-emerald-800 bg-emerald-50 border-r">{rowRaportTotal !== 0 ? Math.round(rowRaportTotal) : '-'}</td>
-                                    <td className="p-3 text-center font-bold text-blue-800 bg-blue-50">{rowRaportCount > 0 ? Math.round(rowRaportTotal / rowRaportCount) : '-'}</td>
+                                    <td className="p-3 text-center font-bold text-blue-800 bg-blue-50 border-r">{rowRaportCount > 0 ? Math.round(rowRaportTotal / rowRaportCount) : '-'}</td>
+                                    <td className="p-2 text-center bg-white">
+                                        <button onClick={() => handleClearStudentData(st.id, st.nama)} className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title={`Hapus data ${st.nama} di tab ini`}><Trash2 size={15}/></button>
+                                    </td>
                                 </tr>
                             );
                         })}
@@ -8613,6 +8675,7 @@ const InputNilai = ({ activeInputTab }) => {
                                     <div className="text-[10px] text-indigo-300 mt-1 hover:text-indigo-100 cursor-pointer transition-colors" title={`Klik untuk menyalin: {{${idToShortKey[p.id]||p.id}}}`} onClick={() => {navigator.clipboard.writeText(`{{${idToShortKey[p.id]||p.id}}}`); showNotification(`Disalin: {{${idToShortKey[p.id]||p.id}}}`);}}>{`{{${idToShortKey[p.id]||p.id}}}`}</div>
                                 </th>
                             ))}
+                            <th className="p-3 border-b border-indigo-600 text-center w-14 bg-red-900">Hapus</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -8628,6 +8691,9 @@ const InputNilai = ({ activeInputTab }) => {
                                             data-cell-type="grade-input" data-student-id={st.id} data-presence-id={p.id} data-field-type="presensi" />
                                     </td>
                                 ))}
+                                <td className="p-2 text-center bg-white">
+                                    <button onClick={() => handleClearStudentData(st.id, st.nama)} className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title={`Hapus data ${st.nama}`}><Trash2 size={15}/></button>
+                                </td>
                             </tr>
                         ))}
                     </tbody>
@@ -8649,6 +8715,7 @@ const InputNilai = ({ activeInputTab }) => {
                                     <div className="text-[10px] text-blue-300 mt-1 hover:text-blue-100 cursor-pointer transition-colors" title={`Klik untuk menyalin: {{${idToShortKey[p.id]||p.id}}}`} onClick={() => {navigator.clipboard.writeText(`{{${idToShortKey[p.id]||p.id}}}`); showNotification(`Disalin: {{${idToShortKey[p.id]||p.id}}}`);}}>{`{{${idToShortKey[p.id]||p.id}}}`}</div>
                                 </th>
                             ))}
+                            <th className="p-3 border-b border-blue-600 text-center w-14 bg-red-900">Hapus</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -8664,6 +8731,9 @@ const InputNilai = ({ activeInputTab }) => {
                                             data-cell-type="grade-input" data-student-id={st.id} data-trait-id={p.id} data-field-type="sikap" />
                                     </td>
                                 ))}
+                                <td className="p-2 text-center bg-white">
+                                    <button onClick={() => handleClearStudentData(st.id, st.nama)} className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title={`Hapus data ${st.nama}`}><Trash2 size={15}/></button>
+                                </td>
                             </tr>
                         ))}
                     </tbody>
@@ -8692,6 +8762,7 @@ const InputNilai = ({ activeInputTab }) => {
                                     </div>
                                 </th>
                             ))}
+                            <th rowSpan={2} className="p-3 border-b border-orange-600 text-center w-14 bg-red-900">Hapus</th>
                         </tr>
                         <tr className="bg-orange-600 text-white text-xs">
                             <th className="p-2 border-b border-r border-orange-500 sticky left-0 bg-orange-700"></th>
@@ -8740,6 +8811,9 @@ const InputNilai = ({ activeInputTab }) => {
                                         </td>
                                     </React.Fragment>
                                 ))}
+                                <td className="p-2 text-center bg-white">
+                                    <button onClick={() => handleClearStudentData(st.id, st.nama)} className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title={`Hapus data ${st.nama}`}><Trash2 size={15}/></button>
+                                </td>
                             </tr>
                         ))}
                     </tbody>
@@ -8755,10 +8829,11 @@ const InputNilai = ({ activeInputTab }) => {
                             <th className="p-3 border-b border-r border-pink-600 text-center w-12">No</th>
                             <th className="p-3 border-b border-r border-pink-600 text-center w-20">NIS</th>
                             <th className="p-3 border-b border-r border-pink-600 w-48">Nama Santri</th>
-                            <th className="p-3 border-b border-pink-600 text-center w-64">
+                            <th className="p-3 border-b border-r border-pink-600 text-center w-64">
                                 <div className="font-bold">Isi Catatan Wali Kelas</div>
                                 <div className="text-[10px] text-pink-300 mt-1 hover:text-pink-100 cursor-pointer transition-colors inline-flex bg-pink-800/50 px-2 py-0.5 rounded-full" title="Klik untuk menyalin: {{cw}}" onClick={() => {navigator.clipboard.writeText(`{{cw}}`); showNotification('Disalin: {{cw}}');}}>{`{{cw}}`}</div>
                             </th>
+                            <th className="p-3 border-b border-pink-600 text-center w-14 bg-red-900">Hapus</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -8767,10 +8842,13 @@ const InputNilai = ({ activeInputTab }) => {
                                 <td className="p-3 text-center text-gray-500 bg-white border-r">{idx + 1}</td>
                                 <td className="p-3 text-center bg-white border-r font-semibold">{st.nis || '-'}</td>
                                 <td className="p-3 font-semibold bg-white border-r">{st.nama}</td>
-                                <td className="p-2 bg-white">
+                                <td className="p-2 border-r bg-white">
                                     <textarea className="w-full p-2 border rounded font-medium outline-none focus:border-pink-500 text-pink-900 min-h-[60px]"
                                         value={localGrades[st.id]?.catatan_wali || ''} onChange={e => handleGradeChange(st.id, 'catatan_wali', e.target.value)} placeholder="Tulis pesan penyemangat..."
                                         data-cell-type="grade-input" data-student-id={st.id} data-field-type="catatan_wali" />
+                                </td>
+                                <td className="p-2 text-center bg-white">
+                                    <button onClick={() => handleClearStudentData(st.id, st.nama)} className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title={`Hapus data ${st.nama}`}><Trash2 size={15}/></button>
                                 </td>
                             </tr>
                         ))}
@@ -8852,7 +8930,16 @@ const InputNilai = ({ activeInputTab }) => {
                                 <CheckSquare size={16}/> Rekap dari Mata Pelajaran
                             </button>
                         )}
-                        <p className="text-xs text-gray-600 ml-auto">💡 Unduh template, isi nilainya, lalu impor kembali untuk update massal</p>
+                        {selectedClass && (
+                            <button
+                                onClick={handleClearTabData}
+                                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition ml-auto"
+                                title="Hapus semua data tab ini untuk seluruh santri di kelas yang dipilih"
+                            >
+                                <Trash2 size={16}/> Reset Tab Ini
+                            </button>
+                        )}
+                        {!selectedClass && <p className="text-xs text-gray-600 ml-auto">💡 Unduh template, isi nilainya, lalu impor kembali untuk update massal</p>}
                     </div>
                 )}
             </div>
