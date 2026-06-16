@@ -9650,19 +9650,14 @@ const InputIjazah = () => {
 };
 
 // ==========================================
-// ANALISA AI SANTRI (ADMIN ONLY)
+// EXPORT DATA LENGKAP
 // ==========================================
-const AnalisaAISantri = () => {
-    const { data, allData, activeSetting, addLog, saveToDb } = useContext(AppContext);
+const ExportDataLengkap = () => {
+    const { data, allData, activeSetting, addLog } = useContext(AppContext);
     const classesData = data.classes || [];
     const [selectedClass, setSelectedClass] = useState('');
     const [selectedStudent, setSelectedStudent] = useState('');
-    const [useKatrol, setUseKatrol] = useState(true);
-    const [isLoading, setIsLoading] = useState(false);
-    const [localApiKey, setLocalApiKey] = useState(localStorage.getItem('geminiApiKey') || '');
     
-    // Derived values
-    const classObj = classesData.find(c => c.id === selectedClass);
     const activeStudents = getStudentsForYear(data.studentSnapshots, activeSetting, data.students);
     const studentsInClass = getStudentsInClass(activeStudents, classesData, selectedClass);
     const gradeDocId = selectedClass && activeSetting ? getGradeDocId(selectedClass, classesData, activeSetting, allData?.grades || []) : null;
@@ -9681,8 +9676,27 @@ const AnalisaAISantri = () => {
         return '';
     };
 
+    // Deduplicate presences and characterTraits by id
+    const uniquePresences = useMemo(() => {
+        const seen = new Set();
+        return (allData?.presences || []).filter(p => {
+            if (seen.has(p.id)) return false;
+            seen.add(p.id);
+            return true;
+        });
+    }, [allData?.presences]);
+
+    const uniqueTraits = useMemo(() => {
+        const seen = new Set();
+        return (data.characterTraits || []).filter(t => {
+            if (seen.has(t.id)) return false;
+            seen.add(t.id);
+            return true;
+        });
+    }, [data.characterTraits]);
+
+    // Katrol otomatis: nilai di bawah KKM dinaikkan ke KKM
     const classGradesDoc = useMemo(() => {
-        if (!useKatrol) return rawClassGradesDoc;
         const result = {};
         Object.keys(rawClassGradesDoc).forEach(stdId => {
             const sGrades = { ...rawClassGradesDoc[stdId] };
@@ -9699,123 +9713,130 @@ const AnalisaAISantri = () => {
                         finalScore = Number(v);
                     }
                     if (finalScore !== null && finalScore !== undefined && !isNaN(finalScore) && finalScore < kkm) {
-                        sGrades[k] = String(kkm); 
+                        sGrades[k] = String(kkm);
                     }
                 }
             });
             result[stdId] = sGrades;
         });
         return result;
-    }, [rawClassGradesDoc, useKatrol, topLevelSubjectsForClass]);
+    }, [rawClassGradesDoc, topLevelSubjectsForClass]);
 
-    const studentData = studentsInClass.find(s => s.id === selectedStudent);
-    const studentGrades = classGradesDoc[selectedStudent] || {};
-
-    const handleGenerateAI = async () => {
-        if (!selectedStudent || !studentData || !selectedClass) return;
-        const apiKey = import.meta.env.VITE_GEMINI_API_KEY || localApiKey;
-        if (!apiKey) {
-            alert("API Key Gemini belum diisi. Silakan masukkan API Key Anda (tersedia di menu Cetak Dokumen).");
-            return;
+    const handleExportExcel = () => {
+        if (!selectedClass) return;
+        const className = getClassNameFromValue(classesData, selectedClass);
+        const relevantSubjects = topLevelSubjectsForClass;
+        
+        let targetStudents = studentsInClass;
+        if (selectedStudent) {
+            targetStudents = studentsInClass.filter(s => s.id === selectedStudent);
         }
-
-        setIsLoading(true);
-        try {
-            const className = getClassNameFromValue(classesData, selectedClass);
-            let textData = `Nama Santri: ${studentData.nama}\nKelas: ${className}\n`;
-            textData += `Tahun Ajaran: ${activeSetting?.tahun || '-'} Semester: ${activeSetting?.semester || '-'}\n\n`;
-
-            textData += "NILAI AKADEMIK:\n";
-            const relevantSubjects = allData?.subjects?.filter(s => isSubjectVisibleInClass(s, selectedClass, classesData)) || [];
+        
+        const exportData = targetStudents.map((student, index) => {
+            const grades = classGradesDoc[student.id] || {};
+            const row = {
+                'No': index + 1,
+                'Nama Santri': student.nama,
+                'NIS': student.nis,
+                'Kelas': className,
+            };
+            
             relevantSubjects.forEach(s => {
-                const gradeObj = studentGrades[s.id];
-                let val = '-';
+                const gradeObj = grades[s.id];
+                let val = '';
                 if (gradeObj && typeof gradeObj === 'object') {
                     const r = computeRaportScoreLocal(gradeObj.uts, gradeObj.uas);
-                    val = r !== '' ? r : '-';
+                    val = r !== '' ? Number(r) : '';
                 } else if (gradeObj !== undefined && gradeObj !== '') {
-                    val = gradeObj;
+                    val = isNaN(Number(gradeObj)) ? gradeObj : Number(gradeObj);
                 }
-                const kkm = s.kkm || '-';
-                textData += `- ${s.nameId}: Nilai ${val} (KKM: ${kkm})\n`;
+                row[`Nilai: ${s.nameId}`] = val;
+            });
+            
+            uniquePresences.forEach(p => {
+                row[`Absen: ${p.name}`] = grades[p.id] || '0';
             });
 
-            textData += "\nKEHADIRAN:\n";
-            (allData?.presences || []).forEach(p => {
-                const val = studentGrades[p.id] || '0';
-                textData += `- ${p.name}: ${val} hari\n`;
+            uniqueTraits.forEach(t => {
+                row[`Sikap: ${t.name}`] = grades[t.id] || '-';
             });
-
-            textData += "\nKEPRIBADIAN / SIKAP:\n";
-            (allData?.characterTraits || []).forEach(p => {
-                const val = studentGrades[p.id] || '-';
-                textData += `- ${p.name}: ${val}\n`;
-            });
-
-            textData += "\nEKSTRAKURIKULER:\n";
+            
             [1, 2].forEach(i => {
-                const n = studentGrades[`ekskul${i}_nama`];
-                const v = studentGrades[`ekskul${i}_nilai`];
-                if (n) textData += `- ${n}: ${v || '-'}\n`;
+                const n = grades[`ekskul${i}_nama`];
+                const v = grades[`ekskul${i}_nilai`];
+                if (n) {
+                    row[`Ekskul ${i}`] = `${n} (Nilai: ${v || '-'})`;
+                } else {
+                    row[`Ekskul ${i}`] = '';
+                }
             });
+            
+            row['Catatan Wali Kelas'] = grades.catatan_wali || '';
+            return row;
+        });
 
-            const cw = studentGrades.catatan_wali;
-            if (cw) {
-                textData += `\nCATATAN WALI KELAS:\n${cw}\n`;
-            }
+        const ws = XLSX.utils.json_to_sheet(exportData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Data Export");
+        
+        const safeName = selectedStudent ? targetStudents[0].nama.replace(/[^a-z0-9]/gi, '_') : className.replace(/[^a-z0-9]/gi, '_');
+        const filename = `Data_Lengkap_${safeName}_${(activeSetting?.tahun||'').replace(/\//g,'-')}_${activeSetting?.semester||''}.xlsx`;
+        
+        XLSX.writeFile(wb, filename);
+        addLog(`Export Data Lengkap (Target: ${safeName})`);
+    };
 
-            const prompt = `Sebagai konselor pendidikan dan AI analis yang profesional, buatlah evaluasi komprehensif perkembangan santri berdasarkan data raport berikut:\n\n${textData}\n\nBuatlah dalam Bahasa Indonesia yang formal, empatik, objektif, dan suportif. Output harus berupa HTML murni (hanya menggunakan tag <div>, <h3>, <p>, <ul>, <li>, <strong>) tanpa dibungkus dengan tag markdown seperti \`\`\`html. Struktur yang WAJIB diikuti:\n\n<h3>Pencapaian yang Sudah Sangat Baik</h3>\n<ul>\n<li>(Sebutkan poin-poin keunggulan akademik maupun sikap)</li>\n</ul>\n\n<h3>Area yang Perlu Penguatan & Bimbingan</h3>\n<ul>\n<li>(Sebutkan poin-poin kelemahan yang butuh perhatian)</li>\n</ul>\n\n<h3>Saran Praktis untuk Orang Tua dan Guru</h3>\n<ul>\n<li>(Sebutkan saran aplikatif yang nyata dan mudah dilakukan)</li>\n</ul>`;
+    const handleCopyTable = () => {
+        const table = document.getElementById('export-data-table');
+        if (!table) return;
 
-            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: prompt }] }],
-                    generationConfig: { temperature: 0.7 }
-                })
-            });
+        const tempDiv = document.createElement('div');
+        
+        const promptText = document.createElement('p');
+        promptText.innerText = "Sebagai konselor pendidikan dan AI analis yang profesional, buatlah evaluasi komprehensif perkembangan santri berdasarkan data raport berikut. Buatlah dalam Bahasa Indonesia yang formal, empatik, objektif, dan suportif. Analisa harus mencakup:\n1. Pencapaian yang Sudah Sangat Baik (keunggulan akademik maupun sikap)\n2. Area yang Perlu Penguatan & Bimbingan (kelemahan yang butuh perhatian)\n3. Saran Praktis untuk Orang Tua dan Guru (saran aplikatif yang nyata dan mudah dilakukan)\n\nBerikut adalah datanya:\n\n";
+        tempDiv.appendChild(promptText);
+        
+        const tableClone = table.cloneNode(true);
+        tempDiv.appendChild(tableClone);
+        
+        tempDiv.style.position = 'absolute';
+        tempDiv.style.left = '-9999px';
+        document.body.appendChild(tempDiv);
 
-            if (!res.ok) throw new Error("Gagal menghubungi API Gemini. Pastikan API Key valid dan koneksi stabil.");
-            const resData = await res.json();
-            let aiHtml = resData.candidates?.[0]?.content?.parts?.[0]?.text || "<p>Gagal menghasilkan analisis.</p>";
-            aiHtml = aiHtml.replace(/```html/gi, '').replace(/```/g, '').trim();
-
-            // Simpan ke DB agar persisten
-            const updatedRawGrades = { ...rawClassGradesDoc };
-            if (!updatedRawGrades[selectedStudent]) updatedRawGrades[selectedStudent] = {};
-            updatedRawGrades[selectedStudent].ai_analysis_v2 = aiHtml; // simpan di ai_analysis_v2
-
-            await saveToDb('grades', gradeDocId, { data: updatedRawGrades, class: selectedClass, tahun: activeSetting.tahun, semester: activeSetting.semester }, true);
-
-            addLog(`Generate Analisa AI Khusus berhasil untuk ${studentData.nama}`);
-        } catch (error) {
-            console.error(error);
-            alert("Terjadi kesalahan: " + error.message);
-        } finally {
-            setIsLoading(false);
+        const range = document.createRange();
+        range.selectNode(tempDiv);
+        window.getSelection().removeAllRanges();
+        window.getSelection().addRange(range);
+        
+        try {
+            document.execCommand('copy');
+            alert('Prompt Analisa & Tabel berhasil disalin! Silakan paste (Ctrl+V) langsung ke ChatGPT / Claude.');
+        } catch(err) {
+            alert('Gagal menyalin tabel.');
         }
+        
+        window.getSelection().removeAllRanges();
+        document.body.removeChild(tempDiv);
     };
 
-    const handleCopy = () => {
-        const text = document.getElementById('ai-result-content')?.innerText || '';
-        navigator.clipboard.writeText(text);
-        alert('Teks berhasil disalin!');
-    };
+    const targetStudentsForTable = selectedStudent 
+        ? studentsInClass.filter(s => s.id === selectedStudent)
+        : studentsInClass;
 
-    const currentAnalysis = rawClassGradesDoc[selectedStudent]?.ai_analysis_v2 || '';
+    const relevantSubjects = topLevelSubjectsForClass;
 
     return (
         <div className="bg-white p-6 rounded-2xl shadow-sm border mb-6 flex flex-col h-[calc(100vh-140px)]">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
                 <div>
                     <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                        <Brain size={24} className="text-purple-600" /> Analisa AI Santri
+                        <Database size={24} className="text-blue-600" /> Export Data Lengkap
                     </h2>
-                    <p className="text-sm text-gray-500 mt-1">Hasilkan laporan komprehensif perkembangan santri dengan bantuan Kecerdasan Buatan (Gemini).</p>
+                    <p className="text-sm text-gray-500 mt-1">Lihat, salin, atau export semua data (Nilai, Absensi, Sikap, Ekskul) santri ke Excel untuk dianalisa di luar aplikasi.</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
                     <select 
-                        className="p-2 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none min-w-[200px]"
+                        className="p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none min-w-[200px]"
                         value={selectedClass} 
                         onChange={e => { setSelectedClass(e.target.value); setSelectedStudent(''); }}
                     >
@@ -9825,77 +9846,93 @@ const AnalisaAISantri = () => {
 
                     {selectedClass && (
                         <select 
-                            className="p-2 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none min-w-[250px]"
+                            className="p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none min-w-[250px]"
                             value={selectedStudent} 
                             onChange={e => setSelectedStudent(e.target.value)}
                         >
-                            <option value="">-- Pilih Santri --</option>
+                            <option value="">-- Semua Santri (Satu Kelas) --</option>
                             {studentsInClass.map(s => <option key={s.id} value={s.id}>{s.nama} ({s.nis})</option>)}
                         </select>
+                    )}
+
+                    {selectedClass && (
+                        <>
+                            <button 
+                                onClick={handleCopyTable}
+                                className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition border"
+                                title="Salin tabel ke Clipboard"
+                            >
+                                <Copy size={18} /> Salin Tabel
+                            </button>
+                            <button 
+                                onClick={handleExportExcel}
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition shadow-sm"
+                                title="Download ke format Excel"
+                            >
+                                <Download size={18} /> Download Excel
+                            </button>
+                        </>
                     )}
                 </div>
             </div>
 
-            {selectedClass && selectedStudent ? (
-                <div className="flex-1 flex flex-col md:flex-row gap-6 overflow-hidden">
-                    <div className="md:w-1/3 flex flex-col gap-4 border-r pr-4 overflow-y-auto custom-scrollbar">
-                        <div className="bg-purple-50 p-4 rounded-xl border border-purple-100">
-                            <h3 className="font-bold text-purple-900 mb-2">Pengaturan Analisis</h3>
-                            <label className="flex items-center gap-2 cursor-pointer mt-3">
-                                <input type="checkbox" checked={useKatrol} onChange={e => setUseKatrol(e.target.checked)} className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500" />
-                                <span className="text-sm font-medium text-gray-700">Terapkan Katrol (KKM)</span>
-                            </label>
-                            <p className="text-[11px] text-purple-700 mt-1 ml-6 leading-relaxed">Jika aktif, nilai yang berada di bawah KKM akan disesuaikan menjadi KKM sebelum dianalisis oleh AI.</p>
-
-                            <button 
-                                onClick={handleGenerateAI} 
-                                disabled={isLoading}
-                                className="w-full mt-4 bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-lg font-bold flex justify-center items-center gap-2 transition disabled:opacity-50"
-                            >
-                                {isLoading ? (
-                                    <><div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div> Memproses AI...</>
-                                ) : (
-                                    <><Brain size={20}/> Generate Analisis AI</>
-                                )}
-                            </button>
-                            <p className="text-[11px] text-gray-500 mt-2 text-center">Data hasil analisis akan disimpan secara permanen.</p>
-                        </div>
-                    </div>
-
-                    <div className="md:w-2/3 flex flex-col overflow-hidden bg-gray-50 rounded-xl border relative">
-                        <div className="bg-white border-b px-4 py-3 flex justify-between items-center sticky top-0 z-10">
-                            <h3 className="font-bold text-gray-800 flex items-center gap-2">
-                                <FileText size={18} className="text-blue-500"/> Hasil Analisis Evaluasi
-                            </h3>
-                            {currentAnalysis && (
-                                <button onClick={handleCopy} className="text-sm bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1.5 rounded-md font-semibold flex items-center gap-1 transition">
-                                    <Copy size={14}/> Salin Teks
-                                </button>
-                            )}
-                        </div>
-                        <div className="flex-1 p-6 overflow-y-auto custom-scrollbar prose prose-sm max-w-none prose-purple" id="ai-result-content">
-                            {currentAnalysis ? (
-                                <div dangerouslySetInnerHTML={{ __html: currentAnalysis }} />
-                            ) : (
-                                <div className="h-full flex flex-col items-center justify-center text-gray-400 opacity-60">
-                                    <Brain size={64} className="mb-4" />
-                                    <p className="font-medium text-lg text-center">Belum ada analisis untuk santri ini.</p>
-                                    <p className="text-sm mt-1 text-center max-w-md">Klik tombol "Generate Analisis AI" di sebelah kiri untuk membuat laporan evaluasi menggunakan Kecerdasan Buatan.</p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
+            {selectedClass ? (
+                <div className="flex-1 overflow-auto border rounded-lg custom-scrollbar">
+                    <table id="export-data-table" className="w-full text-sm text-left border-collapse whitespace-nowrap">
+                        <thead className="text-xs text-gray-700 uppercase bg-gray-100 sticky top-0 z-10">
+                            <tr>
+                                <th className="border px-4 py-3 bg-gray-100 sticky left-0 z-20 min-w-[50px]">No</th>
+                                <th className="border px-4 py-3 bg-gray-100 sticky left-[50px] z-20 min-w-[200px]">Nama Santri</th>
+                                {relevantSubjects.map(s => <th key={s.id} className="border px-4 py-3 bg-blue-50">Nilai: {s.nameId}</th>)}
+                                {uniquePresences.map(p => <th key={p.id} className="border px-4 py-3 bg-red-50">Absen: {p.name}</th>)}
+                                {uniqueTraits.map(t => <th key={t.id} className="border px-4 py-3 bg-green-50">Sikap: {t.name}</th>)}
+                                <th className="border px-4 py-3 bg-purple-50">Ekskul 1</th>
+                                <th className="border px-4 py-3 bg-purple-50">Ekskul 2</th>
+                                <th className="border px-4 py-3 bg-yellow-50">Catatan Wali Kelas</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {targetStudentsForTable.map((student, index) => {
+                                const grades = classGradesDoc[student.id] || {};
+                                return (
+                                    <tr key={student.id} className="bg-white border-b hover:bg-gray-50">
+                                        <td className="border px-4 py-2 sticky left-0 bg-white z-10">{index + 1}</td>
+                                        <td className="border px-4 py-2 sticky left-[50px] bg-white z-10 font-medium">{student.nama}</td>
+                                        
+                                        {relevantSubjects.map(s => {
+                                            const g = grades[s.id];
+                                            let val = '-';
+                                            if (g && typeof g === 'object') {
+                                                const r = computeRaportScoreLocal(g.uts, g.uas);
+                                                val = r !== '' ? r : '-';
+                                            } else if (g !== undefined && g !== '') {
+                                                val = g;
+                                            }
+                                            return <td key={s.id} className="border px-4 py-2 text-center">{val}</td>;
+                                        })}
+                                        
+                                        {uniquePresences.map(p => <td key={p.id} className="border px-4 py-2 text-center">{grades[p.id] || '0'}</td>)}
+                                        {uniqueTraits.map(t => <td key={t.id} className="border px-4 py-2 text-center">{grades[t.id] || '-'}</td>)}
+                                        
+                                        <td className="border px-4 py-2 text-center">{grades['ekskul1_nama'] ? `${grades['ekskul1_nama']} (${grades['ekskul1_nilai']||'-'})` : '-'}</td>
+                                        <td className="border px-4 py-2 text-center">{grades['ekskul2_nama'] ? `${grades['ekskul2_nama']} (${grades['ekskul2_nilai']||'-'})` : '-'}</td>
+                                        
+                                        <td className="border px-4 py-2 max-w-xs truncate" title={grades.catatan_wali}>{grades.catatan_wali || '-'}</td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
                 </div>
             ) : (
                 <div className="flex-1 flex flex-col items-center justify-center text-gray-400 bg-gray-50 rounded-xl border border-dashed border-gray-200 p-8">
-                    <Brain size={48} className="mb-4 text-gray-300" />
-                    <p className="text-lg font-medium text-gray-500">Silakan pilih Kelas dan Nama Santri di atas untuk memulai analisis.</p>
+                    <Database size={48} className="mb-4 text-gray-300" />
+                    <p className="text-lg font-medium text-gray-500">Silakan pilih Kelas di atas untuk menampilkan data lengkap.</p>
                 </div>
             )}
         </div>
     );
 };
-
 // ==========================================
 // CETAK RAPORT / IJAZAH
 // ==========================================
@@ -9924,37 +9961,7 @@ const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = 
     const [previewZoom, setPreviewZoom] = useState(isPublicView ? 0.45 : 0.7);
     const [printRangeStart, setPrintRangeStart] = useState('');
     const [printRangeEnd, setPrintRangeEnd] = useState('');
-    const [aiAnalysisLoading, setAiAnalysisLoading] = useState(false);
-    const [aiAnalysisResults, setAiAnalysisResults] = useState({});
-    const [localApiKey, setLocalApiKey] = useState(localStorage.getItem('geminiApiKey') || '');
-    const [testApiKeyLoading, setTestApiKeyLoading] = useState(false);
-
-    const testApiKey = async () => {
-        if (!localApiKey) {
-            showNotification('Masukkan API Key terlebih dahulu.', 'error');
-            return;
-        }
-        setTestApiKeyLoading(true);
-        try {
-            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${localApiKey}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: "Ketik 'OK' jika kamu bisa membaca pesan ini." }] }]
-                })
-            });
-            if (res.ok) {
-                showNotification('API Key valid dan tersimpan!', 'success');
-                localStorage.setItem('geminiApiKey', localApiKey);
-            } else {
-                showNotification('API Key tidak valid atau limit habis.', 'error');
-            }
-        } catch(e) {
-            showNotification('Gagal terhubung ke API Google.', 'error');
-        } finally {
-            setTestApiKeyLoading(false);
-        }
-    };
+            const [localApiKey] = useState(localStorage.getItem('geminiApiKey') || '');
 
     const dropdownClasses = useMemo(() => {
         if (mode !== 'ijazah') return classesData;
@@ -10117,7 +10124,7 @@ const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = 
         if (!selectedStudent || !studentData) return;
         const apiKey = import.meta.env.VITE_GEMINI_API_KEY || localApiKey;
         if (!apiKey) {
-            alert("API Key Gemini belum diisi. Silakan masukkan API Key Anda pada kolom yang tersedia.");
+            alert("API Key Gemini belum diisi. Silakan masukkan API Key Anda di menu Koneksi API AI.");
             return;
         }
 
@@ -10740,36 +10747,8 @@ const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = 
                     )}
 
                     <div className="pt-4 flex flex-col gap-3">
-                        {!isPublicView && !import.meta.env.VITE_GEMINI_API_KEY && (
-                            <div className="bg-purple-50 p-3 rounded-lg border border-purple-200">
-                                <label className="text-xs font-bold text-purple-800 mb-1 block">API Key Gemini (Manual Input):</label>
-                                <input 
-                                    type="password" 
-                                    value={localApiKey} 
-                                    onChange={(e) => {
-                                        setLocalApiKey(e.target.value);
-                                        localStorage.setItem('geminiApiKey', e.target.value);
-                                    }}
-                                    placeholder="Paste API Key Anda (AIzaSy...)"
-                                    className="w-full p-2 border border-purple-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500"
-                                />
-                                <div className="mt-2 flex items-center justify-between">
-                                    <p className="text-[9px] text-purple-600 leading-tight flex-1 pr-2">Dapatkan key gratis di <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="underline font-bold">Google AI Studio</a>.</p>
-                                    <button 
-                                        onClick={testApiKey}
-                                        disabled={testApiKeyLoading}
-                                        className="bg-purple-600 text-white text-[10px] px-2 py-1.5 rounded font-bold hover:bg-purple-700 transition"
-                                    >
-                                        {testApiKeyLoading ? 'Menguji...' : 'Uji & Simpan'}
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-                        {!isPublicView && (
-                        <button onClick={handleGenerateAI} disabled={!selectedStudent || aiAnalysisLoading} className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2.5 rounded-lg font-bold flex justify-center items-center gap-2 transition shadow-sm border border-purple-800">
-                            {aiAnalysisLoading ? <RefreshCw size={18} className="animate-spin" /> : <span className="flex items-center gap-2">✨ Generate Analisa AI</span>}
-                        </button>
-                        )}
+
+                        
                         {!isPublicView && <button onClick={handlePrint} disabled={!selectedStudent} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-bold flex justify-center items-center gap-2 transition"><Printer size={18}/> Print Langsung</button>}
                         <button onClick={handleSavePDF} disabled={!selectedStudent} className="w-full bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-lg font-bold flex justify-center items-center gap-2 transition"><Download size={18}/> Simpan sbg PDF</button>
                         {!isPublicView && <button onClick={handleWA} disabled={!selectedStudent} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-lg font-bold flex justify-center items-center gap-2 transition"><Share2 size={18}/> Kirim Info via WA</button>}
@@ -10836,14 +10815,6 @@ const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = 
                                         </div>
                                     );
                                 })}
-                                {aiAnalysisResults[std.id] && (
-                                    <div key={`${std.id}-ai`} className={`print-container bg-white relative print:shadow-none print:!m-0 ${isExporting ? '!m-0 shadow-none' : 'shadow-xl'}`} style={{ width: `${canvasWidth}px`, height: `${canvasHeight}px`, pageBreakAfter: stdIndex === studentsToRender.length - 1 ? 'auto' : 'always', marginTop: isExporting ? 0 : '32px', flexShrink: 0 }}>
-                                        <div style={{ position: 'absolute', left: `${printMargins.left}mm`, top: `${printMargins.top}mm`, right: `${printMargins.right}mm`, bottom: `${printMargins.bottom}mm`, overflow: 'hidden', padding: '40px', boxSizing: 'border-box' }}>
-                                            <h2 style={{ textAlign: 'center', fontSize: '24px', fontWeight: 'bold', marginBottom: '30px', borderBottom: '2px solid #000', paddingBottom: '10px' }}>LAMPIRAN: CATATAN PERKEMBANGAN SANTRI</h2>
-                                            <div dangerouslySetInnerHTML={{ __html: aiAnalysisResults[std.id] }} style={{ fontSize: '16px', lineHeight: '1.8', color: '#000', fontFamily: 'serif' }} />
-                                        </div>
-                                    </div>
-                                )}
                             </React.Fragment>
                         ))}
                     </div>
@@ -11258,8 +11229,8 @@ const Dashboard = () => {
     { id: 'legger', label: 'Legger Kelas', icon: BookOpen, roles: ['admin', 'user'] },
     { id: 'cetak_raport', label: 'Cetak Raport', icon: Printer, roles: ['admin', 'user'] },
     { id: 'cetak_ijazah', label: 'Cetak Ijazah', icon: Printer, roles: ['admin'] },
-    { id: 'analisa_ai', label: 'Analisa AI Santri', icon: Brain, roles: ['admin'] },
-  ];
+    { id: 'export_data', label: 'Export Data Lengkap', icon: Database, roles: ['admin'] },
+      ];
 
   const filteredMenu = menuItems.filter(m => {
       if (!m.roles.includes(currentUser?.role)) return false;
@@ -11285,8 +11256,8 @@ const Dashboard = () => {
       case 'cetak_raport': return <ErrorBoundary key="eb-raport"><CetakDokumen key="raport" mode="raport" /></ErrorBoundary>;
       case 'cetak_ijazah': return <ErrorBoundary key="eb-ijazah"><CetakDokumen key="ijazah" mode="ijazah" /></ErrorBoundary>;
       case 'legger': return <LeggerKelas />;
-      case 'analisa_ai': return <AnalisaAISantri />;
-      default: return <div className="p-8 text-center text-gray-500">Menu tidak ditemukan</div>;
+      case 'export_data': return <ExportDataLengkap />;
+            default: return <div className="p-8 text-center text-gray-500">Menu tidak ditemukan</div>;
     }
   };
 
