@@ -7993,6 +7993,32 @@ const InputNilai = ({ activeInputTab }) => {
             setIsImporting(true);
             const importedGrades = await importGradesFromExcel(file, studentsInClass, subjectsInClass, activeInputTab, data);
             
+            // Pengecekan ekskul baru untuk tab ekskul
+            if (activeInputTab === 'ekskul') {
+                const existingEkskuls = [...(data.extracurriculars || [])];
+                const newEkskulNames = new Set();
+                
+                Object.values(importedGrades).forEach(grades => {
+                    const e1 = grades.ekskul1_nama;
+                    const e2 = grades.ekskul2_nama;
+                    
+                    if (e1 && !existingEkskuls.find(e => e.name.trim().toLowerCase() === e1.trim().toLowerCase())) {
+                        newEkskulNames.add(e1.trim());
+                    }
+                    if (e2 && !existingEkskuls.find(e => e.name.trim().toLowerCase() === e2.trim().toLowerCase())) {
+                        newEkskulNames.add(e2.trim());
+                    }
+                });
+                
+                if (newEkskulNames.size > 0) {
+                    for (const name of newEkskulNames) {
+                        const newId = `ekskul_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+                        await saveToDb('extracurriculars', newId, { name, nameAr: '' }, true);
+                        existingEkskuls.push({ id: newId, name, nameAr: '' }); // Update local temp array
+                    }
+                }
+            }
+
             // Merge dengan grades yang sudah ada
             setLocalGrades(prev => {
                 const merged = { ...prev };
