@@ -9653,10 +9653,8 @@ const InputIjazah = () => {
 // ANALISA AI SANTRI (ADMIN ONLY)
 // ==========================================
 const AnalisaAISantri = () => {
-    const { 
-        classesData, allData, activeSetting, idToShortKey, addLog,
-        saveToDb, getClassNameFromValue, isSubjectVisibleInClass, getGradeDocId, filterSubjectsByClass, sortSubjectsByCategory
-    } = useContext(AppContext);
+    const { data, allData, activeSetting, addLog, saveToDb } = useContext(AppContext);
+    const classesData = data.classes || [];
     const [selectedClass, setSelectedClass] = useState('');
     const [selectedStudent, setSelectedStudent] = useState('');
     const [useKatrol, setUseKatrol] = useState(true);
