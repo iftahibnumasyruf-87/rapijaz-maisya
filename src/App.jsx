@@ -10251,10 +10251,10 @@ const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = 
         const tahun = activeSetting.tahun || '-';
         const semester = activeSetting.semester || '-';
 
-        // Hitung ringkasan nilai per mapel (ambil max 10 mapel)
+        // Hitung ringkasan nilai per mapel (semua mapel)
         const relevantSubjects = data.subjects.filter(s =>
             isSubjectVisibleInClass(s, selectedClass, classesData)
-        ).slice(0, 10);
+        );
 
         const gradeLines = relevantSubjects.map(s => {
             const gradeObj = studentGrades[s.id];
@@ -10283,8 +10283,46 @@ const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = 
         });
         const avgVal = countVal > 0 ? String(Math.round(totalVal / countVal)) : '-';
 
+        // Kehadiran
+        let presenceText = "";
+        if (data.presences && data.presences.length > 0) {
+            presenceText = "\n\n\uD83D\uDCC5 *Kehadiran:*\n" + data.presences.map(p => {
+                const val = studentGrades[p.id] || '-';
+                return `\u2022 ${p.name || p.id}: ${val}`;
+            }).join('\n');
+        }
+
+        // Sikap/Karakter
+        let traitText = "";
+        if (data.characterTraits && data.characterTraits.length > 0) {
+            traitText = "\n\n\uD83E\uDD32 *Sikap & Karakter:*\n" + data.characterTraits.map(c => {
+                const val = studentGrades[c.id] || '-';
+                return `\u2022 ${c.name || c.id}: ${val}`;
+            }).join('\n');
+        }
+
+        // Ekskul
+        let ekskulText = "";
+        const ekskul1Name = studentGrades['ekskul1_nama'];
+        const ekskul1Val = studentGrades['ekskul1_nilai'];
+        const ekskul2Name = studentGrades['ekskul2_nama'];
+        const ekskul2Val = studentGrades['ekskul2_nilai'];
+        if (ekskul1Name || ekskul2Name) {
+            ekskulText = "\n\n\uD83C\uDFC0 *Ekstrakurikuler:*\n";
+            if (ekskul1Name) ekskulText += `\u2022 ${ekskul1Name}: ${ekskul1Val || '-'}\n`;
+            if (ekskul2Name) ekskulText += `\u2022 ${ekskul2Name}: ${ekskul2Val || '-'}`;
+            ekskulText = ekskulText.trimEnd();
+        }
+
+        // Catatan Wali
+        let cwText = "";
+        const cw = studentGrades['catatan_wali'];
+        if (cw) {
+            cwText = `\n\n\uD83D\uDCDD *Catatan Wali Kelas:*\n_${cw}_`;
+        }
+
         const publicLink = `https://rapijaz-isb.vercel.app/?public_raport=true&santri_id=${selectedStudent}`;
-        const text = `\uD83C\uDF93 *Laporan Nilai ${mode === 'raport' ? 'Raport' : 'Ijazah'}*\nPonpes Imam Syafi'i Brebes\n\nAssalamu'alaikum Wr. Wb.\n\nDengan hormat, berikut adalah informasi nilai ananda:\n\nNama: *${studentData.nama}*\nKelas: *${className}*\nTA: *${tahun} | Semester ${semester}*\n\n\uD83D\uDCDA *Nilai Mata Pelajaran:*\n${gradeLines}\n\n\uD83D\uDCCA Rata-Rata: *${avgVal}*\n\n\uD83D\uDCF1 *Lihat Rapor Online:*\n${publicLink}\n\nSemoga nilai ini menjadi motivasi untuk terus belajar.\n\nWassalamu'alaikum Wr. Wb. \uD83E\uDD32`;
+        const text = `\uD83C\uDF93 *Laporan Nilai ${mode === 'raport' ? 'Raport' : 'Ijazah'}*\nPonpes Imam Syafi'i Brebes\n\nAssalamu'alaikum Wr. Wb.\n\nDengan hormat, berikut adalah informasi nilai ananda:\n\nNama: *${studentData.nama}*\nKelas: *${className}*\nTA: *${tahun} | Semester ${semester}*\n\n\uD83D\uDCDA *Nilai Mata Pelajaran:*\n${gradeLines}\n\n\uD83D\uDCCA Rata-Rata: *${avgVal}*${presenceText}${traitText}${ekskulText}${cwText}\n\n\uD83D\uDCF1 *Lihat Rapor Online:*\n${publicLink}\n\nSemoga nilai ini menjadi motivasi untuk terus belajar.\n\nWassalamu'alaikum Wr. Wb. \uD83E\uDD32`;
         
         const fonnteToken = localStorage.getItem('fonnteToken') || 'oPhcncGcZC3H2kXbQLo3';
         const targetWA = window.prompt(`Masukkan Nomor WA Tujuan untuk ${studentData.nama} (contoh: 0812...):`, "");
