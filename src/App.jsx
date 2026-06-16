@@ -4855,7 +4855,10 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
                     if (dataType === 'ekskul_fixed') {
                         if (realId === 'ekskul1_nama_ar' || realId === 'ekskul2_nama_ar') {
                             const indKey = realId === 'ekskul1_nama_ar' ? 'ekskul1_nama' : 'ekskul2_nama';
+                            const arKey = realId === 'ekskul1_nama_ar' ? 'ekskul1_nama_ar' : 'ekskul2_nama_ar';
                             const indName = sGrades[indKey];
+                            const arName = sGrades[arKey];
+                            if (arName) return arName;
                             if (!indName) return '';
                             const ekskulObj = data.extracurriculars?.find(e => e.name === indName);
                             return ekskulObj ? (ekskulObj.nameAr || indName) : indName;
@@ -8798,8 +8801,8 @@ const InputNilai = ({ activeInputTab }) => {
 
         if (activeInputTab === 'ekskul') {
             const ekskulSlots = [
-                { namaKey: 'ekskul1_nama', nilaiKey: 'ekskul1_nilai', label: 'Ekskul 1' },
-                { namaKey: 'ekskul2_nama', nilaiKey: 'ekskul2_nilai', label: 'Ekskul 2' },
+                { namaKey: 'ekskul1_nama', namaArKey: 'ekskul1_nama_ar', nilaiKey: 'ekskul1_nilai', label: 'Ekskul 1' },
+                { namaKey: 'ekskul2_nama', namaArKey: 'ekskul2_nama_ar', nilaiKey: 'ekskul2_nilai', label: 'Ekskul 2' },
             ];
             return (
                 <table className="w-full text-left border-collapse whitespace-nowrap">
@@ -8809,10 +8812,11 @@ const InputNilai = ({ activeInputTab }) => {
                             <th className="p-3 border-b border-r border-orange-600 text-center w-20 bg-orange-800">NIS</th>
                             <th className="p-3 border-b border-r border-orange-600 sticky left-12 z-30 bg-orange-800">Nama Santri</th>
                             {ekskulSlots.map(slot => (
-                                <th key={slot.namaKey} colSpan={2} className="p-3 border-b border-r border-orange-600 text-center min-w-[260px]">
+                                <th key={slot.namaKey} colSpan={3} className="p-3 border-b border-r border-orange-600 text-center min-w-[360px]">
                                     <div className="font-bold">{slot.label}</div>
                                     <div className="flex gap-1 text-[10px] text-orange-300 mt-1">
                                         <span className="flex-1 text-center cursor-pointer hover:text-orange-100" title={`Klik salin variabel nama`} onClick={() => { navigator.clipboard.writeText(`{{${slot.namaKey}}}`); showNotification(`Disalin: {{${slot.namaKey}}}`); }}>{`{{${slot.namaKey}}}`}</span>
+                                        <span className="flex-1 text-center cursor-pointer hover:text-orange-100" title={`Klik salin variabel nama arab`} onClick={() => { navigator.clipboard.writeText(`{{${slot.namaArKey}}}`); showNotification(`Disalin: {{${slot.namaArKey}}}`); }}>{`{{${slot.namaArKey}}}`}</span>
                                         <span className="flex-1 text-center cursor-pointer hover:text-orange-100" title={`Klik salin variabel nilai`} onClick={() => { navigator.clipboard.writeText(`{{${slot.nilaiKey}}}`); showNotification(`Disalin: {{${slot.nilaiKey}}}`); }}>{`{{${slot.nilaiKey}}}`}</span>
                                     </div>
                                 </th>
@@ -8825,7 +8829,8 @@ const InputNilai = ({ activeInputTab }) => {
                             <th className="p-2 border-b border-r border-orange-500 sticky left-12 bg-orange-700"></th>
                             {ekskulSlots.map(slot => (
                                 <React.Fragment key={slot.namaKey + '_fragment'}>
-                                    <th className="p-2 border-b border-r border-orange-500 text-center min-w-[160px]">Nama Ekskul</th>
+                                    <th className="p-2 border-b border-r border-orange-500 text-center min-w-[140px]">Nama Ekskul</th>
+                                    <th className="p-2 border-b border-r border-orange-500 text-center min-w-[140px]">Nama (Arab)</th>
                                     <th className="p-2 border-b border-r border-orange-500 text-center min-w-[80px]">Nilai</th>
                                 </React.Fragment>
                             ))}
@@ -8840,17 +8845,51 @@ const InputNilai = ({ activeInputTab }) => {
                                 {ekskulSlots.map(slot => (
                                     <React.Fragment key={slot.namaKey + '_body'}>
                                         <td className="p-2 border-r bg-white hover:bg-orange-50">
-                                            <select
+                                            <input
+                                                type="text"
                                                 className="w-full p-2 border rounded text-sm outline-none focus:border-orange-500 bg-white text-gray-800"
                                                 value={localGrades[st.id]?.[slot.namaKey] || ''}
                                                 onChange={e => handleGradeChange(st.id, slot.namaKey, e.target.value)}
+                                                placeholder="Cth: Panahan"
                                                 data-cell-type="grade-input" data-student-id={st.id} data-ekskul-key={slot.namaKey} data-field-type="ekskul_nama"
-                                            >
-                                                <option value="">-- Pilih Ekskul --</option>
-                                                {data.extracurriculars.map(ekskul => (
-                                                    <option key={ekskul.id} value={ekskul.name}>{ekskul.name}</option>
-                                                ))}
-                                            </select>
+                                            />
+                                        </td>
+                                        <td className="p-2 border-r bg-white hover:bg-orange-50">
+                                            <div className="flex items-center gap-1">
+                                                <input
+                                                    type="text"
+                                                    dir="rtl"
+                                                    className="w-full p-2 border rounded text-sm outline-none focus:border-orange-500 bg-white text-gray-800 font-arabic text-right"
+                                                    value={localGrades[st.id]?.[slot.namaArKey] || ''}
+                                                    onChange={e => handleGradeChange(st.id, slot.namaArKey, e.target.value)}
+                                                    placeholder="الرماية"
+                                                />
+                                                <button
+                                                    onClick={async () => {
+                                                        const text = localGrades[st.id]?.[slot.namaKey];
+                                                        if (!text) {
+                                                            showNotification("Isi nama ekskul (ID) terlebih dahulu!", "error");
+                                                            return;
+                                                        }
+                                                        try {
+                                                            const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=id|ar`);
+                                                            const json = await res.json();
+                                                            if (json.responseData?.translatedText) {
+                                                                handleGradeChange(st.id, slot.namaArKey, json.responseData.translatedText);
+                                                                showNotification("Berhasil diterjemahkan!");
+                                                            } else {
+                                                                showNotification("Gagal menerjemahkan", "error");
+                                                            }
+                                                        } catch (e) {
+                                                            showNotification("Gagal menghubungi server terjemahan", "error");
+                                                        }
+                                                    }}
+                                                    className="p-2 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 transition"
+                                                    title="Auto Translate dari Bahasa Indonesia ke Arab"
+                                                >
+                                                    🌐
+                                                </button>
+                                            </div>
                                         </td>
                                         <td className="p-2 border-r bg-white hover:bg-orange-50">
                                             <input
@@ -11118,7 +11157,6 @@ const Dashboard = () => {
     { id: 'subjects', label: 'Plotting Pelajaran' },
     { id: 'presences', label: 'Presensi' }, 
     { id: 'characterTraits', label: 'Sikap & Kesantrian' }, 
-    { id: 'extracurriculars', label: 'Ekstrakurikuler' }, 
     { id: 'studentFields', label: 'Field Santri' }, 
     { id: 'students', label: 'Data Santri' },
     { id: 'fonts', label: 'Font Kustom' }, 
