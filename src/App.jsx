@@ -7740,13 +7740,40 @@ const importGradesFromExcel = async (file, studentsInClass, subjectsInClass, act
                         });
                     });
                 } else if (activeInputTab === 'ekskul') {
-                    headerRow0.forEach((cell, i) => {
-                        const val = String(cell).toLowerCase();
-                        if (val.includes('ekskul 1 nama')) colMap[i] = 'ekskul1_nama';
-                        if (val.includes('ekskul 1 nilai')) colMap[i] = 'ekskul1_nilai';
-                        if (val.includes('ekskul 2 nama')) colMap[i] = 'ekskul2_nama';
-                        if (val.includes('ekskul 2 nilai')) colMap[i] = 'ekskul2_nilai';
+                    // Helper: normalise cell text — strip spaces/dashes, lowercase
+                    const normalizeHeader = (cell) =>
+                        String(cell).toLowerCase().replace(/[\s\-_]+/g, ' ').trim();
+
+                    // Flexible matcher — returns ekskul slot key or null
+                    const matchEkskulHeader = (raw) => {
+                        const v = normalizeHeader(raw);
+                        // accept variations: "ekskul 1 nama", "ekskul1nama", "nama ekskul 1", etc.
+                        const hasNum = (n) => new RegExp(`\\b${n}\\b`).test(v.replace(/\s/g,'')) || v.includes(String(n));
+                        const isEkskul = v.includes('ekskul');
+                        const isNama  = v.includes('nama') || v.includes('name');
+                        const isNilai = v.includes('nilai') || v.includes('value') || v.includes('score') || v.includes('predikat');
+                        if (!isEkskul) return null;
+                        if (isNama  && hasNum(1)) return 'ekskul1_nama';
+                        if (isNilai && hasNum(1)) return 'ekskul1_nilai';
+                        if (isNama  && hasNum(2)) return 'ekskul2_nama';
+                        if (isNilai && hasNum(2)) return 'ekskul2_nilai';
+                        return null;
+                    };
+
+                    // Scan BOTH header rows so custom templates still work
+                    [...headerRow0, ...headerRow1].forEach((cell, rawIdx) => {
+                        const i = rawIdx % Math.max(headerRow0.length, 1); // normalise index to row length
+                        // Only process each column once (prefer row0, then row1)
+                        if (colMap[i] !== undefined) return;
+                        const matched = matchEkskulHeader(cell);
+                        if (matched) colMap[i] = matched;
                     });
+
+                    // Fallback: if colMap still empty, try positional (col 3=ekskul1_nama,4=ekskul1_nilai,5=ekskul2_nama,6=ekskul2_nilai)
+                    if (Object.keys(colMap).length === 0) {
+                        const fallback = { 3: 'ekskul1_nama', 4: 'ekskul1_nilai', 5: 'ekskul2_nama', 6: 'ekskul2_nilai' };
+                        Object.assign(colMap, fallback);
+                    }
                 } else if (activeInputTab === 'catatan_wali') {
                     headerRow0.forEach((cell, i) => {
                         const val = String(cell).toLowerCase();
@@ -7997,24 +8024,26 @@ const InputNilai = ({ activeInputTab }) => {
             if (activeInputTab === 'ekskul') {
                 const existingEkskuls = [...(data.extracurriculars || [])];
                 const newEkskulNames = new Set();
-                
+
+                // Normalise string for fuzzy comparison: lowercase + collapse whitespace
+                const normStr = (s) => String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+                const ekskulExists = (name) =>
+                    existingEkskuls.some(e => normStr(e.name) === normStr(name));
+
                 Object.values(importedGrades).forEach(grades => {
                     const e1 = grades.ekskul1_nama;
                     const e2 = grades.ekskul2_nama;
-                    
-                    if (e1 && !existingEkskuls.find(e => e.name.trim().toLowerCase() === e1.trim().toLowerCase())) {
-                        newEkskulNames.add(e1.trim());
-                    }
-                    if (e2 && !existingEkskuls.find(e => e.name.trim().toLowerCase() === e2.trim().toLowerCase())) {
-                        newEkskulNames.add(e2.trim());
-                    }
+                    if (e1 && !ekskulExists(e1)) newEkskulNames.add(e1.trim());
+                    if (e2 && !ekskulExists(e2)) newEkskulNames.add(e2.trim());
                 });
-                
+
                 if (newEkskulNames.size > 0) {
                     for (const name of newEkskulNames) {
+                        // Skip if name is empty or obviously junk (e.g. only dashes)
+                        if (!name || name.replace(/[-\s]/g, '').length === 0) continue;
                         const newId = `ekskul_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
                         await saveToDb('extracurriculars', newId, { name, nameAr: '' }, true);
-                        existingEkskuls.push({ id: newId, name, nameAr: '' }); // Update local temp array
+                        existingEkskuls.push({ id: newId, name, nameAr: '' });
                     }
                 }
             }
