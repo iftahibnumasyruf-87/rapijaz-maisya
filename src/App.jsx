@@ -2893,6 +2893,34 @@ const MasterData = ({ activeTab }) => {
 
   const renderFullTable = () => {
     switch (activeTab) {
+      case 'fonnte_settings': {
+          const [localToken, setLocalToken] = useState(localStorage.getItem('fonnteToken') || 'oPhcncGcZC3H2kXbQLo3');
+          const saveFonnte = () => {
+              localStorage.setItem('fonnteToken', localToken);
+              showNotification("Token Fonnte berhasil disimpan!");
+          };
+          return (
+              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 max-w-2xl mx-auto mt-8">
+                  <h3 className="text-xl font-bold text-emerald-800 mb-4 flex items-center gap-2"><Settings size={24} /> Pengaturan API WhatsApp (Fonnte)</h3>
+                  <p className="text-gray-600 mb-6 text-sm">
+                      Fonnte digunakan untuk mengirim pesan rapor langsung ke WhatsApp orang tua. Pastikan token Anda valid.
+                  </p>
+                  <div className="mb-4">
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Token Fonnte</label>
+                      <input 
+                          type="text" 
+                          value={localToken} 
+                          onChange={(e) => setLocalToken(e.target.value)}
+                          className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all font-mono"
+                          placeholder="Masukkan token Fonnte Anda..."
+                      />
+                  </div>
+                  <button onClick={saveFonnte} className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-lg font-semibold flex items-center gap-2 transition">
+                      <Save size={18} /> Simpan Pengaturan
+                  </button>
+              </div>
+          );
+      }
       case 'variables_list': {
           const dedupedMasterSubs = getUniqueActiveSubjects(data);
           const globalCodes = getGlobalSubjectShortCodes(dedupedMasterSubs);
@@ -10257,8 +10285,27 @@ const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = 
 
         const publicLink = `${window.location.origin}${window.location.pathname}?public_raport=true&santri_id=${selectedStudent}`;
         const text = `\uD83C\uDF93 *Laporan Nilai ${mode === 'raport' ? 'Raport' : 'Ijazah'}*\nPonpes Imam Syafi'i Brebes\n\nAssalamu'alaikum Wr. Wb.\n\nDengan hormat, berikut adalah informasi nilai ananda:\n\nNama: *${studentData.nama}*\nKelas: *${className}*\nTA: *${tahun} | Semester ${semester}*\n\n\uD83D\uDCDA *Nilai Mata Pelajaran:*\n${gradeLines}\n\n\uD83D\uDCCA Rata-Rata: *${avgVal}*\n\n\uD83D\uDCF1 *Lihat Rapor Online:*\n${publicLink}\n\nSemoga nilai ini menjadi motivasi untuk terus belajar.\n\nWassalamu'alaikum Wr. Wb. \uD83E\uDD32`;
-        addLog(`Membagikan Info ${mode} via WA untuk ${studentData.nama}`);
-        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+        
+        const fonnteToken = localStorage.getItem('fonnteToken') || 'oPhcncGcZC3H2kXbQLo3';
+        const targetWA = window.prompt(`Masukkan Nomor WA Tujuan untuk ${studentData.nama} (contoh: 0812...):`, "");
+        if (!targetWA) return;
+
+        addLog(`Membagikan Info ${mode} via WA Fonnte untuk ${studentData.nama}`);
+        
+        fetch("https://api.fonnte.com/send", {
+            method: "POST",
+            headers: {
+                "Authorization": fonnteToken,
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            body: new URLSearchParams({ target: targetWA, message: text })
+        }).then(res => res.json()).then(data => {
+            if (data.status) {
+                alert("Berhasil mengirim pesan WhatsApp via Fonnte!");
+            } else {
+                alert("Gagal mengirim WA: " + (data.reason || data.detail || "Error Fonnte"));
+            }
+        }).catch(err => alert("Terjadi kesalahan jaringan: " + err));
     };
 
     const handleShareLinkWA = () => {
@@ -10267,8 +10314,27 @@ const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = 
         const tahun = activeSetting.tahun || '-';
         const semester = activeSetting.semester || '-';
         const text = `\uD83C\uDF93 *Rapor Online - Ponpes Imam Syafi'i Brebes*\n\nAssalamu'alaikum Wr. Wb.,\n\nYth. Orang Tua/Wali Santri *${studentData.nama}*\n\nBerikut link untuk melihat rapor ananda secara online:\n\n\uD83D\uDD17 ${publicLink}\n\nTA: *${tahun} | Semester ${semester}*\n\nLink ini dapat dibuka langsung dari HP tanpa perlu login.\n\nWassalamu'alaikum Wr. Wb. \uD83E\uDD32`;
-        addLog(`Membagikan Link Rapor via WA untuk ${studentData.nama}`);
-        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+        
+        const fonnteToken = localStorage.getItem('fonnteToken') || 'oPhcncGcZC3H2kXbQLo3';
+        const targetWA = window.prompt(`Masukkan Nomor WA Tujuan untuk ${studentData.nama} (contoh: 0812...):`, "");
+        if (!targetWA) return;
+
+        addLog(`Membagikan Link Rapor via WA Fonnte untuk ${studentData.nama}`);
+        
+        fetch("https://api.fonnte.com/send", {
+            method: "POST",
+            headers: {
+                "Authorization": fonnteToken,
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            body: new URLSearchParams({ target: targetWA, message: text })
+        }).then(res => res.json()).then(data => {
+            if (data.status) {
+                alert("Berhasil mengirim link rapor via Fonnte!");
+            } else {
+                alert("Gagal mengirim WA: " + (data.reason || data.detail || "Error Fonnte"));
+            }
+        }).catch(err => alert("Terjadi kesalahan jaringan: " + err));
     };
 
     const handleBatchSavePDF = () => {
@@ -11176,6 +11242,7 @@ const Dashboard = () => {
     { id: 'fonts', label: 'Font Kustom' }, 
     { id: 'users', label: 'Pengguna Sistem' },
     { id: 'variables_list', label: 'Daftar Variabel' },
+    { id: 'fonnte_settings', label: 'Pengaturan WA (Fonnte)' },
     { id: 'backup_restore', label: 'Backup & Restore' }
   ];
 
