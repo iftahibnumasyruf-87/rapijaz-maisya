@@ -9659,7 +9659,7 @@ const AnalisaAISantri = () => {
     const [selectedStudent, setSelectedStudent] = useState('');
     const [useKatrol, setUseKatrol] = useState(true);
     const [isLoading, setIsLoading] = useState(false);
-    const [localApiKey, setLocalApiKey] = useState(localStorage.getItem('gemini_api_key') || '');
+    const [localApiKey, setLocalApiKey] = useState(localStorage.getItem('geminiApiKey') || '');
     
     // Derived values
     const classObj = classesData.find(c => c.id === selectedClass);
