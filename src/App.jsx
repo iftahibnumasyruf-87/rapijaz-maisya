@@ -10283,7 +10283,7 @@ const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = 
         });
         const avgVal = countVal > 0 ? String(Math.round(totalVal / countVal)) : '-';
 
-        const publicLink = `${window.location.origin}${window.location.pathname}?public_raport=true&santri_id=${selectedStudent}`;
+        const publicLink = `https://rapijaz-isb.vercel.app/?public_raport=true&santri_id=${selectedStudent}`;
         const text = `\uD83C\uDF93 *Laporan Nilai ${mode === 'raport' ? 'Raport' : 'Ijazah'}*\nPonpes Imam Syafi'i Brebes\n\nAssalamu'alaikum Wr. Wb.\n\nDengan hormat, berikut adalah informasi nilai ananda:\n\nNama: *${studentData.nama}*\nKelas: *${className}*\nTA: *${tahun} | Semester ${semester}*\n\n\uD83D\uDCDA *Nilai Mata Pelajaran:*\n${gradeLines}\n\n\uD83D\uDCCA Rata-Rata: *${avgVal}*\n\n\uD83D\uDCF1 *Lihat Rapor Online:*\n${publicLink}\n\nSemoga nilai ini menjadi motivasi untuk terus belajar.\n\nWassalamu'alaikum Wr. Wb. \uD83E\uDD32`;
         
         const fonnteToken = localStorage.getItem('fonnteToken') || 'oPhcncGcZC3H2kXbQLo3';
@@ -10310,7 +10310,7 @@ const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = 
 
     const handleShareLinkWA = () => {
         if (!studentData) return;
-        const publicLink = `${window.location.origin}${window.location.pathname}?public_raport=true&santri_id=${selectedStudent}`;
+        const publicLink = `https://rapijaz-isb.vercel.app/?public_raport=true&santri_id=${selectedStudent}`;
         const tahun = activeSetting.tahun || '-';
         const semester = activeSetting.semester || '-';
         const text = `\uD83C\uDF93 *Rapor Online - Ponpes Imam Syafi'i Brebes*\n\nAssalamu'alaikum Wr. Wb.,\n\nYth. Orang Tua/Wali Santri *${studentData.nama}*\n\nBerikut link untuk melihat rapor ananda secara online:\n\n\uD83D\uDD17 ${publicLink}\n\nTA: *${tahun} | Semester ${semester}*\n\nLink ini dapat dibuka langsung dari HP tanpa perlu login.\n\nWassalamu'alaikum Wr. Wb. \uD83E\uDD32`;
