@@ -7592,8 +7592,8 @@ const exportGradesToExcel = (grades, studentsInClass, subjectsInClass, className
     } else if (activeInputTab === 'sikap') {
         data.characterTraits.forEach(p => { headers1.push(p.name); cols.push(p.id); });
     } else if (activeInputTab === 'ekskul') {
-        headers1.push('Ekskul 1 Nama', 'Ekskul 1 Nilai', 'Ekskul 2 Nama', 'Ekskul 2 Nilai');
-        cols.push('ekskul1_nama', 'ekskul1_nilai', 'ekskul2_nama', 'ekskul2_nilai');
+        headers1.push('Ekskul 1 Nama', 'Ekskul 1 Nama (Arab)', 'Ekskul 1 Nilai', 'Ekskul 2 Nama', 'Ekskul 2 Nama (Arab)', 'Ekskul 2 Nilai');
+        cols.push('ekskul1_nama', 'ekskul1_nama_ar', 'ekskul1_nilai', 'ekskul2_nama', 'ekskul2_nama_ar', 'ekskul2_nilai');
     } else if (activeInputTab === 'catatan_wali') {
         headers1.push('Catatan Wali Kelas');
         cols.push('catatan_wali');
@@ -7754,8 +7754,11 @@ const importGradesFromExcel = async (file, studentsInClass, subjectsInClass, act
                         const hasNum = (n) => new RegExp(`\\b${n}\\b`).test(v.replace(/\s/g,'')) || v.includes(String(n));
                         const isEkskul = v.includes('ekskul');
                         const isNama  = v.includes('nama') || v.includes('name');
+                        const isArab  = v.includes('arab') || v.includes('ar');
                         const isNilai = v.includes('nilai') || v.includes('value') || v.includes('score') || v.includes('predikat');
                         if (!isEkskul) return null;
+                        if (isNama && isArab && hasNum(1)) return 'ekskul1_nama_ar';
+                        if (isNama && isArab && hasNum(2)) return 'ekskul2_nama_ar';
                         if (isNama  && hasNum(1)) return 'ekskul1_nama';
                         if (isNilai && hasNum(1)) return 'ekskul1_nilai';
                         if (isNama  && hasNum(2)) return 'ekskul2_nama';
@@ -8130,9 +8133,7 @@ const InputNilai = ({ activeInputTab }) => {
             return data.characterTraits.map(t => t.id);
         }
         if (activeInputTab === 'ekskul') {
-            // ekskul slots: namaKey dan nilaiKey
-            const slots = data.extracurriculars.map((_, i) => ([`ekskul_${i}_nama`, `ekskul_${i}_nilai`])).flat();
-            return slots;
+            return ['ekskul1_nama', 'ekskul1_nama_ar', 'ekskul1_nilai', 'ekskul2_nama', 'ekskul2_nama_ar', 'ekskul2_nilai'];
         }
         if (activeInputTab === 'catatan') {
             return ['catatan_wali'];
