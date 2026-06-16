@@ -9664,7 +9664,8 @@ const AnalisaAISantri = () => {
     // Derived values
     const classObj = classesData.find(c => c.id === selectedClass);
     const studentIds = classObj ? (classObj.students || []) : [];
-    const studentsInClass = (allData?.students || []).filter(s => studentIds.includes(s.id));
+    const activeStudents = getStudentsForYear(data.studentSnapshots, activeSetting, data.students);
+    const studentsInClass = activeStudents.filter(s => studentIds.includes(s.id));
     const gradeDocId = selectedClass && activeSetting ? getGradeDocId(selectedClass, classesData, activeSetting, allData?.grades || []) : null;
     const rawClassGradesDoc = (allData?.grades || []).find(g => g.id === gradeDocId)?.data || {};
 
