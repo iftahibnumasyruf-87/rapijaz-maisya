@@ -2332,7 +2332,7 @@ const MasterData = ({ activeTab }) => {
           case 'extracurriculars': return 'name';
           case 'fonts': return 'name';
           case 'studentFields': return 'name';
-          case 'students': return 'nama';
+          case 'students': return 'nis';
           case 'classes': return 'name';
           case 'users': return 'name';
           default: return 'id';
@@ -11362,6 +11362,17 @@ const LeggerKelas = () => {
 
     const grades = data.grades.find(g => g.id === gradeDocId)?.data || {};
 
+    const [sortConfig, setSortConfig] = useState({ key: 'avg', direction: 'desc' });
+
+    const handleSort = (key) => {
+        setSortConfig(prev => {
+            if (prev.key === key) {
+                return { key, direction: prev.direction === 'desc' ? 'asc' : 'desc' };
+            }
+            return { key, direction: 'desc' };
+        });
+    };
+
     const getSubjectGradeValue = (grade) => {
         if (grade === null || grade === undefined || grade === '') return null;
         if (typeof grade === 'object') {
@@ -11396,6 +11407,51 @@ const LeggerKelas = () => {
         return parseGradeValue(grade) ?? '-';
     };
 
+    const subjectAverages = useMemo(() => {
+        if (!selectedClass) return {};
+        const avgs = {};
+        subjects.forEach(sub => {
+            let utsSum = 0, utsCount = 0;
+            let uasSum = 0, uasCount = 0;
+            let raportSum = 0, raportCount = 0;
+            
+            students.forEach(st => {
+                const grade = (grades[st.id] || {})[sub.id];
+                if (grade && typeof grade === 'object') {
+                    const uts = parseGradeValue(grade.uts);
+                    const uas = parseGradeValue(grade.uas);
+                    const raport = getSubjectGradeValue(grade);
+                    
+                    if (uts !== null && !isNaN(uts)) {
+                        utsSum += uts;
+                        utsCount++;
+                    }
+                    if (uas !== null && !isNaN(uas)) {
+                        uasSum += uas;
+                        uasCount++;
+                    }
+                    if (raport !== null && !isNaN(raport)) {
+                        raportSum += raport;
+                        raportCount++;
+                    }
+                } else if (grade !== undefined && grade !== '' && grade !== null) {
+                    const val = parseGradeValue(grade);
+                    if (val !== null && !isNaN(val)) {
+                        raportSum += val;
+                        raportCount++;
+                    }
+                }
+            });
+            
+            avgs[sub.id] = {
+                uts: utsCount > 0 ? Math.round(utsSum / utsCount) : '-',
+                uas: uasCount > 0 ? Math.round(uasSum / uasCount) : '-',
+                raport: raportCount > 0 ? Math.round(raportSum / raportCount) : '-'
+            };
+        });
+        return avgs;
+    }, [students, subjects, grades, selectedClass]);
+
     const leggerData = useMemo(() => {
         if (!selectedClass) return [];
         let r = students.map(st => {
@@ -11408,21 +11464,90 @@ const LeggerKelas = () => {
             let predikat = 'D'; if (avg >= 90) predikat = 'A'; else if (avg >= 80) predikat = 'B'; else if (avg >= 70) predikat = 'C';
             return { ...st, total, avg, predikat, grades: grades[st.id] || {} };
         });
-        r.sort((a, b) => b.avg - a.avg); return r;
-    }, [students, subjects, grades, selectedClass]);
+        
+        r.sort((a, b) => {
+            let valA, valB;
+            if (sortConfig.key === 'avg' || sortConfig.key === 'rank') {
+                valA = a.avg;
+                valB = b.avg;
+            } else if (sortConfig.key === 'total') {
+                valA = a.total;
+                valB = b.total;
+            } else if (sortConfig.key === 'predikat') {
+                valA = a.predikat;
+                valB = b.predikat;
+            } else if (sortConfig.key === 'nama') {
+                valA = a.nama;
+                valB = b.nama;
+            } else if (sortConfig.key.startsWith('subject_')) {
+                const parts = sortConfig.key.split('_');
+                const field = parts[1];
+                const subId = parts.slice(2).join('_');
+                
+                const gradeA = a.grades[subId];
+                const gradeB = b.grades[subId];
+                
+                if (field === 'uts') {
+                    valA = gradeA && typeof gradeA === 'object' ? parseGradeValue(gradeA.uts) : null;
+                    valB = gradeB && typeof gradeB === 'object' ? parseGradeValue(gradeB.uts) : null;
+                } else if (field === 'uas') {
+                    valA = gradeA && typeof gradeA === 'object' ? parseGradeValue(gradeA.uas) : null;
+                    valB = gradeB && typeof gradeB === 'object' ? parseGradeValue(gradeB.uas) : null;
+                } else {
+                    valA = getSubjectGradeValue(gradeA);
+                    valB = getSubjectGradeValue(gradeB);
+                }
+                
+                valA = (valA !== null && !isNaN(valA)) ? valA : -1;
+                valB = (valB !== null && !isNaN(valB)) ? valB : -1;
+            } else {
+                valA = a[sortConfig.key];
+                valB = b[sortConfig.key];
+            }
+            
+            if (valA === valB) {
+                return b.avg - a.avg; // Tie breaker
+            }
+            
+            if (typeof valA === 'string') {
+                return sortConfig.direction === 'desc' 
+                    ? valB.localeCompare(valA) 
+                    : valA.localeCompare(valB);
+            }
+            
+            return sortConfig.direction === 'desc' ? valB - valA : valA - valB;
+        });
+        return r;
+    }, [students, subjects, grades, selectedClass, sortConfig]);
 
     const handleSendWA = (row) => {
         const className = getClassNameFromValue(classesData, selectedClass);
         const tahun = activeSetting.tahun || '-';
         const semester = activeSetting.semester || '-';
-        const gradeLines = subjects.slice(0, 10).map(s => {
-            const val = getSubjectGradeValue(row.grades[s.id]);
-            return `\u2022 ${s.nameId}: *${val !== null ? val : '-'}*`;
+        const gradeLines = subjects.map(s => {
+            const grade = row.grades[s.id];
+            let uts = '-';
+            let uas = '-';
+            let raport = '-';
+            
+            if (grade && typeof grade === 'object') {
+                uts = grade.uts ?? '-';
+                if (uts === '') uts = '-';
+                uas = grade.uas ?? '-';
+                if (uas === '') uas = '-';
+                const rVal = getSubjectGradeValue(grade);
+                raport = rVal !== null ? String(rVal) : '-';
+            } else if (grade !== undefined && grade !== '' && grade !== null) {
+                const rVal = parseGradeValue(grade);
+                raport = rVal !== null ? String(rVal) : '-';
+            }
+            return `\u25CF ${s.nameId}: UTS: *${uts}*, UAS: *${uas}*, Raport: *${raport}*`;
         }).join('\n');
-        const text = `\uD83C\uDF93 *Laporan Nilai Santri*\nPonpes Imam Syafi'i Brebes\n\nNama: *${row.nama}*\nKelas: *${className}*\nTA: *${tahun} Sem ${semester}*\n\n\uD83D\uDCDA *Ringkasan Nilai:*\n${gradeLines}\n\n\uD83D\uDCCA Rata-Rata: *${row.avg}* | Predikat: *${row.predikat}*\n\nAlhamdulillah, terima kasih atas kepercayaan Anda. \uD83E\uDD32`;
+
+        const text = `\uD83C\uDF93 *Laporan Nilai Akhir Santri (UTS&UAS)*\nPonpes Imam Syafi'i Brebes\n\nNama: *${row.nama}*\nKelas: *${className}*\nTA: *${tahun} Sem ${semester}*\n\n\uD83D\uDCDA *Pencapaian Nilai:*\n${gradeLines}\n\n\uD83D\uDCCA Rata-Rata: *${row.avg}* | Predikat: *${row.predikat}*\n\nAlhamdulillah, terima kasih atas kepercayaan Anda. \uD83E\uDD32`;
         addLog(`Kirim info nilai ${row.nama} via WA`);
         const fonnteToken = localStorage.getItem('fonnteToken') || 'oPhcncGcZC3H2kXbQLo3';
-        const targetWA = window.prompt(`Masukkan Nomor WA Tujuan untuk ${row.nama} (contoh: 0812...):`, "");
+        const targetWA = window.prompt(`Masukkan Nomor WA Tujuan untuk ${row.nama} (contoh: 0812...):`, row.no_tlp || "");
         if (!targetWA) return;
 
         fetch("https://api.fonnte.com/send", {
@@ -11445,55 +11570,93 @@ const LeggerKelas = () => {
         const className = getClassNameFromValue(classesData, selectedClass);
         addLog(`Mengekspor Legger Kelas ${className}`);
         
-        const categoryHeaders = ['No.', 'NIS', 'Nama Santri'];
-        const headers = ['', '', ''];
+        const row4 = ['No.', 'NIS', 'Nama Santri'];
+        const row5 = ['', '', ''];
+        const row6 = ['', '', ''];
         
-        let currentColIndex = 3;
         const merges = [
-            { s: { r: 0, c: 0 }, e: { r: 0, c: subjects.length + 5 } },
-            { s: { r: 1, c: 0 }, e: { r: 1, c: subjects.length + 5 } },
-            { s: { r: 3, c: 0 }, e: { r: 4, c: 0 } }, // Peringkat vertikal
-            { s: { r: 3, c: 1 }, e: { r: 4, c: 1 } }, // NIS vertikal
-            { s: { r: 3, c: 2 }, e: { r: 4, c: 2 } }  // Nama Santri vertikal
+            { s: { r: 0, c: 0 }, e: { r: 0, c: subjects.length * 4 + 5 } },
+            { s: { r: 1, c: 0 }, e: { r: 1, c: subjects.length * 4 + 5 } },
+            { s: { r: 3, c: 0 }, e: { r: 5, c: 0 } }, // Rank / No vertikal
+            { s: { r: 3, c: 1 }, e: { r: 5, c: 1 } }, // NIS vertikal
+            { s: { r: 3, c: 2 }, e: { r: 5, c: 2 } }  // Nama Santri vertikal
         ];
 
+        let currentColIndex = 3;
+        
+        // Add Category row merges
         Object.entries(groupBy(subjects, 'kategori')).forEach(([cat, subs]) => {
-            categoryHeaders.push(cat || 'Umum');
-            for (let i = 1; i < subs.length; i++) categoryHeaders.push('');
-            if (subs.length > 1) {
-                merges.push({ s: { r: 3, c: currentColIndex }, e: { r: 3, c: currentColIndex + subs.length - 1 } });
+            row4.push(cat || 'Umum');
+            const totalCols = subs.length * 4;
+            for (let i = 1; i < totalCols; i++) row4.push('');
+            if (totalCols > 1) {
+                merges.push({ s: { r: 3, c: currentColIndex }, e: { r: 3, c: currentColIndex + totalCols - 1 } });
             }
-            subs.forEach(s => headers.push(s.nameId));
-            currentColIndex += subs.length;
+            currentColIndex += totalCols;
         });
 
-        categoryHeaders.push('Total', 'Rata-rata', 'Predikat');
-        headers.push('', '', '');
+        // Add Subject Name row merges
+        subjects.forEach((s, idx) => {
+            const startCol = 3 + idx * 4;
+            row5.push(`${s.nameId} (Guru: ${s.guru || '-'}, KKM: ${s.kkm || '-'})`);
+            row5.push('', '', '');
+            merges.push({ s: { r: 4, c: startCol }, e: { r: 4, c: startCol + 3 } });
+        });
+
+        // Add UTS, UAS, Raport, Rerata sub-headers
+        subjects.forEach(() => {
+            row6.push('UTS', 'UAS', 'Raport', 'Rerata Kelas');
+        });
+
+        // Add trailing headers (Total, Rata-rata, Predikat)
+        row4.push('Total', 'Rata-rata', 'Predikat');
+        row5.push('', '', '');
+        row6.push('', '', '');
         
         merges.push(
-            { s: { r: 3, c: currentColIndex }, e: { r: 4, c: currentColIndex } },
-            { s: { r: 3, c: currentColIndex + 1 }, e: { r: 4, c: currentColIndex + 1 } },
-            { s: { r: 3, c: currentColIndex + 2 }, e: { r: 4, c: currentColIndex + 2 } }
+            { s: { r: 3, c: currentColIndex }, e: { r: 5, c: currentColIndex } },
+            { s: { r: 3, c: currentColIndex + 1 }, e: { r: 5, c: currentColIndex + 1 } },
+            { s: { r: 3, c: currentColIndex + 2 }, e: { r: 5, c: currentColIndex + 2 } }
         );
         
         const aoa = [
             [`DATA NILAI LEGGER KELAS ${className.toUpperCase()}`],
             [`Tahun Ajaran: ${activeSetting?.tahun || '-'} | Semester: ${activeSetting?.semester || '-'}`],
             [],
-            categoryHeaders,
-            headers
+            row4,
+            row5,
+            row6
         ];
         
         leggerData.forEach((row, idx) => {
             const rowData = [idx + 1, row.nis || '', row.nama || ''];
             subjects.forEach(s => {
                 const raw = row.grades[s.id];
-                const value = formatSubjectGradeDisplay(raw);
-                rowData.push(value);
+                const uts = raw && typeof raw === 'object' ? (raw.uts ?? '') : '';
+                const uas = raw && typeof raw === 'object' ? (raw.uas ?? '') : '';
+                const raport = getSubjectGradeValue(raw) ?? '';
+                const rerata = subjectAverages[s.id]?.raport ?? '';
+                rowData.push(uts, uas, raport, rerata);
             });
             rowData.push(row.total, row.avg, row.predikat);
             aoa.push(rowData);
         });
+
+        // Add footer Class Average row in Excel
+        if (leggerData.length > 0) {
+            const classTotalAvg = Math.round(leggerData.reduce((sum, r) => sum + r.total, 0) / leggerData.length);
+            const classAvgAvg = Math.round(leggerData.reduce((sum, r) => sum + r.avg, 0) / leggerData.length);
+            const footerRow = ['', 'Rata-rata Kelas', ''];
+            subjects.forEach(s => {
+                const avg = subjectAverages[s.id] || { uts: '-', uas: '-', raport: '-' };
+                footerRow.push(avg.uts, avg.uas, avg.raport, avg.raport);
+            });
+            footerRow.push(classTotalAvg, classAvgAvg, '');
+            aoa.push(footerRow);
+
+            const footerRowIndex = leggerData.length + 6;
+            merges.push({ s: { r: footerRowIndex, c: 1 }, e: { r: footerRowIndex, c: 2 } });
+        }
 
         const ws = XLSX.utils.aoa_to_sheet(aoa);
         ws['!merges'] = merges;
@@ -11525,18 +11688,116 @@ const LeggerKelas = () => {
                     <table className="w-full text-left border-collapse whitespace-nowrap">
                         <thead className="sticky top-0 z-20">
                             <tr className="bg-gray-800 text-white text-sm">
-                                <th rowSpan={3} className="p-3 border-b border-gray-700 text-center w-12 sticky left-0 z-30 bg-gray-900">Rank</th>
-                                <th rowSpan={3} className="p-3 border-b border-gray-700 sticky left-12 z-30 bg-gray-900">Nama Santri</th>
-                                {subjects.length > 0 && <th colSpan={subjects.length} className="p-3 border-b border-gray-700 text-center bg-gray-900">Mata Pelajaran</th>}
-                                <th rowSpan={3} className="p-3 border-b border-gray-700 text-center bg-gray-700">Total</th><th rowSpan={3} className="p-3 border-b border-gray-700 text-center bg-gray-700">Rata-rata</th><th rowSpan={3} className="p-3 border-b border-gray-700 text-center bg-gray-700">Predikat</th><th rowSpan={3} className="p-3 border-b border-gray-700 text-center bg-emerald-700 print:hidden">WA</th>
+                                <th 
+                                    rowSpan={4} 
+                                    className="p-3 border-b border-gray-700 text-center w-12 sticky left-0 z-30 bg-gray-900 cursor-pointer select-none hover:bg-gray-800 transition-colors"
+                                    onClick={() => handleSort('avg')}
+                                >
+                                    <div className="flex flex-col items-center gap-0.5 justify-center">
+                                        <span>Rank</span>
+                                        <span className="text-[10px] text-gray-400">
+                                            {sortConfig.key === 'avg' ? (sortConfig.direction === 'desc' ? '▼' : '▲') : '↕'}
+                                        </span>
+                                    </div>
+                                </th>
+                                <th 
+                                    rowSpan={4} 
+                                    className="p-3 border-b border-gray-700 sticky left-12 z-30 bg-gray-900 cursor-pointer select-none hover:bg-gray-800 transition-colors"
+                                    onClick={() => handleSort('nama')}
+                                >
+                                    <div className="flex items-center justify-between gap-1">
+                                        <span>Nama Santri</span>
+                                        <span className="text-[10px] text-gray-400">
+                                            {sortConfig.key === 'nama' ? (sortConfig.direction === 'desc' ? '▼' : '▲') : '↕'}
+                                        </span>
+                                    </div>
+                                </th>
+                                {subjects.length > 0 && <th colSpan={subjects.length * 4} className="p-3 border-b border-gray-700 text-center bg-gray-900">Mata Pelajaran</th>}
+                                <th 
+                                    rowSpan={4} 
+                                    className="p-3 border-b border-gray-700 text-center bg-gray-700 cursor-pointer select-none hover:bg-gray-600 transition-colors"
+                                    onClick={() => handleSort('total')}
+                                >
+                                    <div className="flex items-center justify-center gap-1">
+                                        <span>Total</span>
+                                        <span className="text-[10px] text-gray-400">
+                                            {sortConfig.key === 'total' ? (sortConfig.direction === 'desc' ? '▼' : '▲') : '↕'}
+                                        </span>
+                                    </div>
+                                </th>
+                                <th 
+                                    rowSpan={4} 
+                                    className="p-3 border-b border-gray-700 text-center bg-gray-700 cursor-pointer select-none hover:bg-gray-600 transition-colors"
+                                    onClick={() => handleSort('avg')}
+                                >
+                                    <div className="flex items-center justify-center gap-1">
+                                        <span>Rata-rata</span>
+                                        <span className="text-[10px] text-gray-400">
+                                            {sortConfig.key === 'avg' ? (sortConfig.direction === 'desc' ? '▼' : '▲') : '↕'}
+                                        </span>
+                                    </div>
+                                </th>
+                                <th 
+                                    rowSpan={4} 
+                                    className="p-3 border-b border-gray-700 text-center bg-gray-700 cursor-pointer select-none hover:bg-gray-600 transition-colors"
+                                    onClick={() => handleSort('predikat')}
+                                >
+                                    <div className="flex items-center justify-center gap-1">
+                                        <span>Predikat</span>
+                                        <span className="text-[10px] text-gray-400">
+                                            {sortConfig.key === 'predikat' ? (sortConfig.direction === 'desc' ? '▼' : '▲') : '↕'}
+                                        </span>
+                                    </div>
+                                </th>
+                                <th rowSpan={4} className="p-3 border-b border-gray-700 text-center bg-emerald-700 print:hidden">WA</th>
                             </tr>
                             <tr className="bg-gray-700 text-white text-sm">
                                 {Object.entries(groupBy(subjects, 'kategori')).map(([cat, subs]) => (
-                                    <th key={cat || 'umum'} colSpan={subs.length} className="p-3 border-b border-gray-700 text-center bg-gray-800">{cat || 'Umum'}</th>
+                                    <th key={cat || 'umum'} colSpan={subs.length * 4} className="p-3 border-b border-gray-700 text-center bg-gray-800">{cat || 'Umum'}</th>
                                 ))}
                             </tr>
                             <tr className="bg-gray-800 text-white text-sm">
-                                {subjects.map(s => <th key={s.id} className="p-3 border-b border-gray-700 text-center" title={s.nameId}><div className="w-20 truncate">{s.nameId}</div></th>)}
+                                {subjects.map(s => (
+                                    <th 
+                                        key={s.id} 
+                                        colSpan={4} 
+                                        className="p-2 border-b border-gray-700 text-center select-none" 
+                                        title={`${s.nameId} | Guru: ${s.guru || '-'} | KKM: ${s.kkm || '-'}`}
+                                    >
+                                        <div className="w-32 truncate mx-auto font-bold">{s.nameId}</div>
+                                        <div className="text-[10px] text-gray-300 font-normal mt-0.5 truncate w-32 mx-auto">{s.guru || '-'}</div>
+                                        <div className="text-[10px] text-yellow-300 font-medium mt-0.5">KKM: {s.kkm || '-'}</div>
+                                    </th>
+                                ))}
+                            </tr>
+                            <tr className="bg-gray-700 text-white text-[11px]">
+                                {subjects.flatMap(s => [
+                                    <th key={`${s.id}-uts`} className="p-1 border-b border-gray-600 text-center cursor-pointer select-none hover:bg-gray-600 transition-colors w-10" onClick={() => handleSort(`subject_uts_${s.id}`)}>
+                                        <div className="flex items-center justify-center gap-0.5">
+                                            <span>UTS</span>
+                                            <span className="text-[8px] text-gray-300">
+                                                {sortConfig.key === `subject_uts_${s.id}` ? (sortConfig.direction === 'desc' ? '▼' : '▲') : '↕'}
+                                            </span>
+                                        </div>
+                                    </th>,
+                                    <th key={`${s.id}-uas`} className="p-1 border-b border-gray-600 text-center cursor-pointer select-none hover:bg-gray-600 transition-colors w-10" onClick={() => handleSort(`subject_uas_${s.id}`)}>
+                                        <div className="flex items-center justify-center gap-0.5">
+                                            <span>UAS</span>
+                                            <span className="text-[8px] text-gray-300">
+                                                {sortConfig.key === `subject_uas_${s.id}` ? (sortConfig.direction === 'desc' ? '▼' : '▲') : '↕'}
+                                            </span>
+                                        </div>
+                                    </th>,
+                                    <th key={`${s.id}-raport`} className="p-1 border-b border-gray-600 text-center cursor-pointer select-none hover:bg-gray-600 transition-colors w-10" onClick={() => handleSort(`subject_raport_${s.id}`)}>
+                                        <div className="flex items-center justify-center gap-0.5">
+                                            <span>Rpt</span>
+                                            <span className="text-[8px] text-gray-300">
+                                                {sortConfig.key === `subject_raport_${s.id}` ? (sortConfig.direction === 'desc' ? '▼' : '▲') : '↕'}
+                                            </span>
+                                        </div>
+                                    </th>,
+                                    <th key={`${s.id}-rerata`} className="p-1 border-b border-gray-600 text-center bg-gray-800 text-gray-400 font-normal w-10">Rerata</th>
+                                ])}
                             </tr>
                         </thead>
                         <tbody>
@@ -11546,10 +11807,25 @@ const LeggerKelas = () => {
                                     <td className="p-3 font-semibold sticky left-12 bg-white border-r shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] z-10">{row.nama}</td>
                                     {subjects.map(s => {
                                         const raw = row.grades[s.id];
-                                        const display = formatSubjectGradeDisplay(raw);
-                                        const val = getSubjectGradeValue(raw);
-                                        const isRed = val !== null && Number(val) > 0 && Number(val) < Number(s.kkm);
-                                        return <td key={s.id} className={`p-3 text-center border-r ${isRed ? 'text-red-600 font-bold bg-red-50' : ''}`}>{display}</td>;
+                                        const uts = raw && typeof raw === 'object' ? (raw.uts ?? '-') : '-';
+                                        const uas = raw && typeof raw === 'object' ? (raw.uas ?? '-') : '-';
+                                        const raportVal = getSubjectGradeValue(raw);
+                                        const valDisplay = raportVal !== null ? String(raportVal) : '-';
+                                        
+                                        const isRed = raportVal !== null && Number(raportVal) > 0 && Number(raportVal) < Number(s.kkm);
+                                        const avg = subjectAverages[s.id] || { uts: '-', uas: '-', raport: '-' };
+                                        const classRerata = avg.raport;
+
+                                        return (
+                                            <React.Fragment key={s.id}>
+                                                <td className="p-3 text-center border-r font-medium text-gray-500">{uts === '' ? '-' : uts}</td>
+                                                <td className="p-3 text-center border-r font-medium text-gray-500">{uas === '' ? '-' : uas}</td>
+                                                <td className={`p-3 text-center border-r ${isRed ? 'text-red-655 font-bold bg-red-50' : 'font-semibold text-gray-800'}`}>
+                                                    {valDisplay}
+                                                </td>
+                                                <td className="p-3 text-center border-r bg-gray-50 text-gray-400 font-semibold">{classRerata}</td>
+                                            </React.Fragment>
+                                        );
                                     })}
                                     <td className="p-3 text-center font-bold bg-emerald-50 border-r">{row.total}</td><td className="p-3 text-center font-bold bg-emerald-100 border-r">{row.avg}</td><td className="p-3 text-center font-bold bg-emerald-50">{row.predikat}</td>
                                     <td className="p-3 text-center print:hidden">
@@ -11559,6 +11835,32 @@ const LeggerKelas = () => {
                                     </td>
                                 </tr>
                             ))}
+                            {/* Baris Rata-rata Kelas */}
+                            {leggerData.length > 0 && (
+                                <tr className="bg-gray-100 font-bold text-sm text-gray-700 border-t-2 border-gray-300">
+                                    <td className="p-3 text-center sticky left-0 bg-gray-100 border-r z-10">-</td>
+                                    <td className="p-3 sticky left-12 bg-gray-100 border-r shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] z-10 text-left">Rata-rata Kelas</td>
+                                    {subjects.map(s => {
+                                        const avg = subjectAverages[s.id] || { uts: '-', uas: '-', raport: '-' };
+                                        return (
+                                            <React.Fragment key={s.id}>
+                                                <td className="p-3 text-center border-r text-gray-500 bg-gray-50 font-normal">{avg.uts}</td>
+                                                <td className="p-3 text-center border-r text-gray-500 bg-gray-50 font-normal">{avg.uas}</td>
+                                                <td className="p-3 text-center border-r text-emerald-800 bg-emerald-50/50">{avg.raport}</td>
+                                                <td className="p-3 text-center border-r text-gray-500 bg-gray-100 font-semibold">{avg.raport}</td>
+                                            </React.Fragment>
+                                        );
+                                    })}
+                                    <td className="p-3 text-center font-bold bg-emerald-100/50 border-r">
+                                        {Math.round(leggerData.reduce((sum, r) => sum + r.total, 0) / leggerData.length)}
+                                    </td>
+                                    <td className="p-3 text-center font-bold bg-emerald-100 border-r">
+                                        {Math.round(leggerData.reduce((sum, r) => sum + r.avg, 0) / leggerData.length)}
+                                    </td>
+                                    <td className="p-3 text-center font-bold bg-emerald-50">-</td>
+                                    <td className="p-3 text-center print:hidden bg-gray-50">-</td>
+                                </tr>
+                            )}
                         </tbody>
                     </table>
                 </div>
