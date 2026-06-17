@@ -11179,8 +11179,15 @@ const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = 
             return <div style={{ ...baseStyle, width: `${el.width}px`, height: `${el.height}px`, backgroundColor: el.shapeFill || '#000000', borderRadius: `${el.shapeRadius || 0}px`, border: el.shapeBorder ? `${el.shapeBorder}px solid ${el.shapeBorderColor || '#000000'}` : 'none' }} />;
         }
         // text / default
+        let isNowrap = false;
+        if (isPublicView && typeof content === 'string') {
+            const rawText = content.replace(/<[^>]*>?/gm, '').trim();
+            if (rawText.length < 100 && rawText.toLowerCase().includes('islam')) {
+                isNowrap = true;
+            }
+        }
         return (
-            <div style={{ ...baseStyle, whiteSpace: 'pre-wrap', width: el.width ? `${el.width}px` : 'auto', direction: el.isRtl ? 'rtl' : 'ltr' }}
+            <div className={isNowrap ? 'force-nowrap-text' : ''} style={{ ...baseStyle, whiteSpace: isNowrap ? 'nowrap' : 'pre-wrap', width: el.width ? `${el.width}px` : 'auto', direction: el.isRtl ? 'rtl' : 'ltr' }}
                  dangerouslySetInnerHTML={{__html: content}} />
         );
     };
@@ -11305,6 +11312,9 @@ const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = 
             @media screen {
                 .hide-on-screen {
                     display: none !important;
+                }
+                .force-nowrap-text, .force-nowrap-text * {
+                    white-space: nowrap !important;
                 }
             }
             @media print { 
