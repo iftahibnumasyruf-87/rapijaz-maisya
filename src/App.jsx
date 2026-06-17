@@ -9801,7 +9801,12 @@ const KirimRaport = () => {
             const student = studentsInClass.find(s => s.id === sid);
             if (!student) continue;
 
-            const targetWA = student.no_tlp?.replace(/\D/g, '');
+            let targetWA = student.no_tlp?.trim() || '';
+            if (targetWA.includes('@g.us')) {
+                targetWA = targetWA.replace(/[^0-9@.a-zA-Z-]/g, '');
+            } else {
+                targetWA = targetWA.replace(/\D/g, '');
+            }
             if (!targetWA || targetWA.length < 9) {
                 setStatuses(prev => ({ ...prev, [sid]: 'error' }));
                 setSendLogs(prev => ({ ...prev, [sid]: 'Nomor WA tidak valid atau kosong' }));
