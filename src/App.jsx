@@ -11223,8 +11223,6 @@ const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = 
                         
                         {!isPublicView && <button onClick={handlePrint} disabled={!selectedStudent} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-bold flex justify-center items-center gap-2 transition"><Printer size={18}/> Print Langsung</button>}
                         <button onClick={handleSavePDF} disabled={!selectedStudent} className="w-full bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-lg font-bold flex justify-center items-center gap-2 transition"><Download size={18}/> Simpan sbg PDF</button>
-                        {!isPublicView && <button onClick={handleWA} disabled={!selectedStudent} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-lg font-bold flex justify-center items-center gap-2 transition"><Share2 size={18}/> Kirim Info via WA</button>}
-                        {!isPublicView && <button onClick={handleShareLinkWA} disabled={!selectedStudent} className="w-full bg-teal-500 hover:bg-teal-600 text-white py-2.5 rounded-lg font-bold flex justify-center items-center gap-2 transition"><Share2 size={18}/> 🔗 Bagikan Link Rapor via WA</button>}
                     </div>
                     {!isPublicView && (
                     <div className="pt-2 border-t mt-4">
