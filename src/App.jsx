@@ -11268,6 +11268,10 @@ const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = 
                 </div>
             </div>
             <style>{`
+            .print-container {
+                -webkit-text-size-adjust: none;
+                text-size-adjust: none;
+            }
             @media print { 
                 body * { visibility: hidden; } 
                 .print-wrapper, .print-wrapper * { visibility: visible; } 
