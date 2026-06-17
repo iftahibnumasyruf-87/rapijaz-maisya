@@ -1014,7 +1014,7 @@ const PAGE_COLLECTIONS = {
     dashboard:          ['settings', 'grades', 'students', 'classes', 'subjects'],
     layout_builder:     ['layouts', 'fonts', 'subjects', 'presences', 'characterTraits', 'extracurriculars', 'masterSubjects', 'studentFields', 'ijazah_grades', 'students'],
     legger:             ['grades', 'students', 'subjects', 'classes'],
-    kirim_raport:       ['grades', 'students', 'subjects', 'classes'],
+    kirim_raport:       ['grades', 'students', 'subjects', 'classes', 'subjectCategories', 'studentSnapshots'],
     cetak_raport:       ['grades', 'students', 'subjects', 'classes', 'layouts', 'masterSubjects', 'studentFields', 'extracurriculars', 'characterTraits'],
     cetak_ijazah:       ['grades', 'students', 'subjects', 'classes', 'layouts', 'ijazah_grades', 'masterSubjects', 'studentFields'],
 };
@@ -9815,28 +9815,29 @@ const KirimRaport = () => {
                 });
                 const avgVal = countVal > 0 ? (totalVal / countVal).toFixed(2) : '-';
 
-                // Subjects (Ringkasan 5 mapel pertama saja jika terlalu panjang)
+                // Subjects (Ringkasan nilai semua mapel relevan)
                 let gradeLines = '';
                 let mapelCount = 0;
-                const sortedCategories = [...(data.subjectCategories || [])].sort((a,b) => a.order - b.order);
-                for (const cat of sortedCategories) {
-                    const catSubjects = relevantSubjects.filter(s => s.kategori === cat.name);
-                    for (const s of catSubjects) {
-                        const gradeObj = sGrades[s.id];
-                        let num = '';
-                        if (gradeObj && typeof gradeObj === 'object') {
-                            num = computeRaportScore(gradeObj.uts, gradeObj.uas);
-                        } else if (gradeObj !== undefined) {
-                            num = gradeObj;
-                        }
-                        if (num !== '') {
-                            const mapelName = s.nameId || s.name || '';
-                            gradeLines += `- ${mapelName}: *${num}*\n`;
-                            mapelCount++;
-                        }
+                // Urutkan berdasarkan kategori jika ada, fallback ke urutan biasa
+                const sortedCategories = [...(data.subjectCategories || [])].sort((a,b) => (a.order||0) - (b.order||0));
+                const subjectsToIterate = sortedCategories.length > 0
+                    ? sortedCategories.flatMap(cat => relevantSubjects.filter(s => s.kategori === cat.name))
+                    : relevantSubjects;
+                for (const s of subjectsToIterate) {
+                    const gradeObj = sGrades[s.id];
+                    let num = '';
+                    if (gradeObj && typeof gradeObj === 'object') {
+                        num = computeRaportScore(gradeObj.uts, gradeObj.uas);
+                    } else if (gradeObj !== undefined) {
+                        num = gradeObj;
+                    }
+                    if (num !== '') {
+                        const mapelName = s.nameId || s.name || '';
+                        gradeLines += `\u2022 ${mapelName}: *${num}*\n`;
+                        mapelCount++;
                     }
                 }
-                if (mapelCount === 0) gradeLines = '- Belum ada nilai -';
+                if (mapelCount === 0) gradeLines = '\u2022 Belum ada nilai';
 
                 const cw = sGrades['catatan_wali'];
                 const cwText = cw ? `\n\n📝 *Catatan Wali Kelas:*\n_${cw}_` : '';
