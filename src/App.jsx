@@ -9754,14 +9754,6 @@ const KirimRaport = () => {
         await saveToDb('students', id, updated, true);
     };
 
-    const getGradeDocIdStr = (clsId) => {
-        if (!clsId || !activeSetting) return null;
-        const className = getClassNameFromValue(classesData, clsId);
-        const year = activeSetting.tahun ? activeSetting.tahun.replace(/\//g, '-') : 'default';
-        const semester = activeSetting.semester || '1';
-        return `${className}_${year}_${semester}`;
-    };
-
     const handleKirimMassal = async () => {
         if (selectedStudents.length === 0) return alert('Pilih minimal 1 santri untuk dikirim!');
         const fonnteToken = localStorage.getItem('fonnteToken');
@@ -9772,7 +9764,7 @@ const KirimRaport = () => {
         if (!window.confirm(`Yakin ingin mengirim raport WA ke ${selectedStudents.length} santri?`)) return;
 
         setIsSending(true);
-        const gradeDocId = getGradeDocIdStr(selectedClass);
+        const gradeDocId = getGradeDocId(selectedClass, classesData, activeSetting, data.grades);
         const classGradesDoc = data.grades.find(g => g.id === gradeDocId)?.data || {};
         const className = getClassNameFromValue(classesData, selectedClass);
         const tahun = activeSetting.tahun || '-';
