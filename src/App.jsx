@@ -9883,7 +9883,7 @@ const KirimRaport = () => {
                 }
 
                 const publicLink = `https://rapijaz-isb.vercel.app/?public_raport=true&santri_id=${sid}`;
-                const text = `🎓 *Laporan Nilai Raport*\nPonpes Imam Syafi'i Brebes\n\nAssalamu'alaikum Wr. Wb.\n\nDengan hormat, berikut adalah informasi nilai ananda:\n\nNama: *${student.nama}*\nKelas: *${className}*\nTA: *${tahun} | Semester ${semester}*\n\n📚 *Nilai Mata Pelajaran:*\n${gradeLines}\n\n📊 Rata-Rata: *${avgVal}*${presenceText}${traitText}${ekskulText}${cwText}\n\n📱 *Lihat Rapor Lengkap Online:*\n ${publicLink} \n\nSemoga nilai ini menjadi motivasi untuk terus belajar.\n\nWassalamu'alaikum Wr. Wb. 🤲`;
+                const text = `🎓 *Laporan Nilai Raport*\nPonpes Imam Syafi'i Brebes\n\nالسلام عليكم ورحمة الله وبركاته\n\nDengan hormat, berikut adalah informasi nilai ananda:\n\nNama: *${student.nama}*\nKelas: *${className}*\nTA: *${tahun} | Semester ${semester}*\n\n📚 *Nilai Mata Pelajaran:*\n${gradeLines}\n\n📊 Rata-Rata: *${avgVal}*${presenceText}${traitText}${ekskulText}${cwText}\n\n📱 *Lihat Rapor Lengkap Online:*\n ${publicLink} \n\nSemoga nilai ini menjadi motivasi untuk terus belajar.\n\nوالسلام عليكم ورحمة الله وبركاته`;
 
                 const res = await fetch("https://api.fonnte.com/send", {
                     method: "POST",
@@ -11924,8 +11924,8 @@ const PublicRaportPage = ({ santriId }) => {
             {/* Header Pondok */}
             <header className="bg-white/10 backdrop-blur-md border-b border-white/20 shadow-lg print:hidden">
                 <div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center shrink-0 text-2xl">
-                        🕌
+                    <div className="w-12 h-12 bg-white/20 flex items-center justify-center shrink-0 overflow-hidden">
+                        <img src="https://ikoqsyrvspfjyyjujfhc.supabase.co/storage/v1/object/public/layout-images/logo%20pondok.png" alt="Logo" className="w-full h-full object-contain drop-shadow-md" />
                     </div>
                     <div>
                         <h1 className="text-white font-bold text-base leading-tight">Ponpes Imam Syafi'i Brebes</h1>
