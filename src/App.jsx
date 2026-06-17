@@ -11126,6 +11126,10 @@ const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = 
             );
         }
         if (el.type === 'image') {
+            // Sembunyikan tanda tangan/stempel (gambar di bagian bawah kertas) di public view, kecuali saat klik PDF
+            if (isPublicView && !isExporting && el.y > 400) {
+                return null;
+            }
             return (
                 <img
                     src={el.content}
