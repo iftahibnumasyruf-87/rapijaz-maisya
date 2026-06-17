@@ -9,7 +9,8 @@ import {
   Columns, FileSignature, TrendingUp, UserX, Clock, Activity, ChevronDown,
   ZoomIn, ZoomOut, Maximize, Minimize, ChevronUp, Lock, Database, Copy, Undo, Redo, Eye, EyeOff, Scissors,
   AlignLeft, AlignCenter, AlignRight, AlignStartVertical, AlignCenterVertical, AlignEndVertical, BarChart2, AlignJustify, Layers, Calendar,
-  Minus, Square, Grid, Info, RefreshCw, Search, LockOpen, PanelLeftClose, Brain
+  Minus, Square, Grid, Info, RefreshCw, Search, LockOpen, PanelLeftClose, Brain,
+  Send, CheckCircle2, XCircle, Loader2
 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 import { APP_CONFIG, getFullAppName } from './config';
