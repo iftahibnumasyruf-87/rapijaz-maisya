@@ -11126,12 +11126,9 @@ const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = 
             );
         }
         if (el.type === 'image') {
-            // Sembunyikan tanda tangan/stempel (gambar di bagian bawah kertas) di public view, kecuali saat klik PDF
-            if (isPublicView && !isExporting && el.y > 400) {
-                return null;
-            }
             return (
                 <img
+                    className={isPublicView && el.y > 400 ? 'hide-on-screen' : ''}
                     src={el.content}
                     style={{
                         ...baseStyle,
@@ -11299,6 +11296,11 @@ const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = 
             .print-container {
                 -webkit-text-size-adjust: none;
                 text-size-adjust: none;
+            }
+            @media screen {
+                .hide-on-screen {
+                    display: none !important;
+                }
             }
             @media print { 
                 body * { visibility: hidden; } 
