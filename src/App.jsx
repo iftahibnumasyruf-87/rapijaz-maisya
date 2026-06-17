@@ -7569,7 +7569,7 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
             @media print { 
                 body * { visibility: hidden; } 
                 .print-wrapper, .print-wrapper * { visibility: visible; } 
-                .print-wrapper { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; margin: 0 !important; padding: 0 !important; } 
+                .print-wrapper { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; margin: 0 !important; padding: 0 !important; transform: none !important; } 
                 .print-container { position: relative !important; margin: 0 !important; padding: 0 !important; box-shadow: none !important; border: none !important; transform: scale(1) !important; left: 0 !important; top: 0 !important; } 
                 @page { size: ${pageSize === 'F4' ? '215.9mm 330.2mm' : 'A4'} ${orientation}; margin: 0 !important; }
                 table td, table th { vertical-align: middle !important; line-height: 1.25 !important; }
@@ -10388,20 +10388,23 @@ const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = 
 
     const handleBatchSavePDF = () => {
         if(!selectedClass || studentsInClass.length === 0) return;
+        const ts = activeSetting.tahun ? activeSetting.tahun.replace(/\//g, '-') : 'tahun';
+        const ss = activeSetting.semester || '1';
+        const ks = getClassNameFromValue(classesData, selectedClass).replace(/\s+/g, '_');
+        const originalTitle = document.title;
+        document.title = mode === 'raport' ? `raport_masal_${ts}_${ss}_${ks}` : `ijazah_masal_${ts}_${ks}`;
+        addLog(`Mencetak massal ${mode} untuk kelas ${ks}`);
         setIsBatchMode(true);
-        setTimeout(() => {
-            const originalTitle = document.title;
-            const ts = activeSetting.tahun ? activeSetting.tahun.replace(/\//g, '-') : 'tahun';
-            const ss = activeSetting.semester || '1';
-            const ks = getClassNameFromValue(classesData, selectedClass).replace(/\s+/g, '_');
-            document.title = mode === 'raport' ? `raport_masal_${ts}_${ss}_${ks}` : `ijazah_masal_${ts}_${ks}`;
-            addLog(`Mencetak massal ${mode} untuk kelas ${ks}`);
-            window.print();
-            setTimeout(() => { 
-                document.title = originalTitle; 
-                setIsBatchMode(false);
-            }, 2000);
-        }, 1000);
+        // Beri waktu React untuk re-render semua halaman santri, lalu cetak
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                setTimeout(() => {
+                    window.print();
+                    document.title = originalTitle;
+                    setTimeout(() => setIsBatchMode(false), 1500);
+                }, 500);
+            });
+        });
     };
 
     const handleBatchExportPDF = async () => {
@@ -10919,7 +10922,7 @@ const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = 
                 )}
                 <div className="flex-1 overflow-auto p-8 flex flex-col items-center gap-8 print:p-0 print:gap-0 print:block">
                 {studentsToRender.length > 0 ? (
-                    <div className={`print-wrapper flex flex-col print:block ${isExporting ? 'gap-0 items-start' : 'items-center gap-8 print:gap-0'}`} style={{ transformOrigin: 'top left', transform: isExporting ? 'none' : `scale(${previewZoom})`, marginBottom: isExporting ? '0px' : `${(previewZoom - 1) * canvasHeight * pages.length}px` }}>
+                    <div className={`print-wrapper flex flex-col print:block ${isExporting ? 'gap-0 items-start' : 'items-center gap-8 print:gap-0'}`} style={{ transformOrigin: 'top left', transform: isExporting || isBatchMode ? 'none' : `scale(${previewZoom})`, marginBottom: (isExporting || isBatchMode) ? '0px' : `${(previewZoom - 1) * canvasHeight * pages.length}px` }}>
                         {studentsToRender.map((std, stdIndex) => (
                             <React.Fragment key={std.id}>
                                 {pages.map((pageElements, index) => {
@@ -11041,7 +11044,24 @@ const LeggerKelas = () => {
         }).join('\n');
         const text = `\uD83C\uDF93 *Laporan Nilai Santri*\nPonpes Imam Syafi'i Brebes\n\nNama: *${row.nama}*\nKelas: *${className}*\nTA: *${tahun} Sem ${semester}*\n\n\uD83D\uDCDA *Ringkasan Nilai:*\n${gradeLines}\n\n\uD83D\uDCCA Rata-Rata: *${row.avg}* | Predikat: *${row.predikat}*\n\nAlhamdulillah, terima kasih atas kepercayaan Anda. \uD83E\uDD32`;
         addLog(`Kirim info nilai ${row.nama} via WA`);
-        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+        const fonnteToken = localStorage.getItem('fonnteToken') || 'oPhcncGcZC3H2kXbQLo3';
+        const targetWA = window.prompt(`Masukkan Nomor WA Tujuan untuk ${row.nama} (contoh: 0812...):`, "");
+        if (!targetWA) return;
+
+        fetch("https://api.fonnte.com/send", {
+            method: "POST",
+            headers: {
+                "Authorization": fonnteToken,
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            body: new URLSearchParams({ target: targetWA, message: text })
+        }).then(res => res.json()).then(data => {
+            if (data.status) {
+                alert("Berhasil mengirim WA via Fonnte!");
+            } else {
+                alert("Gagal mengirim WA: " + (data.reason || data.detail || "Error Fonnte"));
+            }
+        }).catch(err => alert("Terjadi kesalahan jaringan: " + err));
     };
 
     const exportExcel = () => {
