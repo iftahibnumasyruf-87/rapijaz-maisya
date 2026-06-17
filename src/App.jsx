@@ -9798,6 +9798,20 @@ const KirimRaport = () => {
                 
                 // Average
                 const relevantSubjects = data.subjects?.filter(s => isSubjectVisibleInClass(s, selectedClass, classesData)) || [];
+                // Subjects (Ringkasan nilai semua mapel relevan)
+                const gradeLines = relevantSubjects.map(s => {
+                    const gradeObj = sGrades[s.id];
+                    let val = '-';
+                    if (gradeObj && typeof gradeObj === 'object') {
+                        const raport = computeRaportScore(gradeObj.uts, gradeObj.uas);
+                        val = raport !== '' ? raport : '-';
+                    } else if (gradeObj !== undefined && gradeObj !== '') {
+                        val = gradeObj;
+                    }
+                    return `\u2022 ${s.nameId}: *${val}*`;
+                }).join('\n') || '\u2022 Belum ada nilai';
+
+                // Hitung rata-rata
                 let totalVal = 0; let countVal = 0;
                 relevantSubjects.forEach(s => {
                     const gradeObj = sGrades[s.id];
@@ -9808,42 +9822,50 @@ const KirimRaport = () => {
                     } else if (gradeObj !== undefined && gradeObj !== '' && !isNaN(gradeObj)) {
                         num = Number(gradeObj);
                     }
-                    if (num !== null && !isNaN(num)) {
-                        totalVal += num;
-                        countVal++;
-                    }
+                    if (num !== null) { totalVal += num; countVal++; }
                 });
-                const avgVal = countVal > 0 ? (totalVal / countVal).toFixed(2) : '-';
+                const avgVal = countVal > 0 ? String(Math.round(totalVal / countVal)) : '-';
 
-                // Subjects (Ringkasan nilai semua mapel relevan)
-                let gradeLines = '';
-                let mapelCount = 0;
-                // Urutkan berdasarkan kategori jika ada, fallback ke urutan biasa
-                const sortedCategories = [...(data.subjectCategories || [])].sort((a,b) => (a.order||0) - (b.order||0));
-                const subjectsToIterate = sortedCategories.length > 0
-                    ? sortedCategories.flatMap(cat => relevantSubjects.filter(s => s.kategori === cat.name))
-                    : relevantSubjects;
-                for (const s of subjectsToIterate) {
-                    const gradeObj = sGrades[s.id];
-                    let num = '';
-                    if (gradeObj && typeof gradeObj === 'object') {
-                        num = computeRaportScore(gradeObj.uts, gradeObj.uas);
-                    } else if (gradeObj !== undefined) {
-                        num = gradeObj;
-                    }
-                    if (num !== '') {
-                        const mapelName = s.nameId || s.name || '';
-                        gradeLines += `\u2022 ${mapelName}: *${num}*\n`;
-                        mapelCount++;
-                    }
+                // Kehadiran
+                let presenceText = "";
+                if (data.presences && data.presences.length > 0) {
+                    presenceText = "\n\n\uD83D\uDCC5 *Kehadiran:*\n" + data.presences.map(p => {
+                        const val = sGrades[p.id] || '-';
+                        return `\u2022 ${p.name || p.id}: ${val}`;
+                    }).join('\n');
                 }
-                if (mapelCount === 0) gradeLines = '\u2022 Belum ada nilai';
 
+                // Sikap/Karakter
+                let traitText = "";
+                if (data.characterTraits && data.characterTraits.length > 0) {
+                    traitText = "\n\n\uD83E\uDD32 *Sikap & Karakter:*\n" + data.characterTraits.map(c => {
+                        const val = sGrades[c.id] || '-';
+                        return `\u2022 ${c.name || c.id}: ${val}`;
+                    }).join('\n');
+                }
+
+                // Ekskul
+                let ekskulText = "";
+                const ekskul1Name = sGrades['ekskul1_nama'];
+                const ekskul1Val = sGrades['ekskul1_nilai'];
+                const ekskul2Name = sGrades['ekskul2_nama'];
+                const ekskul2Val = sGrades['ekskul2_nilai'];
+                if (ekskul1Name || ekskul2Name) {
+                    ekskulText = "\n\n\uD83C\uDFC0 *Ekstrakurikuler:*\n";
+                    if (ekskul1Name) ekskulText += `\u2022 ${ekskul1Name}: ${ekskul1Val || '-'}\n`;
+                    if (ekskul2Name) ekskulText += `\u2022 ${ekskul2Name}: ${ekskul2Val || '-'}`;
+                    ekskulText = ekskulText.trimEnd();
+                }
+
+                // Catatan Wali
+                let cwText = "";
                 const cw = sGrades['catatan_wali'];
-                const cwText = cw ? `\n\n📝 *Catatan Wali Kelas:*\n_${cw}_` : '';
+                if (cw) {
+                    cwText = `\n\n\uD83D\uDCDD *Catatan Wali Kelas:*\n_${cw}_`;
+                }
 
                 const publicLink = `https://rapijaz-isb.vercel.app/?public_raport=true&santri_id=${sid}`;
-                const text = `🎓 *Laporan Nilai Raport*\nPonpes Imam Syafi'i Brebes\n\nAssalamu'alaikum Wr. Wb.\n\nDengan hormat, berikut adalah informasi nilai ananda:\n\nNama: *${student.nama}*\nKelas: *${className}*\nTA: *${tahun} | Semester ${semester}*\n\n📚 *Ringkasan Nilai:*\n${gradeLines}\n\n📊 Rata-Rata: *${avgVal}*${cwText}\n\n📱 *Lihat Rapor Lengkap Online:*\n ${publicLink} \n\nSemoga nilai ini menjadi motivasi untuk terus belajar.\n\nWassalamu'alaikum Wr. Wb. 🤲`;
+                const text = `🎓 *Laporan Nilai Raport*\nPonpes Imam Syafi'i Brebes\n\nAssalamu'alaikum Wr. Wb.\n\nDengan hormat, berikut adalah informasi nilai ananda:\n\nNama: *${student.nama}*\nKelas: *${className}*\nTA: *${tahun} | Semester ${semester}*\n\n📚 *Nilai Mata Pelajaran:*\n${gradeLines}\n\n📊 Rata-Rata: *${avgVal}*${presenceText}${traitText}${ekskulText}${cwText}\n\n📱 *Lihat Rapor Lengkap Online:*\n ${publicLink} \n\nSemoga nilai ini menjadi motivasi untuk terus belajar.\n\nWassalamu'alaikum Wr. Wb. 🤲`;
 
                 const res = await fetch("https://api.fonnte.com/send", {
                     method: "POST",
