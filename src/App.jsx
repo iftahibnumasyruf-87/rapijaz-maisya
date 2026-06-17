@@ -9765,7 +9765,33 @@ const KirimRaport = () => {
 
         setIsSending(true);
         const gradeDocId = getGradeDocId(selectedClass, classesData, activeSetting, data.grades);
-        const classGradesDoc = data.grades.find(g => g.id === gradeDocId)?.data || {};
+        const rawClassGradesDoc = data.grades.find(g => g.id === gradeDocId)?.data || {};
+        
+        // Apply Katrol (set nilai to KKM if below KKM)
+        const topLevelSubjectsForClass = sortSubjectsByCategory(filterSubjectsByClass(data.subjects, selectedClass, classesData), data.subjectCategories);
+        const classGradesDoc = {};
+        Object.keys(rawClassGradesDoc).forEach(stdId => {
+            const sGrades = { ...rawClassGradesDoc[stdId] };
+            Object.keys(sGrades).forEach(k => {
+                const subObj = topLevelSubjectsForClass.find(s => s.id === k);
+                if (subObj && subObj.kkm) {
+                    const kkm = Number(subObj.kkm);
+                    const v = sGrades[k];
+                    let finalScore;
+                    if (v && typeof v === 'object') {
+                        const r = computeRaportScore(v.uts, v.uas);
+                        finalScore = r !== '' ? Number(r) : null;
+                    } else if (v !== undefined && v !== '' && !isNaN(v)) {
+                        finalScore = Number(v);
+                    }
+                    if (finalScore !== null && finalScore !== undefined && !isNaN(finalScore) && finalScore < kkm) {
+                        sGrades[k] = String(kkm);
+                    }
+                }
+            });
+            classGradesDoc[stdId] = sGrades;
+        });
+
         const className = getClassNameFromValue(classesData, selectedClass);
         const tahun = activeSetting.tahun || '-';
         const semester = activeSetting.semester || '-';
