@@ -11150,7 +11150,7 @@ const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = 
                 {!activeSetting.tahun && <div className="bg-yellow-50 text-yellow-800 p-3 rounded-lg text-sm mb-4 border border-yellow-200">Pastikan Admin mengaktifkan Tahun Ajaran di Master Data terlebih dahulu.</div>}
                 <div className="space-y-4">
                     <select className="w-full p-2 border rounded-lg" value={selectedClass} onChange={e => {setSelectedClass(e.target.value); setSelectedStudent('');}}><option value="">-- Kelas --</option>{dropdownClasses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
-                    <select className="w-full p-2 border rounded-lg" value={selectedStudent} onChange={e => setSelectedStudent(e.target.value)} disabled={!selectedClass}><option value="">-- Santri --</option>{studentsInClass.map(s => <option key={s.id} value={s.id}>{s.nama}</option>)}</select>
+                    <select className="w-full p-2 border rounded-lg" value={selectedStudent} onChange={e => setSelectedStudent(e.target.value)} disabled={!selectedClass}><option value="">-- Santri --</option>{studentsInClass.map((s, index) => <option key={s.id} value={s.id}>{index + 1}. {s.nama}</option>)}</select>
                     
                     {!isPublicView && (
                     <>
