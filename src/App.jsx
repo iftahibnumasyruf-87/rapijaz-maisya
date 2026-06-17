@@ -11520,11 +11520,11 @@ const LeggerKelas = () => {
         return r;
     }, [students, subjects, grades, selectedClass, sortConfig]);
 
-    const handleSendWA = (row) => {
+    const handleSendWA = (row, idx) => {
         const className = getClassNameFromValue(classesData, selectedClass);
         const tahun = activeSetting.tahun || '-';
         const semester = activeSetting.semester || '-';
-        const gradeLines = subjects.map(s => {
+        const gradeLines = subjects.map((s, i) => {
             const grade = row.grades[s.id];
             let uts = '-';
             let uas = '-';
@@ -11541,10 +11541,11 @@ const LeggerKelas = () => {
                 const rVal = parseGradeValue(grade);
                 raport = rVal !== null ? String(rVal) : '-';
             }
-            return `\u25CF ${s.nameId}: UTS: *${uts}*, UAS: *${uas}*, Raport: *${raport}*`;
-        }).join('\n');
+            return `${i + 1}. ${s.nameId}:\nUTS: ${uts},\nUAS: ${uas},\nRaport: ${raport}`;
+        }).join('\n\n');
 
-        const text = `\uD83C\uDF93 *Laporan Nilai Akhir Santri (UTS&UAS)*\nPonpes Imam Syafi'i Brebes\n\nNama: *${row.nama}*\nKelas: *${className}*\nTA: *${tahun} Sem ${semester}*\n\n\uD83D\uDCDA *Pencapaian Nilai:*\n${gradeLines}\n\n\uD83D\uDCCA Rata-Rata: *${row.avg}* | Predikat: *${row.predikat}*\n\nAlhamdulillah, terima kasih atas kepercayaan Anda. \uD83E\uDD32`;
+        const rankMessage = `ranking ke *${idx + 1}* dari jumlah santri *${leggerData.length}*`;
+        const text = `\uD83C\uDF93 *Laporan Nilai Akhir Santri (UTS&UAS)*\nPonpes Imam Syafi'i Brebes\n\nNama: *${row.nama}*\nKelas: *${className}*\nTA: *${tahun} Sem ${semester}*\n\n\uD83D\uDCDA *Pencapaian Nilai:*\n${gradeLines}\n\n\uD83D\uDCCA Rata-Rata: *${row.avg}* | Predikat: *${row.predikat}* | ${rankMessage}\n\nAlhamdulillha, semoga ilmu yang dipelajari bermanfaat dan semoga Allah mudahkan untuk bisa lebih baik lagi di masa yang akan datang, اللهم بارك \uD83E\uDD32`;
         addLog(`Kirim info nilai ${row.nama} via WA`);
         const fonnteToken = localStorage.getItem('fonnteToken') || 'oPhcncGcZC3H2kXbQLo3';
         const targetWA = window.prompt(`Masukkan Nomor WA Tujuan untuk ${row.nama} (contoh: 0812...):`, row.no_tlp || "");
@@ -11665,7 +11666,6 @@ const LeggerKelas = () => {
         XLSX.utils.book_append_sheet(wb, ws, `Legger ${className}`);
         const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
         const blob = new Blob([wbout], { type: 'application/octet-stream' });
-        
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -11685,126 +11685,126 @@ const LeggerKelas = () => {
             </div>
             {selectedClass ? (
                 <div className="overflow-auto border rounded-xl flex-1 relative">
-                    <table className="w-full text-left border-collapse whitespace-nowrap">
+                    <table className="w-full text-left border-collapse border border-gray-300 whitespace-nowrap">
                         <thead className="sticky top-0 z-20">
-                            <tr className="bg-gray-800 text-white text-sm">
+                            <tr className="bg-purple-900 text-white text-sm">
                                 <th 
                                     rowSpan={4} 
-                                    className="p-3 border-b border-gray-700 text-center w-12 sticky left-0 z-30 bg-gray-900 cursor-pointer select-none hover:bg-gray-800 transition-colors"
+                                    className="p-3 border border-purple-700 text-center w-12 sticky left-0 z-30 bg-purple-950 cursor-pointer select-none hover:bg-purple-900 transition-colors"
                                     onClick={() => handleSort('avg')}
                                 >
                                     <div className="flex flex-col items-center gap-0.5 justify-center">
                                         <span>Rank</span>
-                                        <span className="text-[10px] text-gray-400">
+                                        <span className="text-[10px] text-purple-300">
                                             {sortConfig.key === 'avg' ? (sortConfig.direction === 'desc' ? '▼' : '▲') : '↕'}
                                         </span>
                                     </div>
                                 </th>
                                 <th 
                                     rowSpan={4} 
-                                    className="p-3 border-b border-gray-700 sticky left-12 z-30 bg-gray-900 cursor-pointer select-none hover:bg-gray-800 transition-colors"
+                                    className="p-3 border border-purple-700 sticky left-12 z-30 bg-purple-950 cursor-pointer select-none hover:bg-purple-900 transition-colors"
                                     onClick={() => handleSort('nama')}
                                 >
                                     <div className="flex items-center justify-between gap-1">
                                         <span>Nama Santri</span>
-                                        <span className="text-[10px] text-gray-400">
+                                        <span className="text-[10px] text-purple-300">
                                             {sortConfig.key === 'nama' ? (sortConfig.direction === 'desc' ? '▼' : '▲') : '↕'}
                                         </span>
                                     </div>
                                 </th>
-                                {subjects.length > 0 && <th colSpan={subjects.length * 4} className="p-3 border-b border-gray-700 text-center bg-gray-900">Mata Pelajaran</th>}
+                                {subjects.length > 0 && <th colSpan={subjects.length * 4} className="p-3 border border-purple-700 text-center bg-purple-950">Mata Pelajaran</th>}
                                 <th 
                                     rowSpan={4} 
-                                    className="p-3 border-b border-gray-700 text-center bg-gray-700 cursor-pointer select-none hover:bg-gray-600 transition-colors"
+                                    className="p-3 border border-purple-700 text-center bg-purple-900 cursor-pointer select-none hover:bg-purple-800 transition-colors"
                                     onClick={() => handleSort('total')}
                                 >
                                     <div className="flex items-center justify-center gap-1">
                                         <span>Total</span>
-                                        <span className="text-[10px] text-gray-400">
+                                        <span className="text-[10px] text-purple-300">
                                             {sortConfig.key === 'total' ? (sortConfig.direction === 'desc' ? '▼' : '▲') : '↕'}
                                         </span>
                                     </div>
                                 </th>
                                 <th 
                                     rowSpan={4} 
-                                    className="p-3 border-b border-gray-700 text-center bg-gray-700 cursor-pointer select-none hover:bg-gray-600 transition-colors"
+                                    className="p-3 border border-purple-700 text-center bg-purple-900 cursor-pointer select-none hover:bg-purple-800 transition-colors"
                                     onClick={() => handleSort('avg')}
                                 >
                                     <div className="flex items-center justify-center gap-1">
                                         <span>Rata-rata</span>
-                                        <span className="text-[10px] text-gray-400">
+                                        <span className="text-[10px] text-purple-300">
                                             {sortConfig.key === 'avg' ? (sortConfig.direction === 'desc' ? '▼' : '▲') : '↕'}
                                         </span>
                                     </div>
                                 </th>
                                 <th 
                                     rowSpan={4} 
-                                    className="p-3 border-b border-gray-700 text-center bg-gray-700 cursor-pointer select-none hover:bg-gray-600 transition-colors"
+                                    className="p-3 border border-purple-700 text-center bg-purple-900 cursor-pointer select-none hover:bg-purple-800 transition-colors"
                                     onClick={() => handleSort('predikat')}
                                 >
                                     <div className="flex items-center justify-center gap-1">
                                         <span>Predikat</span>
-                                        <span className="text-[10px] text-gray-400">
+                                        <span className="text-[10px] text-purple-300">
                                             {sortConfig.key === 'predikat' ? (sortConfig.direction === 'desc' ? '▼' : '▲') : '↕'}
                                         </span>
                                     </div>
                                 </th>
-                                <th rowSpan={4} className="p-3 border-b border-gray-700 text-center bg-emerald-700 print:hidden">WA</th>
+                                <th rowSpan={4} className="p-3 border border-purple-700 text-center bg-purple-800 print:hidden">WA</th>
                             </tr>
-                            <tr className="bg-gray-700 text-white text-sm">
+                            <tr className="bg-purple-800 text-white text-sm">
                                 {Object.entries(groupBy(subjects, 'kategori')).map(([cat, subs]) => (
-                                    <th key={cat || 'umum'} colSpan={subs.length * 4} className="p-3 border-b border-gray-700 text-center bg-gray-800">{cat || 'Umum'}</th>
+                                    <th key={cat || 'umum'} colSpan={subs.length * 4} className="p-3 border border-purple-700 text-center bg-purple-900">{cat || 'Umum'}</th>
                                 ))}
                             </tr>
-                            <tr className="bg-gray-800 text-white text-sm">
+                            <tr className="bg-purple-900 text-white text-sm">
                                 {subjects.map(s => (
                                     <th 
                                         key={s.id} 
                                         colSpan={4} 
-                                        className="p-2 border-b border-gray-700 text-center select-none" 
+                                        className="p-2 border border-purple-700 text-center select-none bg-purple-900" 
                                         title={`${s.nameId} | Guru: ${s.guru || '-'} | KKM: ${s.kkm || '-'}`}
                                     >
                                         <div className="w-32 truncate mx-auto font-bold">{s.nameId}</div>
-                                        <div className="text-[10px] text-gray-300 font-normal mt-0.5 truncate w-32 mx-auto">{s.guru || '-'}</div>
+                                        <div className="text-[10px] text-purple-200 font-normal mt-0.5 truncate w-32 mx-auto">{s.guru || '-'}</div>
                                         <div className="text-[10px] text-yellow-300 font-medium mt-0.5">KKM: {s.kkm || '-'}</div>
                                     </th>
                                 ))}
                             </tr>
-                            <tr className="bg-gray-700 text-white text-[11px]">
+                            <tr className="bg-purple-800 text-white text-[11px]">
                                 {subjects.flatMap(s => [
-                                    <th key={`${s.id}-uts`} className="p-1 border-b border-gray-600 text-center cursor-pointer select-none hover:bg-gray-600 transition-colors w-10" onClick={() => handleSort(`subject_uts_${s.id}`)}>
+                                    <th key={`${s.id}-uts`} className="p-1 border border-purple-700 text-center cursor-pointer select-none hover:bg-purple-700 transition-colors w-10" onClick={() => handleSort(`subject_uts_${s.id}`)}>
                                         <div className="flex items-center justify-center gap-0.5">
                                             <span>UTS</span>
-                                            <span className="text-[8px] text-gray-300">
+                                            <span className="text-[8px] text-purple-300">
                                                 {sortConfig.key === `subject_uts_${s.id}` ? (sortConfig.direction === 'desc' ? '▼' : '▲') : '↕'}
                                             </span>
                                         </div>
                                     </th>,
-                                    <th key={`${s.id}-uas`} className="p-1 border-b border-gray-600 text-center cursor-pointer select-none hover:bg-gray-600 transition-colors w-10" onClick={() => handleSort(`subject_uas_${s.id}`)}>
+                                    <th key={`${s.id}-uas`} className="p-1 border border-purple-700 text-center cursor-pointer select-none hover:bg-purple-700 transition-colors w-10" onClick={() => handleSort(`subject_uas_${s.id}`)}>
                                         <div className="flex items-center justify-center gap-0.5">
                                             <span>UAS</span>
-                                            <span className="text-[8px] text-gray-300">
+                                            <span className="text-[8px] text-purple-300">
                                                 {sortConfig.key === `subject_uas_${s.id}` ? (sortConfig.direction === 'desc' ? '▼' : '▲') : '↕'}
                                             </span>
                                         </div>
                                     </th>,
-                                    <th key={`${s.id}-raport`} className="p-1 border-b border-gray-600 text-center cursor-pointer select-none hover:bg-gray-600 transition-colors w-10" onClick={() => handleSort(`subject_raport_${s.id}`)}>
+                                    <th key={`${s.id}-raport`} className="p-1 border border-purple-700 text-center cursor-pointer select-none hover:bg-purple-700 transition-colors w-10" onClick={() => handleSort(`subject_raport_${s.id}`)}>
                                         <div className="flex items-center justify-center gap-0.5">
                                             <span>Rpt</span>
-                                            <span className="text-[8px] text-gray-300">
+                                            <span className="text-[8px] text-purple-300">
                                                 {sortConfig.key === `subject_raport_${s.id}` ? (sortConfig.direction === 'desc' ? '▼' : '▲') : '↕'}
                                             </span>
                                         </div>
                                     </th>,
-                                    <th key={`${s.id}-rerata`} className="p-1 border-b border-gray-600 text-center bg-gray-800 text-gray-400 font-normal w-10">Rerata</th>
+                                    <th key={`${s.id}-rerata`} className="p-1 border border-purple-700 text-center bg-purple-950 text-purple-300 font-normal w-10">Rerata</th>
                                 ])}
                             </tr>
                         </thead>
                         <tbody>
                             {leggerData.map((row, idx) => (
-                                <tr key={row.id} className="border-b hover:bg-gray-50 text-sm">
-                                    <td className="p-3 text-center font-bold sticky left-0 bg-white border-r z-10">{idx + 1}</td>
-                                    <td className="p-3 font-semibold sticky left-12 bg-white border-r shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] z-10">{row.nama}</td>
+                                <tr key={row.id} className="border border-gray-300 hover:bg-gray-50 text-sm">
+                                    <td className="p-3 text-center font-bold sticky left-0 bg-white border border-gray-300 z-10">{idx + 1}</td>
+                                    <td className="p-3 font-semibold sticky left-12 bg-white border border-gray-300 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] z-10">{row.nama}</td>
                                     {subjects.map(s => {
                                         const raw = row.grades[s.id];
                                         const uts = raw && typeof raw === 'object' ? (raw.uts ?? '-') : '-';
@@ -11812,24 +11812,35 @@ const LeggerKelas = () => {
                                         const raportVal = getSubjectGradeValue(raw);
                                         const valDisplay = raportVal !== null ? String(raportVal) : '-';
                                         
-                                        const isRed = raportVal !== null && Number(raportVal) > 0 && Number(raportVal) < Number(s.kkm);
+                                        const kkmNum = Number(s.kkm || 0);
+
+                                        const utsNum = parseGradeValue(uts);
+                                        const isUtsRed = utsNum !== null && utsNum < kkmNum;
+
+                                        const uasNum = parseGradeValue(uas);
+                                        const isUasRed = uasNum !== null && uasNum < kkmNum;
+
+                                        const isRaportRed = raportVal !== null && Number(raportVal) < kkmNum;
+
                                         const avg = subjectAverages[s.id] || { uts: '-', uas: '-', raport: '-' };
                                         const classRerata = avg.raport;
 
                                         return (
                                             <React.Fragment key={s.id}>
-                                                <td className="p-3 text-center border-r font-medium text-gray-500">{uts === '' ? '-' : uts}</td>
-                                                <td className="p-3 text-center border-r font-medium text-gray-500">{uas === '' ? '-' : uas}</td>
-                                                <td className={`p-3 text-center border-r ${isRed ? 'text-red-655 font-bold bg-red-50' : 'font-semibold text-gray-800'}`}>
+                                                <td className={`p-3 text-center border border-gray-300 font-medium ${isUtsRed ? 'text-red-600 font-bold bg-red-50' : 'text-gray-500'}`}>{uts === '' ? '-' : uts}</td>
+                                                <td className={`p-3 text-center border border-gray-300 font-medium ${isUasRed ? 'text-red-600 font-bold bg-red-50' : 'text-gray-500'}`}>{uas === '' ? '-' : uas}</td>
+                                                <td className={`p-3 text-center border border-gray-300 ${isRaportRed ? 'text-red-600 font-bold bg-red-50' : 'font-semibold text-gray-800'}`}>
                                                     {valDisplay}
                                                 </td>
-                                                <td className="p-3 text-center border-r bg-gray-50 text-gray-400 font-semibold">{classRerata}</td>
+                                                <td className="p-3 text-center border border-gray-300 bg-gray-50 text-gray-400 font-semibold">{classRerata}</td>
                                             </React.Fragment>
                                         );
                                     })}
-                                    <td className="p-3 text-center font-bold bg-emerald-50 border-r">{row.total}</td><td className="p-3 text-center font-bold bg-emerald-100 border-r">{row.avg}</td><td className="p-3 text-center font-bold bg-emerald-50">{row.predikat}</td>
-                                    <td className="p-3 text-center print:hidden">
-                                        <button onClick={() => handleSendWA(row)} title="Kirim Nilai via WhatsApp" className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 mx-auto transition">
+                                    <td className="p-3 text-center font-bold bg-emerald-50 border border-gray-300">{row.total}</td>
+                                    <td className="p-3 text-center font-bold bg-emerald-100 border border-gray-300">{row.avg}</td>
+                                    <td className="p-3 text-center font-bold bg-emerald-50 border border-gray-300">{row.predikat}</td>
+                                    <td className="p-3 text-center print:hidden border border-gray-300">
+                                        <button onClick={() => handleSendWA(row, idx)} title="Kirim Nilai via WhatsApp" className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 mx-auto transition">
                                             <Share2 size={13}/> WA
                                         </button>
                                     </td>
@@ -11837,28 +11848,28 @@ const LeggerKelas = () => {
                             ))}
                             {/* Baris Rata-rata Kelas */}
                             {leggerData.length > 0 && (
-                                <tr className="bg-gray-100 font-bold text-sm text-gray-700 border-t-2 border-gray-300">
-                                    <td className="p-3 text-center sticky left-0 bg-gray-100 border-r z-10">-</td>
-                                    <td className="p-3 sticky left-12 bg-gray-100 border-r shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] z-10 text-left">Rata-rata Kelas</td>
+                                <tr className="bg-gray-100 font-bold text-sm text-gray-700 border-t-2 border border-gray-300">
+                                    <td className="p-3 text-center sticky left-0 bg-gray-100 border border-gray-300 z-10">-</td>
+                                    <td className="p-3 sticky left-12 bg-gray-100 border border-gray-300 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] z-10 text-left">Rata-rata Kelas</td>
                                     {subjects.map(s => {
                                         const avg = subjectAverages[s.id] || { uts: '-', uas: '-', raport: '-' };
                                         return (
                                             <React.Fragment key={s.id}>
-                                                <td className="p-3 text-center border-r text-gray-500 bg-gray-50 font-normal">{avg.uts}</td>
-                                                <td className="p-3 text-center border-r text-gray-500 bg-gray-50 font-normal">{avg.uas}</td>
-                                                <td className="p-3 text-center border-r text-emerald-800 bg-emerald-50/50">{avg.raport}</td>
-                                                <td className="p-3 text-center border-r text-gray-500 bg-gray-100 font-semibold">{avg.raport}</td>
+                                                <td className="p-3 text-center border border-gray-300 text-gray-500 bg-gray-50 font-normal">{avg.uts}</td>
+                                                <td className="p-3 text-center border border-gray-300 text-gray-500 bg-gray-50 font-normal">{avg.uas}</td>
+                                                <td className="p-3 text-center border border-gray-300 text-emerald-800 bg-emerald-50/50">{avg.raport}</td>
+                                                <td className="p-3 text-center border border-gray-300 text-gray-500 bg-gray-100 font-semibold">{avg.raport}</td>
                                             </React.Fragment>
                                         );
                                     })}
-                                    <td className="p-3 text-center font-bold bg-emerald-100/50 border-r">
+                                    <td className="p-3 text-center font-bold bg-emerald-100/50 border border-gray-300">
                                         {Math.round(leggerData.reduce((sum, r) => sum + r.total, 0) / leggerData.length)}
                                     </td>
-                                    <td className="p-3 text-center font-bold bg-emerald-100 border-r">
+                                    <td className="p-3 text-center font-bold bg-emerald-100 border border-gray-300">
                                         {Math.round(leggerData.reduce((sum, r) => sum + r.avg, 0) / leggerData.length)}
                                     </td>
-                                    <td className="p-3 text-center font-bold bg-emerald-50">-</td>
-                                    <td className="p-3 text-center print:hidden bg-gray-50">-</td>
+                                    <td className="p-3 text-center font-bold bg-emerald-50 border border-gray-300">-</td>
+                                    <td className="p-3 text-center print:hidden bg-gray-50 border border-gray-300">-</td>
                                 </tr>
                             )}
                         </tbody>
