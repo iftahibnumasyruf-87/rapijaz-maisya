@@ -1013,6 +1013,7 @@ const PAGE_COLLECTIONS = {
     dashboard:          ['settings', 'grades', 'students', 'classes', 'subjects'],
     layout_builder:     ['layouts', 'fonts', 'subjects', 'presences', 'characterTraits', 'extracurriculars', 'masterSubjects', 'studentFields', 'ijazah_grades', 'students'],
     legger:             ['grades', 'students', 'subjects', 'classes'],
+    kirim_raport:       ['grades', 'students', 'subjects', 'classes'],
     cetak_raport:       ['grades', 'students', 'subjects', 'classes', 'layouts', 'masterSubjects', 'studentFields', 'extracurriculars', 'characterTraits'],
     cetak_ijazah:       ['grades', 'students', 'subjects', 'classes', 'layouts', 'ijazah_grades', 'masterSubjects', 'studentFields'],
 };
@@ -2633,7 +2634,7 @@ const MasterData = ({ activeTab }) => {
   };
 
     const generateExcelTemplate = (type) => {
-        const headers = ['NIS', 'Nama Lengkap', 'Nama Arab', 'Kelas'];
+        const headers = ['NIS', 'Nama Lengkap', 'Nama Arab', 'Kelas', 'No Wa Wali'];
         try {
             (data.studentFields || []).forEach(f => {
                 if (f && f.name) headers.push(f.name);
@@ -2673,7 +2674,7 @@ const MasterData = ({ activeTab }) => {
         }
 
         // Bangun header kolom tetap + kolom custom (studentFields)
-        const fixedHeaders = ['NIS', 'Nama Lengkap', 'Nama Arab', 'Kelas'];
+        const fixedHeaders = ['NIS', 'Nama Lengkap', 'Nama Arab', 'Kelas', 'No Wa Wali'];
         const extraFields = [];
         try {
             (data.studentFields || []).forEach(f => {
@@ -2689,6 +2690,7 @@ const MasterData = ({ activeTab }) => {
                 s.nama ?? '',
                 s.nama_arab ?? '',
                 s.kelas ?? '',
+                s.no_tlp ?? '',
             ];
             extraFields.forEach(fieldName => {
                 const key = fieldName.toString().trim().toLowerCase();
@@ -2759,6 +2761,7 @@ const MasterData = ({ activeTab }) => {
                     else if (key.includes('nama') && key.includes('arab')) item.nama_arab = val;
                     else if (key.includes('nama')) item.nama = val;
                     else if (key === 'kelas') item.kelas = val;
+                    else if (key === 'no wa wali' || key === 'no_tlp') item.no_tlp = val;
                     else item[key] = val;
                 });
 
@@ -3675,6 +3678,7 @@ const MasterData = ({ activeTab }) => {
                                             <SortableHeader label="Nama Santri" sortKey="nama" />
                                             <SortableHeader label="Nama Arab" sortKey="nama_arab" />
                                             <SortableHeader label="Kelas" sortKey="kelas" />
+                                            <SortableHeader label="No Wa Wali" sortKey="no_tlp" />
                                             {data.studentFields?.map(f => (
                                                 <React.Fragment key={f.key}>
                                                     <SortableHeader label={f.name} sortKey={f.key} />
@@ -3705,6 +3709,7 @@ const MasterData = ({ activeTab }) => {
                                                 <td className="p-3 font-semibold">{st.nama}</td>
                                                 <td className="p-3 font-arabic" dir="rtl">{st.nama_arab}</td>
                                                 <td className="p-3">{getClassNameFromValue(allData?.classes || data.classes, st.kelas)}</td>
+                                                <td className="p-3 font-mono text-sm">{st.no_tlp || '-'}</td>
                                                 {data.studentFields?.map(f => (
                                                     <React.Fragment key={f.key}>
                                                         <td className="p-3 text-gray-600 max-w-[200px] truncate" title={st[f.key]}>{st[f.key] || '-'}</td>
@@ -4041,6 +4046,7 @@ const MasterData = ({ activeTab }) => {
                 <select className="w-full p-2 border rounded" value={formData.kelas || ''} onChange={e => setFormData({...formData, kelas: e.target.value})}>
                     <option value="">Pilih Kelas</option>{data.classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
+                <input className="w-full p-2 border rounded" placeholder="No Wa Wali Santri (contoh: 0812...)" value={formData.no_tlp || ''} onChange={e => setFormData({...formData, no_tlp: e.target.value})} />
                 {data.studentFields.map(f => {
                     const arKey = `${f.key}_ar`;
                     const hasAr = formData[arKey] !== undefined;
@@ -9689,6 +9695,302 @@ const InputIjazah = () => {
 };
 
 // ==========================================
+// HALAMAN KIRIM RAPORT
+// ==========================================
+const KirimRaport = () => {
+    const { data, activeSetting, classesData, getStudentsForYear, currentUser, addLog, saveToDb } = useContext(AppContext);
+    const activeStudents = getStudentsForYear(data.studentSnapshots, activeSetting, data.students);
+    
+    const [selectedClass, setSelectedClass] = useState('');
+    const [selectedStudents, setSelectedStudents] = useState([]);
+    const [statuses, setStatuses] = useState({}); // { id: 'sending' | 'success' | 'error' | null }
+    const [sendLogs, setSendLogs] = useState({}); // { id: 'error message...' }
+    const [isSending, setIsSending] = useState(false);
+    const [studentsInClass, setStudentsInClass] = useState([]);
+
+    useEffect(() => {
+        if (!selectedClass) {
+            setStudentsInClass([]);
+            setSelectedStudents([]);
+            setStatuses({});
+            setSendLogs({});
+            return;
+        }
+        let stList = [...getStudentsInClass(activeStudents, classesData, selectedClass)];
+        // Urutkan abjad
+        stList.sort((a, b) => (a.nama || '').localeCompare(b.nama || ''));
+        setStudentsInClass(stList);
+        setSelectedStudents([]);
+        setStatuses({});
+        setSendLogs({});
+    }, [selectedClass, activeStudents, classesData]);
+
+    const handleSelectAll = (e) => {
+        if (e.target.checked) {
+            setSelectedStudents(studentsInClass.map(s => s.id));
+        } else {
+            setSelectedStudents([]);
+        }
+    };
+
+    const handleSelectStudent = (id) => {
+        if (selectedStudents.includes(id)) {
+            setSelectedStudents(selectedStudents.filter(sid => sid !== id));
+        } else {
+            setSelectedStudents([...selectedStudents, id]);
+        }
+    };
+
+    const handleNoTlpChange = async (id, val) => {
+        const student = activeStudents.find(s => s.id === id);
+        if (!student) return;
+        const updated = { ...student, no_tlp: val };
+        await saveToDb('students', id, updated, true);
+    };
+
+    const getGradeDocIdStr = (clsId) => {
+        if (!clsId || !activeSetting) return null;
+        const className = getClassNameFromValue(classesData, clsId);
+        const year = activeSetting.tahun ? activeSetting.tahun.replace(/\//g, '-') : 'default';
+        const semester = activeSetting.semester || '1';
+        return `${className}_${year}_${semester}`;
+    };
+
+    const handleKirimMassal = async () => {
+        if (selectedStudents.length === 0) return alert('Pilih minimal 1 santri untuk dikirim!');
+        const fonnteToken = localStorage.getItem('fonnteToken');
+        if (!fonnteToken) {
+            return alert('Token Fonnte belum diatur. Silakan atur di Pengaturan WA (Fonnte).');
+        }
+
+        if (!window.confirm(`Yakin ingin mengirim raport WA ke ${selectedStudents.length} santri?`)) return;
+
+        setIsSending(true);
+        const gradeDocId = getGradeDocIdStr(selectedClass);
+        const classGradesDoc = data.grades.find(g => g.id === gradeDocId)?.data || {};
+        const className = getClassNameFromValue(classesData, selectedClass);
+        const tahun = activeSetting.tahun || '-';
+        const semester = activeSetting.semester || '-';
+
+        for (let i = 0; i < selectedStudents.length; i++) {
+            const sid = selectedStudents[i];
+            const student = studentsInClass.find(s => s.id === sid);
+            if (!student) continue;
+
+            const targetWA = student.no_tlp?.replace(/\D/g, '');
+            if (!targetWA || targetWA.length < 9) {
+                setStatuses(prev => ({ ...prev, [sid]: 'error' }));
+                setSendLogs(prev => ({ ...prev, [sid]: 'Nomor WA tidak valid atau kosong' }));
+                continue;
+            }
+
+            setStatuses(prev => ({ ...prev, [sid]: 'sending' }));
+
+            try {
+                // Build text
+                const sGrades = classGradesDoc[sid] || {};
+                
+                // Average
+                const relevantSubjects = data.subjects?.filter(s => isSubjectVisibleInClass(s, selectedClass, classesData)) || [];
+                let totalVal = 0; let countVal = 0;
+                relevantSubjects.forEach(s => {
+                    const gradeObj = sGrades[s.id];
+                    let num = null;
+                    if (gradeObj && typeof gradeObj === 'object') {
+                        const r = computeRaportScore(gradeObj.uts, gradeObj.uas);
+                        num = r !== '' ? Number(r) : null;
+                    } else if (gradeObj !== undefined && gradeObj !== '' && !isNaN(gradeObj)) {
+                        num = Number(gradeObj);
+                    }
+                    if (num !== null && !isNaN(num)) {
+                        totalVal += num;
+                        countVal++;
+                    }
+                });
+                const avgVal = countVal > 0 ? (totalVal / countVal).toFixed(2) : '-';
+
+                // Subjects (Ringkasan 5 mapel pertama saja jika terlalu panjang)
+                let gradeLines = '';
+                let mapelCount = 0;
+                const sortedCategories = [...(data.subjectCategories || [])].sort((a,b) => a.order - b.order);
+                for (const cat of sortedCategories) {
+                    const catSubjects = relevantSubjects.filter(s => s.kategori === cat.name);
+                    for (const s of catSubjects) {
+                        const gradeObj = sGrades[s.id];
+                        let num = '';
+                        if (gradeObj && typeof gradeObj === 'object') {
+                            num = computeRaportScore(gradeObj.uts, gradeObj.uas);
+                        } else if (gradeObj !== undefined) {
+                            num = gradeObj;
+                        }
+                        if (num !== '') {
+                            const mapelName = s.nameId || s.name || '';
+                            gradeLines += `- ${mapelName}: *${num}*\n`;
+                            mapelCount++;
+                        }
+                    }
+                }
+                if (mapelCount === 0) gradeLines = '- Belum ada nilai -';
+
+                const cw = sGrades['catatan_wali'];
+                const cwText = cw ? `\n\n📝 *Catatan Wali Kelas:*\n_${cw}_` : '';
+
+                const publicLink = `https://rapijaz-isb.vercel.app/?public_raport=true&santri_id=${sid}`;
+                const text = `🎓 *Laporan Nilai Raport*\nPonpes Imam Syafi'i Brebes\n\nAssalamu'alaikum Wr. Wb.\n\nDengan hormat, berikut adalah informasi nilai ananda:\n\nNama: *${student.nama}*\nKelas: *${className}*\nTA: *${tahun} | Semester ${semester}*\n\n📚 *Ringkasan Nilai:*\n${gradeLines}\n\n📊 Rata-Rata: *${avgVal}*${cwText}\n\n📱 *Lihat Rapor Lengkap Online:*\n${publicLink}\n\nSemoga nilai ini menjadi motivasi untuk terus belajar.\n\nWassalamu'alaikum Wr. Wb. 🤲`;
+
+                const res = await fetch("https://api.fonnte.com/send", {
+                    method: "POST",
+                    headers: {
+                        "Authorization": fonnteToken,
+                        "Content-Type": "application/x-www-form-urlencoded"
+                    },
+                    body: new URLSearchParams({ target: targetWA, message: text })
+                });
+                
+                const resData = await res.json();
+                if (resData.status) {
+                    setStatuses(prev => ({ ...prev, [sid]: 'success' }));
+                    setSendLogs(prev => ({ ...prev, [sid]: 'Terkirim' }));
+                } else {
+                    setStatuses(prev => ({ ...prev, [sid]: 'error' }));
+                    setSendLogs(prev => ({ ...prev, [sid]: resData.reason || resData.detail || "Error API" }));
+                }
+
+                // Delay untuk menghindari rate limit Fonnte (opsional, disarankan 1-2 detik)
+                await new Promise(r => setTimeout(r, 1500));
+            } catch (err) {
+                setStatuses(prev => ({ ...prev, [sid]: 'error' }));
+                setSendLogs(prev => ({ ...prev, [sid]: err.message || 'Jaringan error' }));
+            }
+        }
+        
+        setIsSending(false);
+        addLog(`Berhasil menyelesaikan pengiriman raport massal untuk kelas ${className}`);
+        alert('Proses pengiriman selesai!');
+    };
+
+    return (
+        <div className="p-8 max-w-6xl mx-auto space-y-6">
+            <div className="flex justify-between items-center mb-6">
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                        <Send className="text-emerald-600" />
+                        Kirim Raport via WhatsApp
+                    </h1>
+                    <p className="text-gray-500 text-sm mt-1">Kirim ringkasan nilai dan link raport digital ke nomor WhatsApp wali santri.</p>
+                </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl shadow-sm border space-y-6">
+                <div className="w-1/3">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Pilih Kelas</label>
+                    <select 
+                        className="w-full p-2 border rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
+                        value={selectedClass}
+                        onChange={e => setSelectedClass(e.target.value)}
+                        disabled={isSending}
+                    >
+                        <option value="">-- Pilih Kelas --</option>
+                        {classesData.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                </div>
+
+                {selectedClass && studentsInClass.length > 0 && (
+                    <div className="space-y-4">
+                        <div className="flex justify-between items-center bg-emerald-50 p-3 rounded-lg border border-emerald-100">
+                            <label className="flex items-center gap-2 cursor-pointer font-medium text-emerald-800">
+                                <input 
+                                    type="checkbox" 
+                                    className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
+                                    checked={selectedStudents.length === studentsInClass.length && studentsInClass.length > 0}
+                                    onChange={handleSelectAll}
+                                    disabled={isSending}
+                                />
+                                Pilih Semua ({studentsInClass.length} Santri)
+                            </label>
+                            
+                            <button 
+                                onClick={handleKirimMassal}
+                                disabled={isSending || selectedStudents.length === 0}
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-lg font-bold flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                            >
+                                {isSending ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />}
+                                Kirim {selectedStudents.length > 0 ? `(${selectedStudents.length})` : ''}
+                            </button>
+                        </div>
+
+                        <div className="overflow-x-auto border rounded-xl shadow-sm">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-gray-100">
+                                        <th className="p-3 border-b text-center w-12">#</th>
+                                        <th className="p-3 border-b">Nama Santri</th>
+                                        <th className="p-3 border-b">Nomor WA Wali</th>
+                                        <th className="p-3 border-b text-center">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y">
+                                    {studentsInClass.map(st => {
+                                        const isSelected = selectedStudents.includes(st.id);
+                                        const status = statuses[st.id];
+                                        const log = sendLogs[st.id];
+
+                                        return (
+                                            <tr key={st.id} className={`hover:bg-gray-50 transition ${isSelected ? 'bg-emerald-50/30' : ''}`}>
+                                                <td className="p-3 text-center">
+                                                    <input 
+                                                        type="checkbox" 
+                                                        className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                                                        checked={isSelected}
+                                                        onChange={() => handleSelectStudent(st.id)}
+                                                        disabled={isSending}
+                                                    />
+                                                </td>
+                                                <td className="p-3 font-semibold text-gray-800">
+                                                    {st.nama}
+                                                </td>
+                                                <td className="p-3">
+                                                    <input 
+                                                        type="text" 
+                                                        value={st.no_tlp || ''} 
+                                                        onChange={(e) => handleNoTlpChange(st.id, e.target.value)}
+                                                        placeholder="0812xxxx"
+                                                        className={`w-full p-2 border rounded text-sm bg-transparent focus:bg-white focus:ring-emerald-500 focus:border-emerald-500 ${!st.no_tlp ? 'border-orange-300 placeholder-orange-300' : 'border-gray-300'}`}
+                                                        disabled={isSending}
+                                                    />
+                                                    {!st.no_tlp && <span className="text-[10px] text-orange-500 absolute mt-1 -ml-1">Wajib diisi</span>}
+                                                </td>
+                                                <td className="p-3 text-center">
+                                                    {status === 'sending' && <span className="inline-flex items-center gap-1 text-blue-600 text-sm font-medium"><Loader2 size={14} className="animate-spin"/> Mengirim...</span>}
+                                                    {status === 'success' && <span className="inline-flex items-center gap-1 text-emerald-600 text-sm font-medium"><CheckCircle2 size={14}/> Terkirim</span>}
+                                                    {status === 'error' && (
+                                                        <div className="flex flex-col items-center">
+                                                            <span className="inline-flex items-center gap-1 text-red-600 text-sm font-medium"><XCircle size={14}/> Gagal</span>
+                                                            <span className="text-[10px] text-red-500 text-center max-w-[150px] truncate" title={log}>{log}</span>
+                                                        </div>
+                                                    )}
+                                                    {!status && <span className="text-gray-400 text-sm">-</span>}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+                
+                {selectedClass && studentsInClass.length === 0 && (
+                    <div className="text-center p-8 text-gray-500 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                        Belum ada data santri di kelas ini.
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+// ==========================================
 // EXPORT DATA LENGKAP
 // ==========================================
 const ExportDataLengkap = () => {
@@ -9982,17 +10284,21 @@ const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = 
     const activeStudents = getStudentsForYear(data.studentSnapshots, activeSetting, data.students);
     const classesData = data.classes || [];
 
-    const [selectedClass, setSelectedClass] = useState(() => {
-        if (publicSantriId) {
+    const [selectedClass, setSelectedClass] = useState('');
+    const [selectedStudent, setSelectedStudent] = useState(publicSantriId || '');
+    
+    // Sinkronisasi kelas untuk public raport setelah data student dimuat lambat
+    useEffect(() => {
+        if (publicSantriId && activeStudents.length > 0 && !selectedClass) {
             const st = activeStudents.find(s => s.id === publicSantriId);
             if (st && st.kelas) {
                 const cls = classesData.find(c => c.name === st.kelas || c.id === st.kelas);
-                return cls ? cls.id : st.kelas;
+                if (cls) setSelectedClass(cls.id);
+                else setSelectedClass(st.kelas);
             }
         }
-        return '';
-    });
-    const [selectedStudent, setSelectedStudent] = useState(publicSantriId || '');
+    }, [publicSantriId, activeStudents, classesData, selectedClass]);
+
     const [useKatrol, setUseKatrol] = useState(false);
     const [isBatchMode, setIsBatchMode] = useState(false);
     const [printMargins, setPrintMargins] = useState({ top: 0, bottom: 0, left: 0, right: 0 });
@@ -10333,10 +10639,10 @@ const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = 
         }
 
         const publicLink = `https://rapijaz-isb.vercel.app/?public_raport=true&santri_id=${selectedStudent}`;
-        const text = `\uD83C\uDF93 *Laporan Nilai ${mode === 'raport' ? 'Raport' : 'Ijazah'}*\nPonpes Imam Syafi'i Brebes\n\nAssalamu'alaikum Wr. Wb.\n\nDengan hormat, berikut adalah informasi nilai ananda:\n\nNama: *${studentData.nama}*\nKelas: *${className}*\nTA: *${tahun} | Semester ${semester}*\n\n\uD83D\uDCDA *Nilai Mata Pelajaran:*\n${gradeLines}\n\n\uD83D\uDCCA Rata-Rata: *${avgVal}*${presenceText}${traitText}${ekskulText}${cwText}\n\n\uD83D\uDCF1 *Lihat Rapor Online:*\n${publicLink}\n\nSemoga nilai ini menjadi motivasi untuk terus belajar.\n\nWassalamu'alaikum Wr. Wb. \uD83E\uDD32`;
+        const text = `🎓 *Laporan Nilai ${mode === 'raport' ? 'Raport' : 'Ijazah'}*\nPonpes Imam Syafi'i Brebes\n\nAssalamu'alaikum Wr. Wb.\n\nDengan hormat, berikut adalah informasi nilai ananda:\n\nNama: *${studentData.nama}*\nKelas: *${className}*\nTA: *${tahun} | Semester ${semester}*\n\n📚 *Nilai Mata Pelajaran:*\n${gradeLines}\n\n📊 Rata-Rata: *${avgVal}*${presenceText}${traitText}${ekskulText}${cwText}\n\n📱 *Lihat Rapor Online:*\n${publicLink}\n\nSemoga nilai ini menjadi motivasi untuk terus belajar.\n\nWassalamu'alaikum Wr. Wb. 🤲`;
         
         const fonnteToken = localStorage.getItem('fonnteToken') || 'oPhcncGcZC3H2kXbQLo3';
-        const targetWA = window.prompt(`Masukkan Nomor WA Tujuan untuk ${studentData.nama} (contoh: 0812...):`, "");
+        const targetWA = window.prompt(`Masukkan Nomor WA Tujuan untuk ${studentData.nama} (contoh: 0812...):`, studentData.no_tlp || "");
         if (!targetWA) return;
 
         addLog(`Membagikan Info ${mode} via WA Fonnte untuk ${studentData.nama}`);
@@ -10362,10 +10668,10 @@ const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = 
         const publicLink = `https://rapijaz-isb.vercel.app/?public_raport=true&santri_id=${selectedStudent}`;
         const tahun = activeSetting.tahun || '-';
         const semester = activeSetting.semester || '-';
-        const text = `\uD83C\uDF93 *Rapor Online - Ponpes Imam Syafi'i Brebes*\n\nAssalamu'alaikum Wr. Wb.,\n\nYth. Orang Tua/Wali Santri *${studentData.nama}*\n\nBerikut link untuk melihat rapor ananda secara online:\n\n\uD83D\uDD17 ${publicLink}\n\nTA: *${tahun} | Semester ${semester}*\n\nLink ini dapat dibuka langsung dari HP tanpa perlu login.\n\nWassalamu'alaikum Wr. Wb. \uD83E\uDD32`;
+        const text = `🎓 *Rapor Online - Ponpes Imam Syafi'i Brebes*\n\nAssalamu'alaikum Wr. Wb.,\n\nYth. Orang Tua/Wali Santri *${studentData.nama}*\n\nBerikut link untuk melihat rapor ananda secara online:\n\n${publicLink}\n\nTA: *${tahun} | Semester ${semester}*\n\nLink ini dapat dibuka langsung dari HP tanpa perlu login.\n\nWassalamu'alaikum Wr. Wb. 🤲`;
         
         const fonnteToken = localStorage.getItem('fonnteToken') || 'oPhcncGcZC3H2kXbQLo3';
-        const targetWA = window.prompt(`Masukkan Nomor WA Tujuan untuk ${studentData.nama} (contoh: 0812...):`, "");
+        const targetWA = window.prompt(`Masukkan Nomor WA Tujuan untuk ${studentData.nama} (contoh: 0812...):`, studentData.no_tlp || "");
         if (!targetWA) return;
 
         addLog(`Membagikan Link Rapor via WA Fonnte untuk ${studentData.nama}`);
@@ -11364,6 +11670,7 @@ const Dashboard = () => {
     { id: 'input_ijazah', label: 'Kelola Nilai Ijazah', icon: FileSignature, roles: ['admin', 'user'] },
     { id: 'legger', label: 'Legger Kelas', icon: BookOpen, roles: ['admin', 'user'] },
     { id: 'cetak_raport', label: 'Cetak Raport', icon: Printer, roles: ['admin', 'user'] },
+    { id: 'kirim_raport', label: 'Kirim Raport WA', icon: Send, roles: ['admin'] },
     { id: 'cetak_ijazah', label: 'Cetak Ijazah', icon: Printer, roles: ['admin'] },
     { id: 'export_data', label: 'Export Data Lengkap', icon: Database, roles: ['admin'] },
       ];
@@ -11393,6 +11700,7 @@ const Dashboard = () => {
       case 'cetak_ijazah': return <ErrorBoundary key="eb-ijazah"><CetakDokumen key="ijazah" mode="ijazah" /></ErrorBoundary>;
       case 'legger': return <LeggerKelas />;
       case 'export_data': return <ExportDataLengkap />;
+      case 'kirim_raport': return <KirimRaport />;
             default: return <div className="p-8 text-center text-gray-500">Menu tidak ditemukan</div>;
     }
   };
