@@ -32,7 +32,7 @@ export const APP_CONFIG = {
 
     // (Opsional) Jika punya URL logo sendiri, isi di sini. Jika kosong akan pakai default.
     // Contoh: "https://i.ibb.co/logo-sekolah.png"
-    logoUrl: ""
+    logoUrl: "https://ikoqsyrvspfjyyjujfhc.supabase.co/storage/v1/object/public/layout-images/logo%20ppisb.png"
 };
 
 /**

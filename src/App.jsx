@@ -12103,7 +12103,7 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {isSidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setIsSidebarOpen(false)} />}
-      <div className={`fixed inset-y-0 left-0 ${isSidebarCompact ? 'w-16' : 'w-64'} bg-emerald-800 text-emerald-50 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} ${isSidebarHidden ? 'md:-translate-x-full md:w-0 md:overflow-hidden' : 'md:relative md:translate-x-0'} transition-all duration-200 ease-in-out z-50 flex flex-col`}>
+      <div className={`fixed inset-y-0 left-0 ${isSidebarCompact ? 'w-16' : 'w-64'} bg-emerald-800 text-emerald-50 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} ${isSidebarHidden ? 'md:-translate-x-full md:w-0 md:overflow-hidden' : 'md:relative md:translate-x-0 md:h-screen md:sticky md:top-0'} transition-all duration-200 ease-in-out z-50 flex flex-col`}>
         <div className={`p-3 ${isSidebarCompact ? 'px-0' : 'p-6'} flex items-center justify-between border-b border-emerald-700/50`}>
           <div className={`flex items-center ${isSidebarCompact ? 'justify-center w-full gap-0' : 'gap-3'}`}>
             <img src={APP_CONFIG.logoUrl || "https://i.ibb.co.com/DfZSFRsP/Chat-GPT-Image-3-Mei-2026-04-08-56.png"} alt="Logo" className="w-12 h-12 object-contain drop-shadow-sm shrink-0" />
@@ -12234,6 +12234,10 @@ const Dashboard = () => {
         </header>
         
         <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 print:p-0 print:overflow-visible relative flex flex-col print:static">{renderContent()}</main>
+        <footer className="bg-white border-t border-gray-200 py-3 px-4 text-center text-xs text-gray-500 print:hidden shrink-0 shadow-[0_-1px_3px_rgba(0,0,0,0.02)] z-10">
+          <div className="font-semibold text-gray-600">Rapijaz-Maisya (Sistem Informasi Raport dan Ijazah Terpadu Ponpes Imam Syafi'i Brebes @ 2026 , Design By : Abu Urwah)</div>
+          <div className="text-[11px] text-gray-400 mt-1">Alamat : Jalan Terusan Islamic Center, Desa Sigempol, Kelurahan Limbangan Wetan, Kecamatan Brebes, Jawa Tengah, Indonesia - Website : <a href="https://isb.ponpes.id" target="_blank" rel="noopener noreferrer" className="text-emerald-600 hover:underline font-medium">https://isb.ponpes.id</a></div>
+        </footer>
       </div>
 
       <Modal isOpen={isLogoutModalOpen} onClose={() => setIsLogoutModalOpen(false)} title="Konfirmasi Keluar">
