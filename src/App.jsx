@@ -11077,7 +11077,7 @@ const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = 
             left: `${el.x}px`,
             top: `${el.y}px`,
             fontSize: `${el.fontSize}px`,
-            fontFamily: el.fontFamily || 'Arial, sans-serif',
+            fontFamily: (el.fontFamily || 'Arial, sans-serif').replace(/Arial/g, '"Arial", "Arimo"'),
             fontWeight: el.fontWeight,
             color: el.color || '#000000',
             zIndex: el.zIndex ?? 1,
