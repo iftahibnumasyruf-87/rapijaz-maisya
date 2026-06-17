@@ -9698,7 +9698,8 @@ const InputIjazah = () => {
 // HALAMAN KIRIM RAPORT
 // ==========================================
 const KirimRaport = () => {
-    const { data, activeSetting, classesData, getStudentsForYear, currentUser, addLog, saveToDb } = useContext(AppContext);
+    const { data, activeSetting, addLog, saveToDb } = useContext(AppContext);
+    const classesData = data.classes || [];
     const activeStudents = getStudentsForYear(data.studentSnapshots, activeSetting, data.students);
     
     const [selectedClass, setSelectedClass] = useState('');
