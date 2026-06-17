@@ -7808,11 +7808,22 @@ const importGradesFromExcel = async (file, studentsInClass, subjectsInClass, act
                         const fallback = { 3: 'ekskul1_nama', 4: 'ekskul1_nilai', 5: 'ekskul2_nama', 6: 'ekskul2_nilai' };
                         Object.assign(colMap, fallback);
                     }
-                } else if (activeInputTab === 'catatan_wali') {
+                } else if (activeInputTab === 'catatan' || activeInputTab === 'catatan_wali') {
+                    // Cek headerRow0
                     headerRow0.forEach((cell, i) => {
                         const val = String(cell).toLowerCase();
-                        if (val.includes('catatan wali')) colMap[i] = 'catatan_wali';
+                        if (val.includes('catatan') || val.includes('pesan') || val.includes('wali')) colMap[i] = 'catatan_wali';
                     });
+                    // Cek headerRow1 (jangan timpa jika sudah ada)
+                    headerRow1.forEach((cell, i) => {
+                        if (colMap[i] !== undefined) return;
+                        const val = String(cell).toLowerCase();
+                        if (val.includes('catatan') || val.includes('pesan') || val.includes('wali')) colMap[i] = 'catatan_wali';
+                    });
+                    
+                    if (Object.keys(colMap).length === 0) {
+                        colMap[3] = 'catatan_wali'; // positional fallback
+                    }
                 }
 
                 const dataStartIdx = isNewFormat ? 2 : 1;
@@ -7857,7 +7868,7 @@ const importGradesFromExcel = async (file, studentsInClass, subjectsInClass, act
                             const val = String(row[colIdx] || '').trim();
                             if (val) importedGrades[student.id][fieldId] = (activeInputTab === 'presensi') ? convertArabicToLatin(val) : val;
                         });
-                    } else if (activeInputTab === 'catatan_wali') {
+                    } else if (activeInputTab === 'catatan' || activeInputTab === 'catatan_wali') {
                         Object.entries(colMap).forEach(([colIdxStr, fieldId]) => {
                             const colIdx = Number(colIdxStr);
                             const val = String(row[colIdx] || '').trim();
