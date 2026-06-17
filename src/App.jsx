@@ -11010,11 +11010,12 @@ const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = 
                      }
                      if (dataType === 'ekskul_fixed') {
                          if (realId === 'ekskul1_nama_ar' || realId === 'ekskul2_nama_ar') {
+                             if (sGrades[realId] && sGrades[realId].trim() !== '') return sGrades[realId];
                              const indKey = realId === 'ekskul1_nama_ar' ? 'ekskul1_nama' : 'ekskul2_nama';
                              const indName = sGrades[indKey];
                              if (!indName) return '';
                              const ekskulObj = data.extracurriculars?.find(e => e.name === indName);
-                             return ekskulObj ? (ekskulObj.nameAr || indName) : indName;
+                             return (ekskulObj && ekskulObj.nameAr) ? ekskulObj.nameAr : indName;
                          }
                          if (realId === 'ekskul1_nilai_ar' || realId === 'ekskul2_nilai_ar') {
                              const indKey = realId === 'ekskul1_nilai_ar' ? 'ekskul1_nilai' : 'ekskul2_nilai';
