@@ -9843,7 +9843,7 @@ const KirimRaport = () => {
                 const cwText = cw ? `\n\n📝 *Catatan Wali Kelas:*\n_${cw}_` : '';
 
                 const publicLink = `https://rapijaz-isb.vercel.app/?public_raport=true&santri_id=${sid}`;
-                const text = `🎓 *Laporan Nilai Raport*\nPonpes Imam Syafi'i Brebes\n\nAssalamu'alaikum Wr. Wb.\n\nDengan hormat, berikut adalah informasi nilai ananda:\n\nNama: *${student.nama}*\nKelas: *${className}*\nTA: *${tahun} | Semester ${semester}*\n\n📚 *Ringkasan Nilai:*\n${gradeLines}\n\n📊 Rata-Rata: *${avgVal}*${cwText}\n\n📱 *Lihat Rapor Lengkap Online:*\n${publicLink}\n\nSemoga nilai ini menjadi motivasi untuk terus belajar.\n\nWassalamu'alaikum Wr. Wb. 🤲`;
+                const text = `🎓 *Laporan Nilai Raport*\nPonpes Imam Syafi'i Brebes\n\nAssalamu'alaikum Wr. Wb.\n\nDengan hormat, berikut adalah informasi nilai ananda:\n\nNama: *${student.nama}*\nKelas: *${className}*\nTA: *${tahun} | Semester ${semester}*\n\n📚 *Ringkasan Nilai:*\n${gradeLines}\n\n📊 Rata-Rata: *${avgVal}*${cwText}\n\n📱 *Lihat Rapor Lengkap Online:*\n ${publicLink} \n\nSemoga nilai ini menjadi motivasi untuk terus belajar.\n\nWassalamu'alaikum Wr. Wb. 🤲`;
 
                 const res = await fetch("https://api.fonnte.com/send", {
                     method: "POST",
@@ -10310,7 +10310,7 @@ const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = 
     const [isBatchMode, setIsBatchMode] = useState(false);
     const [printMargins, setPrintMargins] = useState({ top: 0, bottom: 0, left: 0, right: 0 });
     const [printScale, setPrintScale] = useState(1.0);
-    const [previewZoom, setPreviewZoom] = useState(isPublicView ? 0.45 : 0.7);
+    const [previewZoom, setPreviewZoom] = useState(isPublicView ? 0.7 : 0.7);
     const [printRangeStart, setPrintRangeStart] = useState('');
     const [printRangeEnd, setPrintRangeEnd] = useState('');
             const [localApiKey] = useState(localStorage.getItem('geminiApiKey') || '');
