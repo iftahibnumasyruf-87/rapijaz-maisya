@@ -11541,11 +11541,11 @@ const LeggerKelas = () => {
                 const rVal = parseGradeValue(grade);
                 raport = rVal !== null ? String(rVal) : '-';
             }
-            return `${i + 1}. ${s.nameId}:\nUTS: ${uts},\nUAS: ${uas},\nRaport: ${raport}`;
+            return `*${i + 1}. ${s.nameId}*:\nUTS: *${uts}*,\nUAS: *${uas}*,\nRaport: *${raport}*`;
         }).join('\n\n');
 
         const rankMessage = `ranking ke *${idx + 1}* dari jumlah santri *${leggerData.length}*`;
-        const text = `\uD83C\uDF93 *Laporan Nilai Akhir Santri (UTS&UAS)*\nPonpes Imam Syafi'i Brebes\n\nNama: *${row.nama}*\nKelas: *${className}*\nTA: *${tahun} Sem ${semester}*\n\n\uD83D\uDCDA *Pencapaian Nilai:*\n${gradeLines}\n\n\uD83D\uDCCA Rata-Rata: *${row.avg}* | Predikat: *${row.predikat}* | ${rankMessage}\n\nAlhamdulillha, semoga ilmu yang dipelajari bermanfaat dan semoga Allah mudahkan untuk bisa lebih baik lagi di masa yang akan datang, اللهم بارك \uD83E\uDD32`;
+        const text = `\uD83C\uDF93 *Laporan Nilai Akhir Santri (UTS&UAS)*\nPonpes Imam Syafi'i Brebes\n\nNama: *${row.nama}*\nKelas: *${className}*\nTA: *${tahun} Sem ${semester}*\n\n\uD83D\uDCDA *Pencapaian Nilai:*\n${gradeLines}\n\n\uD83D\uDCCA Rata-Rata: *${row.avg}* | Predikat: *${row.predikat}* | ${rankMessage}\n\nالحمد لله,\nsemoga ilmu yang dipelajari bermanfaat dan semoga Allah mudahkan untuk bisa lebih baik lagi di masa yang akan datang,\nاللهم بارك \uD83E\uDD32`;
         addLog(`Kirim info nilai ${row.nama} via WA`);
         const fonnteToken = localStorage.getItem('fonnteToken') || 'oPhcncGcZC3H2kXbQLo3';
         const targetWA = window.prompt(`Masukkan Nomor WA Tujuan untuk ${row.nama} (contoh: 0812...):`, row.no_tlp || "");
@@ -11827,9 +11827,9 @@ const LeggerKelas = () => {
 
                                         return (
                                             <React.Fragment key={s.id}>
-                                                <td className={`p-3 text-center border border-gray-300 font-medium ${isUtsRed ? 'text-red-600 font-bold bg-red-50' : 'text-gray-500'}`}>{uts === '' ? '-' : uts}</td>
-                                                <td className={`p-3 text-center border border-gray-300 font-medium ${isUasRed ? 'text-red-600 font-bold bg-red-50' : 'text-gray-500'}`}>{uas === '' ? '-' : uas}</td>
-                                                <td className={`p-3 text-center border border-gray-300 ${isRaportRed ? 'text-red-600 font-bold bg-red-50' : 'font-semibold text-gray-800'}`}>
+                                                <td className={`p-3 text-center border border-gray-300 font-medium ${isUtsRed ? 'text-red-700 font-bold bg-red-100' : 'text-gray-500'}`}>{uts === '' ? '-' : uts}</td>
+                                                <td className={`p-3 text-center border border-gray-300 font-medium ${isUasRed ? 'text-red-700 font-bold bg-red-100' : 'text-gray-500'}`}>{uas === '' ? '-' : uas}</td>
+                                                <td className={`p-3 text-center border border-gray-300 ${isRaportRed ? 'text-red-700 font-bold bg-red-100' : 'font-semibold text-gray-800'}`}>
                                                     {valDisplay}
                                                 </td>
                                                 <td className="p-3 text-center border border-gray-300 bg-gray-50 text-gray-400 font-semibold">{classRerata}</td>
@@ -11848,28 +11848,28 @@ const LeggerKelas = () => {
                             ))}
                             {/* Baris Rata-rata Kelas */}
                             {leggerData.length > 0 && (
-                                <tr className="bg-gray-100 font-bold text-sm text-gray-700 border-t-2 border border-gray-300">
-                                    <td className="p-3 text-center sticky left-0 bg-gray-100 border border-gray-300 z-10">-</td>
-                                    <td className="p-3 sticky left-12 bg-gray-100 border border-gray-300 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] z-10 text-left">Rata-rata Kelas</td>
+                                <tr className="bg-gray-200 font-bold text-sm text-gray-700 border-t-2 border border-gray-300">
+                                    <td className="p-3 text-center sticky left-0 bg-gray-200 border border-gray-300 z-10">-</td>
+                                    <td className="p-3 sticky left-12 bg-gray-200 border border-gray-300 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] z-10 text-left">Rata-rata Kelas</td>
                                     {subjects.map(s => {
                                         const avg = subjectAverages[s.id] || { uts: '-', uas: '-', raport: '-' };
                                         return (
                                             <React.Fragment key={s.id}>
-                                                <td className="p-3 text-center border border-gray-300 text-gray-500 bg-gray-50 font-normal">{avg.uts}</td>
-                                                <td className="p-3 text-center border border-gray-300 text-gray-500 bg-gray-50 font-normal">{avg.uas}</td>
-                                                <td className="p-3 text-center border border-gray-300 text-emerald-800 bg-emerald-50/50">{avg.raport}</td>
-                                                <td className="p-3 text-center border border-gray-300 text-gray-500 bg-gray-100 font-semibold">{avg.raport}</td>
+                                                <td className="p-3 text-center border border-gray-300 text-gray-700 bg-gray-100 font-normal">{avg.uts}</td>
+                                                <td className="p-3 text-center border border-gray-300 text-gray-700 bg-gray-100 font-normal">{avg.uas}</td>
+                                                <td className="p-3 text-center border border-gray-300 text-emerald-900 bg-gray-200 font-bold">{avg.raport}</td>
+                                                <td className="p-3 text-center border border-gray-300 text-gray-600 bg-gray-100 font-medium">{avg.raport}</td>
                                             </React.Fragment>
                                         );
                                     })}
-                                    <td className="p-3 text-center font-bold bg-emerald-100/50 border border-gray-300">
+                                    <td className="p-3 text-center font-bold bg-gray-200 border border-gray-300">
                                         {Math.round(leggerData.reduce((sum, r) => sum + r.total, 0) / leggerData.length)}
                                     </td>
-                                    <td className="p-3 text-center font-bold bg-emerald-100 border border-gray-300">
+                                    <td className="p-3 text-center font-bold bg-gray-200 border border-gray-300">
                                         {Math.round(leggerData.reduce((sum, r) => sum + r.avg, 0) / leggerData.length)}
                                     </td>
-                                    <td className="p-3 text-center font-bold bg-emerald-50 border border-gray-300">-</td>
-                                    <td className="p-3 text-center print:hidden bg-gray-50 border border-gray-300">-</td>
+                                    <td className="p-3 text-center font-bold bg-gray-200 border border-gray-300">-</td>
+                                    <td className="p-3 text-center print:hidden bg-gray-200 border border-gray-300">-</td>
                                 </tr>
                             )}
                         </tbody>
