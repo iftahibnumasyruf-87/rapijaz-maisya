@@ -10305,7 +10305,7 @@ const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = 
         }
     }, [publicSantriId, activeStudents, classesData, selectedClass]);
 
-    const [useKatrol, setUseKatrol] = useState(false);
+    const [useKatrol, setUseKatrol] = useState(true);
     const [isBatchMode, setIsBatchMode] = useState(false);
     const [printMargins, setPrintMargins] = useState({ top: 0, bottom: 0, left: 0, right: 0 });
     const [printScale, setPrintScale] = useState(1.0);
