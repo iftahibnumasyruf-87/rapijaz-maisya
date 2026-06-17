@@ -11233,7 +11233,7 @@ const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = 
                     <button onClick={() => setPreviewZoom(1.0)} className="text-xs text-gray-500 hover:underline">100%</button>
                 </div>
                 )}
-                <div className="flex-1 overflow-auto p-8 flex flex-col gap-8 print:p-0 print:gap-0 print:block">
+                <div className="flex-1 overflow-scroll p-8 flex flex-col gap-8 print:p-0 print:gap-0 print:block">
                 {studentsToRender.length > 0 ? (
                     <div className={`print-wrapper flex flex-col print:block ${isExporting ? 'gap-0' : 'gap-8 print:gap-0'}`} style={{ transformOrigin: 'top left', transform: isExporting || isBatchMode ? 'none' : `scale(${previewZoom})`, marginBottom: (isExporting || isBatchMode) ? '0px' : `${(previewZoom - 1) * canvasHeight * pages.length}px` }}>
                         {studentsToRender.map((std, stdIndex) => (
