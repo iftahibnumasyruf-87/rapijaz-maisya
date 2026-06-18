@@ -13686,6 +13686,7 @@ const Dashboard = () => {
     }
     if (currentUser?.role === 'admin') {
       items.push({ id: 'ekskul', label: 'Ekstrakurikuler' });
+      items.push({ id: 'presensi_harian', label: 'Presensi Santri' });
     }
     return items;
   }, [currentUser, isWaliKelasAny, data?.subjects]);
@@ -13700,7 +13701,7 @@ const Dashboard = () => {
       { id: 'master_data', label: 'Master Data', icon: Users, roles: ['admin'], subItems: masterDataSubItems },
       { id: 'layout_builder', label: 'Desain Layout', icon: LayoutTemplate, roles: ['admin'], subItems: layoutBuilderSubItems },
       { id: 'input_nilai', label: 'Input Nilai', icon: CheckSquare, roles: ['admin', 'guru', 'user'], subItems: inputNilaiSubItems },
-      { id: 'presensi_harian', label: 'Presensi Santri', icon: Calendar, roles: ['admin', 'guru', 'user'] },
+      { id: 'presensi_harian', label: 'Presensi Santri', icon: Calendar, roles: ['guru', 'user'] },
       { id: 'input_ijazah', label: 'Kelola Nilai Ijazah', icon: FileSignature, roles: ['admin', 'user'] },
       { id: 'legger', label: 'Legger Kelas', icon: BookOpen, roles: ['admin', 'user'] },
       { id: 'cetak_raport', label: 'Cetak Raport', icon: Printer, roles: ['admin', 'user'] },
