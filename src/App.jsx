@@ -11694,6 +11694,7 @@ const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = 
     const [printMargins, setPrintMargins] = useState({ top: 0, bottom: 0, left: 0, right: 0 });
     const [printScale, setPrintScale] = useState(1.0);
     const [previewZoom, setPreviewZoom] = useState(isPublicView ? 0.7 : 0.7);
+    const [printedPagesMode, setPrintedPagesMode] = useState('all');
     const [printRangeStart, setPrintRangeStart] = useState('');
     const [printRangeEnd, setPrintRangeEnd] = useState('');
             const [localApiKey] = useState(localStorage.getItem('geminiApiKey') || '');
@@ -12533,6 +12534,7 @@ const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = 
     const cssPageSize = layoutPageSize === 'F4' ? `215.9mm 330.2mm ${layoutOrientation}` : `A4 ${layoutOrientation}`;
     const maxPage = activeLayout.length > 0 ? Math.max(...activeLayout.map(el => el.pageIndex || 0)) : 0;
     const pages = Array.from({length: maxPage + 1}, (_, i) => activeLayout.filter(el => (el.pageIndex || 0) === i));
+    const visiblePages = printedPagesMode === 'first_page' ? pages.slice(0, 1) : pages;
 
     return (
         <div className="flex flex-col md:flex-row gap-6 flex-1 h-full min-h-0">
@@ -12565,6 +12567,13 @@ const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = 
                             </div>
                         </div>
                         <p className="text-[10px] text-gray-400 mt-1 leading-tight">Default 100% agar pas (sejajar) saat Simpan ke PDF. Jika printer fisik memotong tepi kertas, kecilkan skalanya.</p>
+                    </div>
+                    <div className="pt-4 border-t">
+                        <p className="text-sm font-bold text-gray-700 mb-1">Halaman yang Dicetak</p>
+                        <select className="w-full p-2 border rounded-lg bg-white text-sm font-semibold" value={printedPagesMode} onChange={e => setPrintedPagesMode(e.target.value)}>
+                            <option value="all">Semua Halaman</option>
+                            <option value="first_page">Halaman 1 Saja</option>
+                        </select>
                     </div>
                     </>
                     )}
@@ -12625,11 +12634,11 @@ const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = 
                 )}
                 <div className="flex-1 overflow-scroll p-8 flex flex-col gap-8 print:p-0 print:gap-0 print:block">
                 {studentsToRender.length > 0 ? (
-                    <div className={`print-wrapper flex flex-col print:block ${isExporting ? 'gap-0' : 'gap-8 print:gap-0'}`} style={{ transformOrigin: 'top left', transform: isExporting || isBatchMode ? 'none' : `scale(${previewZoom})`, marginBottom: (isExporting || isBatchMode) ? '0px' : `${(previewZoom - 1) * canvasHeight * pages.length}px` }}>
+                    <div className={`print-wrapper flex flex-col print:block ${isExporting ? 'gap-0' : 'gap-8 print:gap-0'}`} style={{ transformOrigin: 'top left', transform: isExporting || isBatchMode ? 'none' : `scale(${previewZoom})`, marginBottom: (isExporting || isBatchMode) ? '0px' : `${(previewZoom - 1) * canvasHeight * visiblePages.length}px` }}>
                         {studentsToRender.map((std, stdIndex) => (
                             <React.Fragment key={std.id}>
-                                {pages.map((pageElements, index) => {
-                                    const isLastPageOfLastStudent = stdIndex === studentsToRender.length - 1 && index === pages.length - 1;
+                                {visiblePages.map((pageElements, index) => {
+                                    const isLastPageOfLastStudent = stdIndex === studentsToRender.length - 1 && index === visiblePages.length - 1;
                                     return (
                                         <div key={`${std.id}-${index}`} className={`print-container bg-white relative print:shadow-none print:!m-0 ${isExporting ? '!m-0 shadow-none' : 'shadow-xl'}`} style={{ width: `${canvasWidth}px`, height: `${canvasHeight}px`, pageBreakAfter: isLastPageOfLastStudent ? 'auto' : 'always', marginTop: (index === 0 && stdIndex === 0) || isExporting ? 0 : '32px', flexShrink: 0 }}>
                                             {pageElements.length > 0 ? pageElements.map(el => <React.Fragment key={el.id}>{renderElementForStudent(el, std)}</React.Fragment>) : (activeLayout.length === 0 && index === 0 ? <div className="absolute inset-0 flex items-center justify-center text-gray-400 print:hidden">Layout belum disetting oleh Admin.<br/>Pilih layout di panel kiri.</div> : <div className="absolute inset-0 flex items-center justify-center text-gray-400 print:hidden">Halaman {index + 1} kosong.</div>)}
