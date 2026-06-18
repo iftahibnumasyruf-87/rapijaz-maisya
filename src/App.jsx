@@ -7,7 +7,7 @@ import {
   Download, Upload, Share2, AlertCircle, CheckCircle, GripHorizontal,
   Type, User, CreditCard, Image as ImageIcon, Ruler, Type as TypeIcon, FileText, Award,
   Columns, FileSignature, TrendingUp, UserX, Clock, Activity, ChevronDown,
-  ZoomIn, ZoomOut, Maximize, Minimize, ChevronUp, Lock, Database, Copy, Undo, Redo, Eye, EyeOff, Scissors,
+  ZoomIn, ZoomOut, Maximize, Minimize, ChevronUp, Lock, Database, Copy, Undo, Redo, Eye, EyeOff, Scissors, Palette,
   AlignLeft, AlignCenter, AlignRight, AlignStartVertical, AlignCenterVertical, AlignEndVertical, BarChart2, AlignJustify, Layers, Calendar,
   Minus, Square, Grid, Info, RefreshCw, Search, LockOpen, PanelLeftClose, Brain,
   Send, CheckCircle2, XCircle, Loader2
@@ -13296,6 +13296,105 @@ const TahunAjaranSelection = ({ allData, saveToDb, onBypass, currentUser }) => {
     );
 };
 
+const SIDEBAR_THEMES = {
+    dark_emerald: {
+        bg: 'bg-emerald-900',
+        border: 'border-emerald-800/40',
+        text: 'text-emerald-100',
+        textActive: 'bg-emerald-600 text-white shadow-lg',
+        textHover: 'hover:bg-emerald-800/60 hover:text-white',
+        subBorder: 'border-emerald-700/50',
+        subText: 'text-emerald-200 hover:bg-emerald-800/60 hover:text-white',
+        subTextActive: 'bg-emerald-600 text-white shadow',
+        profileBg: 'bg-emerald-950/40',
+        profileBadge: 'bg-emerald-500 text-white',
+        profileText: 'text-white',
+        logoutText: 'text-emerald-200 hover:text-white hover:bg-red-500/20',
+        logoDesc: 'text-emerald-300',
+        divider: 'border-emerald-700/40',
+    },
+    light_emerald: {
+        bg: 'bg-[#f0fdf4]',
+        border: 'border-emerald-200',
+        text: 'text-emerald-800',
+        textActive: 'bg-[#059669] text-white shadow-md',
+        textHover: 'hover:bg-[#dcfce7] hover:text-emerald-900',
+        subBorder: 'border-emerald-200',
+        subText: 'text-emerald-700 hover:bg-[#dcfce7] hover:text-emerald-900',
+        subTextActive: 'bg-[#059669] text-white shadow-sm',
+        profileBg: 'bg-emerald-100 text-[#064e3b]',
+        profileBadge: 'bg-[#059669] text-white',
+        profileText: 'text-[#064e3b]',
+        logoutText: 'text-[#064e3b] hover:text-red-700 hover:bg-red-50',
+        logoDesc: 'text-emerald-600',
+        divider: 'border-emerald-200',
+    },
+    midnight: {
+        bg: 'bg-[#0f172a]',
+        border: 'border-slate-800',
+        text: 'text-slate-200',
+        textActive: 'bg-indigo-600 text-white shadow-lg',
+        textHover: 'hover:bg-slate-800 hover:text-white',
+        subBorder: 'border-slate-800',
+        subText: 'text-slate-300 hover:bg-slate-800 hover:text-white',
+        subTextActive: 'bg-indigo-600 text-white shadow',
+        profileBg: 'bg-slate-900/60 text-white',
+        profileBadge: 'bg-indigo-500 text-white',
+        profileText: 'text-white',
+        logoutText: 'text-slate-300 hover:text-white hover:bg-red-500/20',
+        logoDesc: 'text-slate-400',
+        divider: 'border-slate-800',
+    },
+    light_slate: {
+        bg: 'bg-[#f8fafc]',
+        border: 'border-slate-200',
+        text: 'text-slate-700',
+        textActive: 'bg-slate-850 bg-slate-800 text-white shadow-md',
+        textHover: 'hover:bg-slate-100 hover:text-slate-900',
+        subBorder: 'border-slate-200',
+        subText: 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
+        subTextActive: 'bg-slate-800 text-white shadow-sm',
+        profileBg: 'bg-slate-100 text-slate-800',
+        profileBadge: 'bg-slate-600 text-white',
+        profileText: 'text-slate-900',
+        logoutText: 'text-slate-700 hover:text-red-700 hover:bg-red-50',
+        logoDesc: 'text-slate-500',
+        divider: 'border-slate-200',
+    },
+    royal_blue: {
+        bg: 'bg-[#1e3a8a]',
+        border: 'border-blue-800/50',
+        text: 'text-blue-100',
+        textActive: 'bg-indigo-700 text-white shadow-lg',
+        textHover: 'hover:bg-blue-800/60 hover:text-white',
+        subBorder: 'border-blue-800/50',
+        subText: 'text-blue-200 hover:bg-blue-800/60 hover:text-white',
+        subTextActive: 'bg-indigo-700 text-white shadow',
+        profileBg: 'bg-blue-950/40 text-white',
+        profileBadge: 'bg-blue-500 text-white',
+        profileText: 'text-white',
+        logoutText: 'text-blue-200 hover:text-white hover:bg-red-500/20',
+        logoDesc: 'text-blue-300',
+        divider: 'border-blue-800/50',
+    },
+    charcoal: {
+        bg: 'bg-[#18181b]',
+        border: 'border-zinc-800',
+        text: 'text-zinc-200',
+        textActive: 'bg-zinc-700 text-white shadow-lg',
+        textHover: 'hover:bg-zinc-800 hover:text-white',
+        subBorder: 'border-zinc-800',
+        subText: 'text-zinc-300 hover:bg-zinc-800 hover:text-white',
+        subTextActive: 'bg-zinc-700 text-white shadow',
+        profileBg: 'bg-zinc-900/60 text-white',
+        profileBadge: 'bg-zinc-500 text-white',
+        profileText: 'text-white',
+        logoutText: 'text-zinc-300 hover:text-white hover:bg-red-500/20',
+        logoDesc: 'text-zinc-400',
+        divider: 'border-zinc-800',
+    }
+};
+
 const Dashboard = () => {
   const { currentUser, setCurrentUser, activeSetting, allData, data, saveToDb } = useContext(AppContext);
   const isTahunSet = !!activeSetting?.tahun;
@@ -13306,6 +13405,32 @@ const Dashboard = () => {
   const [isSidebarCompact, setIsSidebarCompact] = useState(false);
   const [isSidebarHidden, setIsSidebarHidden] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+
+  // Sidebar dynamic resizer states
+  const [sidebarWidth, setSidebarWidth] = useState(() => Number(localStorage.getItem('sidebar_width') || '260'));
+  // Sidebar custom themes states
+  const [sidebarTheme, setSidebarTheme] = useState(() => localStorage.getItem('sidebar_theme') || 'dark_emerald');
+
+  const handleResizeStart = (e) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = sidebarWidth;
+
+    const handleMouseMove = (moveEvent) => {
+      const deltaX = moveEvent.clientX - startX;
+      const newWidth = Math.max(200, Math.min(450, startWidth + deltaX));
+      setSidebarWidth(newWidth);
+      localStorage.setItem('sidebar_width', String(newWidth));
+    };
+
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
 
   // ==========================================
   // GLOBAL EVENT LISTENER - KONVERSI ANGKA ARAB
@@ -13459,22 +13584,43 @@ const Dashboard = () => {
       return 'Menu';
   };
 
+  const activeThemeObj = SIDEBAR_THEMES[sidebarTheme] || SIDEBAR_THEMES.dark_emerald;
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {isSidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setIsSidebarOpen(false)} />}
-      <div className={`fixed inset-y-0 left-0 ${isSidebarCompact ? 'w-16' : 'w-64'} bg-emerald-800 text-emerald-50 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} ${isSidebarHidden ? 'md:-translate-x-full md:w-0 md:overflow-hidden' : 'md:relative md:translate-x-0 md:h-screen md:sticky md:top-0'} transition-all duration-200 ease-in-out z-50 flex flex-col`}>
-        <div className={`p-3 ${isSidebarCompact ? 'px-0' : 'p-6'} flex items-center justify-between border-b border-emerald-700/50`}>
+      <div 
+        style={{ width: isSidebarCompact ? '64px' : (isSidebarHidden ? '0px' : `${sidebarWidth}px`) }}
+        className={`fixed inset-y-0 left-0 ${activeThemeObj.bg} ${activeThemeObj.text} transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} ${isSidebarHidden ? 'md:-translate-x-full md:w-0 md:overflow-hidden' : 'md:relative md:translate-x-0 md:h-screen md:sticky md:top-0'} transition-all duration-200 ease-in-out z-50 flex flex-col border-r ${activeThemeObj.border}`}
+      >
+        <div className={`p-3 ${isSidebarCompact ? 'px-0' : 'p-6'} flex items-center justify-between border-b ${activeThemeObj.border}`}>
           <div className={`flex items-center ${isSidebarCompact ? 'justify-center w-full gap-0' : 'gap-3'}`}>
-            <img src={APP_CONFIG.logoUrl || "https://i.ibb.co.com/DfZSFRsP/Chat-GPT-Image-3-Mei-2026-04-08-56.png"} alt="Logo" className="w-12 h-12 object-contain drop-shadow-sm shrink-0" />
+            <img src={APP_CONFIG.logoUrl || "https://ikoqsyrvspfjyyjujfhc.supabase.co/storage/v1/object/public/layout-images/logo%20ppisb.png"} alt="Logo" className="w-12 h-12 object-contain drop-shadow-sm shrink-0" />
             <div className={`${isSidebarCompact ? 'hidden' : 'font-bold text-xl leading-tight'}`}>
               {getFullAppName()}<br/>
-              <span className="text-emerald-300 text-[10px] font-normal leading-tight block mt-1">
+              <span className={`text-[10px] font-normal leading-tight block mt-1 ${activeThemeObj.logoDesc}`}>
                 {APP_CONFIG.loginDescription}<br/>{APP_CONFIG.institutionName}
               </span>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button className="hidden md:inline-flex text-emerald-200 hover:text-white" onClick={() => setIsSidebarCompact(prev => !prev)} title="Ciutkan Sidebar">
+            {!isSidebarCompact && (
+              <div className="relative group">
+                <button className={`p-1.5 rounded-lg transition ${sidebarTheme.startsWith('light') ? 'hover:bg-black/5' : 'hover:bg-white/10'}`} title="Pilih Tema Sidebar">
+                  <Palette size={20} />
+                </button>
+                <div className="absolute right-0 top-full mt-2 w-48 bg-white border rounded-xl shadow-xl py-2 hidden group-hover:block z-50 text-gray-800 text-sm">
+                  <div className="px-3 py-1 font-bold text-xs text-gray-400 border-b mb-1 uppercase tracking-wider">Tema Sidebar</div>
+                  <button onClick={() => { setSidebarTheme('dark_emerald'); localStorage.setItem('sidebar_theme', 'dark_emerald'); }} className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2 font-medium"><span className="w-4 h-4 rounded-full bg-emerald-800 border"></span> Hijau Gelap</button>
+                  <button onClick={() => { setSidebarTheme('light_emerald'); localStorage.setItem('sidebar_theme', 'light_emerald'); }} className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2 font-medium"><span className="w-4 h-4 rounded-full bg-[#f0fdf4] border border-emerald-300"></span> Hijau Terang</button>
+                  <button onClick={() => { setSidebarTheme('midnight'); localStorage.setItem('sidebar_theme', 'midnight'); }} className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2 font-medium"><span className="w-4 h-4 rounded-full bg-[#0f172a] border"></span> Midnight Dark</button>
+                  <button onClick={() => { setSidebarTheme('light_slate'); localStorage.setItem('sidebar_theme', 'light_slate'); }} className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2 font-medium"><span className="w-4 h-4 rounded-full bg-[#f8fafc] border border-gray-300"></span> Light Slate</button>
+                  <button onClick={() => { setSidebarTheme('royal_blue'); localStorage.setItem('sidebar_theme', 'royal_blue'); }} className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2 font-medium"><span className="w-4 h-4 rounded-full bg-[#1e3a8a] border"></span> Royal Blue</button>
+                  <button onClick={() => { setSidebarTheme('charcoal'); localStorage.setItem('sidebar_theme', 'charcoal'); }} className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2 font-medium"><span className="w-4 h-4 rounded-full bg-[#18181b] border"></span> Charcoal Black</button>
+                </div>
+              </div>
+            )}
+            <button className={`hidden md:inline-flex p-1.5 rounded-lg transition ${sidebarTheme.startsWith('light') ? 'hover:bg-black/5' : 'hover:bg-white/10'}`} onClick={() => setIsSidebarCompact(prev => !prev)} title="Ciutkan Sidebar">
               <LayoutTemplate size={20} />
             </button>
             <button className="md:hidden text-emerald-200" onClick={() => setIsSidebarOpen(false)}><X size={24}/></button>
@@ -13505,7 +13651,7 @@ const Dashboard = () => {
                                 }} 
                                 title={isDisabled ? 'Atur Tahun Ajaran Dulu' : menu.label}
                                 disabled={isDisabled}
-                                className={`w-full flex items-center ${isSidebarCompact ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'} rounded-xl transition ${isActive && !menu.subItems ? 'bg-emerald-600 text-white shadow-lg' : 'text-emerald-100 hover:bg-emerald-700/50'} ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                className={`w-full flex items-center ${isSidebarCompact ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'} rounded-xl transition ${isActive && !menu.subItems ? activeThemeObj.textActive : `${activeThemeObj.text} ${activeThemeObj.textHover}`} ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                             >
                                 <div className={`flex items-center ${isSidebarCompact ? 'justify-center gap-0' : 'gap-3'}`}>
                                     <Icon size={20} />
@@ -13515,7 +13661,7 @@ const Dashboard = () => {
                             </button>
 
                             {menu.subItems && isExpanded && !isSidebarCompact && (
-                                <div className="ml-4 mt-1 space-y-1 border-l border-emerald-700/50 pl-2">
+                                <div className={`ml-4 mt-1 space-y-1 border-l pl-2 ${activeThemeObj.subBorder}`}>
                                     {menu.subItems.map(sub => {
                                         const isSubDisabled = !isTahunSet && sub.id !== 'settings';
                                         return (
@@ -13524,7 +13670,7 @@ const Dashboard = () => {
                                             onClick={() => { if(!isSubDisabled) { setActiveMenu(sub.id); setIsSidebarOpen(false); } }}
                                             disabled={isSubDisabled}
                                             title={isSubDisabled ? 'Atur Tahun Ajaran Dulu' : sub.label}
-                                            className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg transition text-sm ${activeMenu === sub.id ? 'bg-emerald-600 text-white shadow' : 'text-emerald-200 hover:bg-emerald-700/50 hover:text-white'} ${isSubDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                            className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg transition text-sm ${activeMenu === sub.id ? activeThemeObj.subTextActive : activeThemeObj.subText} ${isSubDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                                         >
                                             <span className="font-medium">{sub.label}</span>
                                         </button>
@@ -13537,25 +13683,27 @@ const Dashboard = () => {
             </div>
         </div>
         
-        <div className="p-4 border-t border-emerald-700/50">
-          <div className={`flex items-center ${isSidebarCompact ? 'justify-center' : 'gap-3'} ${isSidebarCompact ? 'px-0 py-3' : 'px-4 py-3'} bg-emerald-900/50 rounded-xl mb-4`}>
-            <div className="w-10 h-10 rounded-full bg-emerald-600 flex items-center justify-center font-bold text-white">{currentUser?.name?.charAt(0) || 'U'}</div>
+        <div className={`p-4 border-t ${activeThemeObj.divider}`}>
+          <div className={`flex items-center ${isSidebarCompact ? 'justify-center' : 'gap-3'} ${isSidebarCompact ? 'px-0 py-3' : 'px-4 py-3'} ${activeThemeObj.profileBg} rounded-xl mb-4`}>
+            <div className="w-10 h-10 rounded-full bg-emerald-600 flex items-center justify-center font-bold text-white shrink-0">{currentUser?.name?.charAt(0) || 'U'}</div>
             {!isSidebarCompact && (
               <div className="flex-1 overflow-hidden">
-                <p className="font-bold text-sm truncate text-white">{currentUser?.name}</p>
-                <span className={`text-xs font-semibold uppercase px-2 py-0.5 rounded-full ${
-                  currentUser?.role === 'admin' ? 'bg-emerald-500 text-white' :
-                  currentUser?.role === 'guru' ? 'bg-blue-500 text-white' :
-                  'bg-gray-500 text-white'
-                }`}>{currentUser?.role || 'user'}</span>
+                <p className={`font-bold text-sm truncate ${activeThemeObj.profileText}`}>{currentUser?.name}</p>
+                <span className={`text-xs font-semibold uppercase px-2 py-0.5 rounded-full ${activeThemeObj.profileBadge}`}>{currentUser?.role || 'user'}</span>
               </div>
             )}
           </div>
-          <button onClick={() => setIsLogoutModalOpen(true)} className={`w-full flex items-center justify-center ${isSidebarCompact ? 'px-0 py-3' : 'gap-2 px-4 py-2'} text-emerald-200 hover:text-white hover:bg-red-500/20 rounded-lg transition`} title="Keluar">
+          <button onClick={() => setIsLogoutModalOpen(true)} className={`w-full flex items-center justify-center ${isSidebarCompact ? 'px-0 py-3' : 'gap-2 px-4 py-2'} ${activeThemeObj.logoutText} rounded-lg transition`} title="Keluar">
             <LogOut size={18} />
             {!isSidebarCompact && 'Keluar'}
           </button>
         </div>
+
+        {/* Resize Handle */}
+        <div 
+          onMouseDown={handleResizeStart}
+          className="absolute top-0 right-0 w-1.5 h-full cursor-col-resize hover:bg-emerald-500/40 active:bg-emerald-500/80 transition z-50 print:hidden hidden md:block"
+        />
       </div>
       
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
