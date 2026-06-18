@@ -7346,6 +7346,20 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
                             const maxPage = elements.length > 0 ? Math.max(...elements.map(e => e.pageIndex || 0)) : 0;
                             setCurrentPage(maxPage + 1);
                         }} className="text-xs font-bold bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full hover:bg-emerald-100 transition mr-2">+ Halaman Baru</button>
+                        <button onClick={() => {
+                            if (window.confirm(`Yakin ingin menghapus Halaman ${currentPage + 1}? Semua elemen di halaman ini akan terhapus.`)) {
+                                setPast(p => [...p, elements]);
+                                setFuture([]);
+                                const newElements = elements.filter(el => (el.pageIndex || 0) !== currentPage).map(el => {
+                                    const pIdx = el.pageIndex || 0;
+                                    return pIdx > currentPage ? { ...el, pageIndex: pIdx - 1 } : el;
+                                });
+                                setElements(newElements);
+                                setSelectedIds([]);
+                                const maxPage = newElements.length > 0 ? Math.max(...newElements.map(e => e.pageIndex || 0)) : 0;
+                                if (currentPage > maxPage) setCurrentPage(maxPage);
+                            }
+                        }} className="text-xs font-bold bg-red-50 text-red-600 px-3 py-1 rounded-full hover:bg-red-100 transition mr-2">- Hapus Halaman</button>
                         <div className="w-px h-4 bg-gray-300"></div>
                         <button onClick={undo} disabled={past.length === 0} className="text-gray-500 hover:text-blue-600 disabled:opacity-30" title="Undo"><Undo size={18}/></button>
                         <button onClick={redo} disabled={future.length === 0} className="text-gray-500 hover:text-blue-600 disabled:opacity-30" title="Redo"><Redo size={18}/></button>
