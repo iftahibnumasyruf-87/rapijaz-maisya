@@ -7890,6 +7890,11 @@ const InputNilai = ({ activeInputTab }) => {
     const [isHeaderHidden, setIsHeaderHidden] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const containerRef = useRef(null);
+
+    // Block Selection States
+    const [selectionStart, setSelectionStart] = useState(null);
+    const [selectionEnd, setSelectionEnd] = useState(null);
+    const [isSelecting, setIsSelecting] = useState(false);
     
     // Gunakan useRef untuk melacak status terakhir yang disave ke database (Debouncing Check)
     const lastSavedGradesRef = useRef(null);
@@ -8030,8 +8035,14 @@ const InputNilai = ({ activeInputTab }) => {
             columns.push({ subId: sub.id, field: 'uas' });
         });
 
-        const startStudentIdx = studentsInClass.findIndex(st => st.id === startStudentId);
-        const startColIdx = columns.findIndex(col => col.subId === startSubjectId && col.field === startFieldType);
+        // Use top-left coordinate of selection if selection exists
+        let startStudentIdx = studentsInClass.findIndex(st => st.id === startStudentId);
+        let startColIdx = columns.findIndex(col => col.subId === startSubjectId && col.field === startFieldType);
+
+        if (selectionStart && selectionEnd) {
+            startStudentIdx = Math.min(selectionStart.rowIdx, selectionEnd.rowIdx);
+            startColIdx = Math.min(selectionStart.colIdx, selectionEnd.colIdx);
+        }
 
         if (startStudentIdx === -1 || startColIdx === -1) return;
 
@@ -8073,6 +8084,99 @@ const InputNilai = ({ activeInputTab }) => {
 
         showNotification('Berhasil menempel data dari Excel.', 'success');
     };
+
+    const isCellSelected = (rowIdx, colIdx) => {
+        if (!selectionStart || !selectionEnd) return false;
+        const minRow = Math.min(selectionStart.rowIdx, selectionEnd.rowIdx);
+        const maxRow = Math.max(selectionStart.rowIdx, selectionEnd.rowIdx);
+        const minCol = Math.min(selectionStart.colIdx, selectionEnd.colIdx);
+        const maxCol = Math.max(selectionStart.colIdx, selectionEnd.colIdx);
+        return rowIdx >= minRow && rowIdx <= maxRow && colIdx >= minCol && colIdx <= maxCol;
+    };
+
+    const clearSelectedCells = () => {
+        if (!selectionStart || !selectionEnd) return;
+        const minRow = Math.min(selectionStart.rowIdx, selectionEnd.rowIdx);
+        const maxRow = Math.max(selectionStart.rowIdx, selectionEnd.rowIdx);
+        const minCol = Math.min(selectionStart.colIdx, selectionEnd.colIdx);
+        const maxCol = Math.max(selectionStart.colIdx, selectionEnd.colIdx);
+
+        // Build columns mapping
+        const columns = [];
+        subjectsInClass.forEach(sub => {
+            columns.push({ subId: sub.id, field: 'uts' });
+            columns.push({ subId: sub.id, field: 'uas' });
+        });
+
+        setLocalGrades(prev => {
+            const copy = { ...prev };
+            for (let r = minRow; r <= maxRow; r++) {
+                if (r >= studentsInClass.length) continue;
+                const st = studentsInClass[r];
+                for (let c = minCol; c <= maxCol; c++) {
+                    if (c >= columns.length) continue;
+                    const col = columns[c];
+
+                    // Subject permissions check for Guru role
+                    const isDisabled = currentUser?.role === 'guru' && !currentUser?.assignedSubjectIds?.includes(col.subId);
+                    if (isDisabled) continue;
+
+                    if (!copy[st.id]) copy[st.id] = {};
+                    const studentGrades = copy[st.id];
+
+                    const existing = studentGrades[col.subId] && typeof studentGrades[col.subId] === 'object'
+                        ? { ...studentGrades[col.subId] }
+                        : { uts: '', uas: '' };
+                    
+                    existing[col.field] = '';
+                    copy[st.id] = { ...studentGrades, [col.subId]: existing };
+                }
+            }
+            return copy;
+        });
+        showNotification('Data pada sel terpilih telah dihapus.', 'info');
+    };
+
+    const handleMouseDown = (rowIdx, colIdx) => {
+        setSelectionStart({ rowIdx, colIdx });
+        setSelectionEnd({ rowIdx, colIdx });
+        setIsSelecting(true);
+    };
+
+    const handleMouseEnter = (rowIdx, colIdx) => {
+        if (isSelecting) {
+            setSelectionEnd({ rowIdx, colIdx });
+        }
+    };
+
+    const handleKeyDown = (e) => {
+        if ((e.key === 'Delete' || e.key === 'Backspace') && selectionStart && selectionEnd) {
+            const isMultiCell = selectionStart.rowIdx !== selectionEnd.rowIdx || selectionStart.colIdx !== selectionEnd.colIdx;
+            if (isMultiCell) {
+                e.preventDefault();
+                clearSelectedCells();
+            }
+        }
+    };
+
+    // Global mouseup and click outside listeners to clear/stop selection
+    useEffect(() => {
+        const handleGlobalMouseUp = () => {
+            setIsSelecting(false);
+        };
+        const handleGlobalClick = (e) => {
+            if (!e.target.closest('[data-cell-type="grade-input"]')) {
+                setSelectionStart(null);
+                setSelectionEnd(null);
+            }
+        };
+        window.addEventListener('mouseup', handleGlobalMouseUp);
+        document.addEventListener('mousedown', handleGlobalClick);
+        return () => {
+            window.removeEventListener('mouseup', handleGlobalMouseUp);
+            document.removeEventListener('mousedown', handleGlobalClick);
+        };
+    }, [isSelecting]);
 
     useEffect(() => {
         if (!isInitialized || !gradeDocId) return;
@@ -8708,7 +8812,7 @@ const InputNilai = ({ activeInputTab }) => {
                 return (aKey || '').localeCompare(bKey || '');
             });
             return (
-                <table className="w-full text-left border-collapse whitespace-nowrap">
+                <table className="w-full text-left border-collapse whitespace-nowrap" style={isSelecting ? { userSelect: 'none' } : {}}>
                     <thead className="sticky top-0 z-20">
                         <tr className="bg-emerald-700 text-white text-sm">
                             <th rowSpan={3} className="p-3 border-b border-r border-emerald-600 text-center w-12 sticky left-0 z-30 bg-emerald-800">No</th>
@@ -8748,29 +8852,42 @@ const InputNilai = ({ activeInputTab }) => {
                                     <td className="p-3 text-center text-gray-500 sticky left-0 bg-white border-r z-10">{idx + 1}</td>
                                     <td className="p-3 text-center bg-white border-r font-semibold">{st.nis || '-'}</td>
                                     <td className="p-3 font-semibold sticky left-12 bg-white border-r shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] z-10 text-gray-800">{st.nama}</td>
-                                    {subjectsInClass.map(sub => {
+                                    {subjectsInClass.map((sub, sIdx) => {
                                         const uts = localGrades[st.id]?.[sub.id]?.uts || '';
                                         const uas = localGrades[st.id]?.[sub.id]?.uas || '';
                                         const raport = computeRaportScore(uts, uas);
                                         if (raport !== '') { rowRaportTotal += raport; rowRaportCount++; classTotals[sub.id] += raport; classCounts[sub.id]++; }
                                         const isRed = raport !== '' && raport < Number(sub.kkm || 0);
+
+                                        const utsColIdx = sIdx * 2;
+                                        const isUtsSelected = isCellSelected(idx, utsColIdx);
+
+                                        const uasColIdx = sIdx * 2 + 1;
+                                        const isUasSelected = isCellSelected(idx, uasColIdx);
+
                                         return (
                                             <td key={sub.id} className={`p-2 border-r hover:bg-emerald-50 ${isRed ? 'bg-red-100/70' : 'bg-white'}`}>
                                                 <div className="grid grid-cols-3 gap-1 items-center">
                                                     <input 
                                                         type="text" dir="auto" title="Nilai UTS (angka)" placeholder="UTS" 
-                                                        className="w-full min-w-[48px] p-1.5 border rounded text-center text-sm font-bold outline-none text-gray-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-300 disabled:bg-gray-100 disabled:text-gray-400" 
+                                                        className={`w-full min-w-[48px] p-1.5 border rounded text-center text-sm font-bold outline-none text-gray-800 transition-all ${isUtsSelected ? 'bg-blue-100/80 border-blue-500 ring-2 ring-blue-200' : 'bg-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-300'} disabled:bg-gray-100 disabled:text-gray-400`} 
                                                         value={uts} onChange={e => handleGradeChange(st.id, sub.id, e.target.value, 'uts')} 
                                                         disabled={currentUser?.role === 'guru' && !currentUser?.assignedSubjectIds?.includes(sub.id)}
                                                         onPaste={e => handlePasteGrades(e, st.id, sub.id, 'uts')}
+                                                        onMouseDown={() => handleMouseDown(idx, utsColIdx)}
+                                                        onMouseEnter={() => handleMouseEnter(idx, utsColIdx)}
+                                                        onKeyDown={handleKeyDown}
                                                         data-cell-type="grade-input" data-student-id={st.id} data-subject-id={sub.id} data-field-type="uts"
                                                     />
                                                     <input 
                                                         type="text" dir="auto" title="Nilai UAS (angka)" placeholder="UAS" 
-                                                        className="w-full min-w-[48px] p-1.5 border rounded text-center text-sm font-bold outline-none text-gray-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-300 disabled:bg-gray-100 disabled:text-gray-400" 
+                                                        className={`w-full min-w-[48px] p-1.5 border rounded text-center text-sm font-bold outline-none text-gray-800 transition-all ${isUasSelected ? 'bg-blue-100/80 border-blue-500 ring-2 ring-blue-200' : 'bg-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-300'} disabled:bg-gray-100 disabled:text-gray-400`} 
                                                         value={uas} onChange={e => handleGradeChange(st.id, sub.id, e.target.value, 'uas')} 
                                                         disabled={currentUser?.role === 'guru' && !currentUser?.assignedSubjectIds?.includes(sub.id)}
                                                         onPaste={e => handlePasteGrades(e, st.id, sub.id, 'uas')}
+                                                        onMouseDown={() => handleMouseDown(idx, uasColIdx)}
+                                                        onMouseEnter={() => handleMouseEnter(idx, uasColIdx)}
+                                                        onKeyDown={handleKeyDown}
                                                         data-cell-type="grade-input" data-student-id={st.id} data-subject-id={sub.id} data-field-type="uas"
                                                     />
                                                     <div className={`rounded border p-1.5 text-sm font-bold text-center min-w-[48px] ${isRed ? 'text-red-700 bg-white border-red-300 shadow-sm font-extrabold' : 'text-gray-800 bg-gray-50 border-gray-200'}`}>
