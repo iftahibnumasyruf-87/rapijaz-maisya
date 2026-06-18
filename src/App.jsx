@@ -11764,7 +11764,7 @@ const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = 
 // LEGER KELAS
 // ==========================================
 const LeggerKelas = () => {
-    const { data, allData, addLog } = useContext(AppContext);
+    const { data, allData, addLog, showNotification, saveToDb } = useContext(AppContext);
     const [selectedClass, setSelectedClass] = useState('');
     const classesData = allData?.classes || data.classes;
     
@@ -11778,6 +11778,102 @@ const LeggerKelas = () => {
     const grades = data.grades.find(g => g.id === gradeDocId)?.data || {};
 
     const [sortConfig, setSortConfig] = useState({ key: 'avg', direction: 'desc' });
+
+    // AI Analysis Integration States
+    const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+    const [aiAnalysisText, setAiAnalysisText] = useState('');
+    const [isSavingAi, setIsSavingAi] = useState(false);
+
+    const aiAnalysisDocId = useMemo(() => {
+        if (!selectedClass || !activeSetting) return null;
+        return `ai_analysis_${selectedClass}_${(activeSetting.tahun || 'default').replace(/\//g, '-')}_${activeSetting.semester || '1'}`;
+    }, [selectedClass, activeSetting]);
+
+    // Load existing AI Analysis
+    useEffect(() => {
+        if (!selectedClass || !aiAnalysisDocId) {
+            setAiAnalysisText('');
+            return;
+        }
+        const existingDoc = (allData?.grades || []).find(g => g.id === aiAnalysisDocId);
+        if (existingDoc && existingDoc.analysisText) {
+            setAiAnalysisText(existingDoc.analysisText);
+        } else {
+            setAiAnalysisText('');
+        }
+    }, [selectedClass, aiAnalysisDocId, allData?.grades]);
+
+    const handleCopyPromptAndOpenGemini = () => {
+        const className = getClassNameFromValue(classesData, selectedClass);
+        const tahun = activeSetting.tahun || '-';
+        const semester = activeSetting.semester || '-';
+        const totalStudents = leggerData.length;
+        if (totalStudents === 0) {
+            showNotification('Tidak ada data siswa untuk dianalisis.', 'error');
+            return;
+        }
+
+        const classAverage = Math.round(leggerData.reduce((sum, r) => sum + r.avg, 0) / totalStudents);
+
+        const subjectSummary = subjects.map((sub, idx) => {
+            const avg = subjectAverages[sub.id] || { uts: '-', uas: '-', raport: '-' };
+            return `- ${sub.nameId} (KKM: ${sub.kkm || '-'}): Rerata UTS: ${avg.uts}, UAS: ${avg.uas}, Rapor: ${avg.raport}`;
+        }).join('\n');
+
+        const sortedLegger = [...leggerData].sort((a, b) => b.avg - a.avg);
+        const topStudents = sortedLegger.slice(0, 3)
+            .map((st, i) => `${i + 1}. ${st.nama} (Rata-rata: ${st.avg}, Predikat: ${st.predikat})`)
+            .join('\n');
+
+        const bottomStudents = [...sortedLegger].reverse().slice(0, 3)
+            .map((st, i) => `${i + 1}. ${st.nama} (Rata-rata: ${st.avg}, Predikat: ${st.predikat})`)
+            .join('\n');
+
+        const promptText = `Analisis Data Hasil Belajar Kelas (Legger Kelas)
+Sekolah: Ponpes Imam Syafi'i Brebes
+Kelas: ${className}
+Tahun Ajaran: ${tahun} | Semester: ${semester}
+Jumlah Santri: ${totalStudents} orang
+Rata-rata Kelas Keseluruhan: ${classAverage}
+
+Rata-rata Nilai per Mata Pelajaran:
+${subjectSummary}
+
+Santri dengan Nilai Tertinggi (Top 3):
+${topStudents}
+
+Santri yang Membutuhkan Perhatian Khusus (Nilai Terendah Top 3):
+${bottomStudents}
+
+Berdasarkan data akademis di atas, tolong berikan analisis mendalam dalam bahasa Indonesia yang mencakup:
+1. **Evaluasi Umum Performa Kelas**: Bagaimana pencapaian rata-rata kelas secara keseluruhan?
+2. **Analisis Mata Pelajaran**: Pelajaran apa yang memiliki performa terbaik dan pelajaran apa yang memiliki rata-rata terendah (butuh peningkatan)?
+3. **Analisis Santri**: Rekomendasi pembinaan untuk santri berprestasi tinggi dan santri dengan performa rendah yang butuh bimbingan khusus.
+4. **Rekomendasi Tindak Lanjut Akademik**: Langkah konkret apa saja yang dapat dilakukan oleh Wali Kelas dan jajaran Guru Pengampu pelajaran di kelas ini untuk meningkatkan kualitas belajar di masa yang akan datang.
+
+Tuliskan analisis Anda dengan gaya bahasa yang profesional, santun, bernada bimbingan konseling pendidikan Islam, terstruktur dengan poin-poin yang jelas, dan format Markdown yang rapi.`;
+
+        navigator.clipboard.writeText(promptText);
+        showNotification('Prompt analisis legger kelas telah disalin ke clipboard!', 'success');
+        window.open('https://gemini.google.com/app', '_blank');
+    };
+
+    const handleSaveAiAnalysis = async () => {
+        if (!aiAnalysisDocId) return;
+        setIsSavingAi(true);
+        try {
+            await saveToDb('grades', aiAnalysisDocId, {
+                class: selectedClass,
+                tahun: activeSetting.tahun,
+                semester: activeSetting.semester,
+                analysisText: aiAnalysisText
+            }, false, `Menyimpan arsip analisis AI kelas ${selectedClass}`);
+        } catch (err) {
+            showNotification('Gagal menyimpan arsip analisis AI.', 'error');
+        } finally {
+            setIsSavingAi(false);
+        }
+    };
 
     const handleSort = (key) => {
         setSortConfig(prev => {
@@ -12093,9 +12189,10 @@ const LeggerKelas = () => {
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 flex flex-col h-[85vh]">
             <div className="flex justify-between items-center mb-6 shrink-0">
                 <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2"><BookOpen /> Legger Kelas</h2>
-                <div className="flex gap-4">
+                <div className="flex flex-wrap gap-3 items-center">
                     <select className="p-2 border rounded-lg min-w-[150px]" value={selectedClass} onChange={e => setSelectedClass(e.target.value)}><option value="">-- Pilih Kelas --</option>{data.classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
-                    <button onClick={exportExcel} disabled={!selectedClass} className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 disabled:opacity-50"><Download size={18}/> Ekspor Excel</button>
+                    <button onClick={exportExcel} disabled={!selectedClass} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 disabled:opacity-50 transition"><Download size={18}/> Ekspor Excel</button>
+                    <button onClick={() => setIsAiModalOpen(true)} disabled={!selectedClass} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 disabled:opacity-50 transition"><Brain size={18}/> Analisis AI Gemini</button>
                 </div>
             </div>
             {selectedClass ? (
@@ -12291,6 +12388,109 @@ const LeggerKelas = () => {
                     </table>
                 </div>
             ) : <div className="flex-1 flex items-center justify-center text-gray-400 bg-gray-50 rounded-xl border border-dashed">Pilih kelas untuk melihat legger.</div>}
+
+            {/* Modal Analisis AI */}
+            {isAiModalOpen && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl border border-gray-100 overflow-hidden animate-in fade-in zoom-in duration-200">
+                        {/* Header */}
+                        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                            <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                                <Brain className="text-indigo-600 animate-pulse" /> Asisten Analisis AI Gemini
+                            </h3>
+                            <button 
+                                onClick={() => setIsAiModalOpen(false)} 
+                                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Body */}
+                        <div className="p-6 overflow-y-auto space-y-6 flex-1 custom-scrollbar">
+                            {/* Step 1 */}
+                            <div className="space-y-3">
+                                <h4 className="font-bold text-gray-700 text-sm flex items-center gap-2">
+                                    <span className="w-6 h-6 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-xs">1</span>
+                                    Salin Data & Mulai Analisis di Gemini
+                                </h4>
+                                <p className="text-gray-500 text-xs pl-8">
+                                    Klik tombol di bawah untuk menyalin seluruh data legger kelas ini ke clipboard Anda secara otomatis, dan membuka tab web Gemini baru.
+                                </p>
+                                <div className="pl-8">
+                                    <button 
+                                        onClick={handleCopyPromptAndOpenGemini}
+                                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 shadow-md hover:shadow-lg transition"
+                                    >
+                                        <Share2 size={16} /> Salin Data & Buka Gemini Web
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Step 2 */}
+                            <div className="space-y-3">
+                                <h4 className="font-bold text-gray-700 text-sm flex items-center gap-2">
+                                    <span className="w-6 h-6 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-xs">2</span>
+                                    Tempel & Kirim ke Gemini
+                                </h4>
+                                <p className="text-gray-500 text-xs pl-8">
+                                    Pada halaman web Gemini yang terbuka, klik kanan lalu pilih **Tempel (Paste / Ctrl+V)** pada kolom chat, lalu kirim. Gemini akan menganalisis performa kelas secara otomatis.
+                                </p>
+                            </div>
+
+                            {/* Step 3 */}
+                            <div className="space-y-3">
+                                <h4 className="font-bold text-gray-700 text-sm flex items-center gap-2">
+                                    <span className="w-6 h-6 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-xs">3</span>
+                                    Simpan Hasil Analisis ke Aplikasi
+                                </h4>
+                                <p className="text-gray-500 text-xs pl-8">
+                                    Salin jawaban analisis dari Gemini, lalu tempelkan kembali ke dalam kolom di bawah ini agar terarsip rapi di rapor digital kelas ini.
+                                </p>
+                                <div className="pl-8">
+                                    <textarea
+                                        placeholder="Tempelkan hasil analisis Gemini di sini (Format Markdown didukung)..."
+                                        value={aiAnalysisText}
+                                        onChange={e => setAiAnalysisText(e.target.value)}
+                                        className="w-full p-4 border border-gray-200 rounded-xl h-48 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-sm font-medium transition bg-gray-50/50 focus:bg-white"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Archive Preview */}
+                            {aiAnalysisText && (
+                                <div className="pl-8 pt-2">
+                                    <div className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-4">
+                                        <h5 className="font-bold text-emerald-800 text-xs uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                            📄 Pratinjau Arsip Aktif
+                                        </h5>
+                                        <div className="text-gray-700 text-xs leading-relaxed whitespace-pre-wrap max-h-48 overflow-y-auto custom-scrollbar p-2 bg-white rounded-lg border border-emerald-100/50">
+                                            {aiAnalysisText}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="p-6 border-t border-gray-100 flex justify-end gap-3 bg-gray-50 shrink-0">
+                            <button
+                                onClick={() => setIsAiModalOpen(false)}
+                                className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-100 text-sm font-bold transition"
+                            >
+                                Tutup
+                            </button>
+                            <button
+                                onClick={handleSaveAiAnalysis}
+                                disabled={isSavingAi}
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 shadow-md hover:shadow-lg transition disabled:opacity-50"
+                            >
+                                <Save size={16} /> {isSavingAi ? 'Menyimpan...' : 'Simpan ke Arsip'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
