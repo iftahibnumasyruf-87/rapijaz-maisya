@@ -13407,9 +13407,9 @@ const Dashboard = () => {
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
   // Sidebar dynamic resizer states
-  const [sidebarWidth, setSidebarWidth] = useState(() => Number(localStorage.getItem('sidebar_width') || '260'));
+  const [sidebarWidth, setSidebarWidth] = useState(() => Number(localStorage.getItem('sidebar_width') || '320'));
   // Sidebar custom themes states
-  const [sidebarTheme, setSidebarTheme] = useState(() => localStorage.getItem('sidebar_theme') || 'dark_emerald');
+  const [sidebarTheme, setSidebarTheme] = useState(() => localStorage.getItem('sidebar_theme') || 'light_emerald');
 
   const handleResizeStart = (e) => {
     e.preventDefault();
