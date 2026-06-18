@@ -8019,7 +8019,58 @@ const InputNilai = ({ activeInputTab }) => {
         });
     };
 
-    const handlePasteGrades = (e, startStudentId, startSubjectId, startFieldType) => {
+    const getActiveColumns = () => {
+        const columns = [];
+        if (activeInputTab === 'terpadu') {
+            // Pelajaran
+            subjectsInClass.forEach(sub => {
+                columns.push({ type: 'pelajaran', subId: sub.id, field: 'uts' });
+                columns.push({ type: 'pelajaran', subId: sub.id, field: 'uas' });
+                columns.push({ type: 'pelajaran', subId: sub.id, field: 'raport', isReadOnly: true });
+            });
+            // Sikap
+            (data.characterTraits || []).forEach(trait => {
+                columns.push({ type: 'sikap', traitId: trait.id });
+            });
+            // Ekskul
+            const ekskulSlots = [
+                { namaKey: 'ekskul1_nama', namaArKey: 'ekskul1_nama_ar', nilaiKey: 'ekskul1_nilai' },
+                { namaKey: 'ekskul2_nama', namaArKey: 'ekskul2_nama_ar', nilaiKey: 'ekskul2_nilai' }
+            ];
+            ekskulSlots.forEach(slot => {
+                columns.push({ type: 'ekskul', key: slot.namaKey });
+                columns.push({ type: 'ekskul', key: slot.namaArKey });
+                columns.push({ type: 'ekskul', key: slot.nilaiKey });
+            });
+            // Catatan
+            columns.push({ type: 'catatan', key: 'catatan_wali' });
+        } else if (activeInputTab === 'sikap') {
+            (data.characterTraits || []).forEach(trait => {
+                columns.push({ type: 'sikap', traitId: trait.id });
+            });
+        } else if (activeInputTab === 'ekskul') {
+            const ekskulSlots = [
+                { namaKey: 'ekskul1_nama', namaArKey: 'ekskul1_nama_ar', nilaiKey: 'ekskul1_nilai' },
+                { namaKey: 'ekskul2_nama', namaArKey: 'ekskul2_nama_ar', nilaiKey: 'ekskul2_nilai' }
+            ];
+            ekskulSlots.forEach(slot => {
+                columns.push({ type: 'ekskul', key: slot.namaKey });
+                columns.push({ type: 'ekskul', key: slot.namaArKey });
+                columns.push({ type: 'ekskul', key: slot.nilaiKey });
+            });
+        } else if (activeInputTab === 'catatan') {
+            columns.push({ type: 'catatan', key: 'catatan_wali' });
+        } else {
+            // pelajaran_... or pelajaran
+            subjectsInClass.forEach(sub => {
+                columns.push({ type: 'pelajaran', subId: sub.id, field: 'uts' });
+                columns.push({ type: 'pelajaran', subId: sub.id, field: 'uas' });
+            });
+        }
+        return columns;
+    };
+
+    const handlePasteGrades = (e, startStudentIdx, startColIdx) => {
         const pastedText = e.clipboardData.getData('text/plain');
         if (!pastedText) return;
 
@@ -8032,23 +8083,13 @@ const InputNilai = ({ activeInputTab }) => {
 
         e.preventDefault();
 
-        // Build columns mapping (UTS & UAS for each subject)
-        const columns = [];
-        subjectsInClass.forEach(sub => {
-            columns.push({ subId: sub.id, field: 'uts' });
-            columns.push({ subId: sub.id, field: 'uas' });
-        });
+        const columns = getActiveColumns();
 
         // Use top-left coordinate of selection if selection exists
-        let startStudentIdx = studentsInClass.findIndex(st => st.id === startStudentId);
-        let startColIdx = columns.findIndex(col => col.subId === startSubjectId && col.field === startFieldType);
-
         if (selectionStart && selectionEnd) {
             startStudentIdx = Math.min(selectionStart.rowIdx, selectionEnd.rowIdx);
             startColIdx = Math.min(selectionStart.colIdx, selectionEnd.colIdx);
         }
-
-        if (startStudentIdx === -1 || startColIdx === -1) return;
 
         setLocalGrades(prev => {
             const copy = { ...prev };
@@ -8064,23 +8105,33 @@ const InputNilai = ({ activeInputTab }) => {
                     const colIdx = startColIdx + c;
                     if (colIdx >= columns.length) return;
                     const col = columns[colIdx];
+                    if (col.isReadOnly) return; // skip read-only computed columns
 
                     // Subject permissions check for Guru role
-                    const isDisabled = currentUser?.role === 'guru' && !currentUser?.assignedSubjectIds?.includes(col.subId);
+                    let isDisabled = false;
+                    if (col.type === 'pelajaran') {
+                        isDisabled = currentUser?.role === 'guru' && !currentUser?.assignedSubjectIds?.includes(col.subId);
+                    } else if (['sikap', 'ekskul', 'catatan'].includes(col.type)) {
+                        isDisabled = currentUser?.role === 'guru' && !isWaliKelas;
+                    }
                     if (isDisabled) return;
 
                     const trimmedVal = cellVal.trim();
                     const latinVal = convertArabicToLatin(trimmedVal);
 
                     if (!copy[st.id]) copy[st.id] = {};
-                    const studentGrades = copy[st.id];
 
-                    const existing = studentGrades[col.subId] && typeof studentGrades[col.subId] === 'object'
-                        ? { ...studentGrades[col.subId] }
-                        : { uts: '', uas: '' };
-                    
-                    existing[col.field] = latinVal;
-                    copy[st.id] = { ...studentGrades, [col.subId]: existing };
+                    if (col.type === 'pelajaran') {
+                        const existing = copy[st.id][col.subId] && typeof copy[st.id][col.subId] === 'object'
+                            ? { ...copy[st.id][col.subId] }
+                            : { uts: '', uas: '' };
+                        existing[col.field] = latinVal;
+                        copy[st.id][col.subId] = existing;
+                    } else if (col.type === 'sikap') {
+                        copy[st.id][col.traitId] = latinVal;
+                    } else if (col.type === 'ekskul' || col.type === 'catatan') {
+                        copy[st.id][col.key] = latinVal;
+                    }
                 });
             });
             return copy;
@@ -8105,12 +8156,7 @@ const InputNilai = ({ activeInputTab }) => {
         const minCol = Math.min(selectionStart.colIdx, selectionEnd.colIdx);
         const maxCol = Math.max(selectionStart.colIdx, selectionEnd.colIdx);
 
-        // Build columns mapping
-        const columns = [];
-        subjectsInClass.forEach(sub => {
-            columns.push({ subId: sub.id, field: 'uts' });
-            columns.push({ subId: sub.id, field: 'uas' });
-        });
+        const columns = getActiveColumns();
 
         setLocalGrades(prev => {
             const copy = { ...prev };
@@ -8120,20 +8166,30 @@ const InputNilai = ({ activeInputTab }) => {
                 for (let c = minCol; c <= maxCol; c++) {
                     if (c >= columns.length) continue;
                     const col = columns[c];
+                    if (col.isReadOnly) continue;
 
                     // Subject permissions check for Guru role
-                    const isDisabled = currentUser?.role === 'guru' && !currentUser?.assignedSubjectIds?.includes(col.subId);
+                    let isDisabled = false;
+                    if (col.type === 'pelajaran') {
+                        isDisabled = currentUser?.role === 'guru' && !currentUser?.assignedSubjectIds?.includes(col.subId);
+                    } else if (['sikap', 'ekskul', 'catatan'].includes(col.type)) {
+                        isDisabled = currentUser?.role === 'guru' && !isWaliKelas;
+                    }
                     if (isDisabled) continue;
 
                     if (!copy[st.id]) copy[st.id] = {};
-                    const studentGrades = copy[st.id];
 
-                    const existing = studentGrades[col.subId] && typeof studentGrades[col.subId] === 'object'
-                        ? { ...studentGrades[col.subId] }
-                        : { uts: '', uas: '' };
-                    
-                    existing[col.field] = '';
-                    copy[st.id] = { ...studentGrades, [col.subId]: existing };
+                    if (col.type === 'pelajaran') {
+                        const existing = copy[st.id][col.subId] && typeof copy[st.id][col.subId] === 'object'
+                            ? { ...copy[st.id][col.subId] }
+                            : { uts: '', uas: '' };
+                        existing[col.field] = '';
+                        copy[st.id][col.subId] = existing;
+                    } else if (col.type === 'sikap') {
+                        copy[st.id][col.traitId] = '';
+                    } else if (col.type === 'ekskul' || col.type === 'catatan') {
+                        copy[st.id][col.key] = '';
+                    }
                 }
             }
             return copy;
@@ -8325,6 +8381,14 @@ const InputNilai = ({ activeInputTab }) => {
     // perlu di-clear berdasarkan tab aktif.
     // ──────────────────────────────────────────
     const getFieldsForTab = (studentId) => {
+        if (activeInputTab === 'terpadu') {
+            const fields = [];
+            subjectsInClass.forEach(s => fields.push(s.id));
+            (data.characterTraits || []).forEach(t => fields.push(t.id));
+            fields.push('ekskul1_nama', 'ekskul1_nama_ar', 'ekskul1_nilai', 'ekskul2_nama', 'ekskul2_nama_ar', 'ekskul2_nilai');
+            fields.push('catatan_wali');
+            return fields;
+        }
         if (activeInputTab.startsWith('pelajaran')) {
             // semua key yang merupakan subjectId (nilai UTS/UAS) dan presensi per-mapel
             const subjectIds = subjectsInClass.map(s => s.id);
@@ -8807,6 +8871,263 @@ const InputNilai = ({ activeInputTab }) => {
                 </div>
             );
         }
+        if (activeInputTab === 'terpadu') {
+            const characterTraits = data.characterTraits || [];
+            const ekskulSlots = [
+                { namaKey: 'ekskul1_nama', namaArKey: 'ekskul1_nama_ar', nilaiKey: 'ekskul1_nilai', label: 'Ekskul 1' },
+                { namaKey: 'ekskul2_nama', namaArKey: 'ekskul2_nama_ar', nilaiKey: 'ekskul2_nilai', label: 'Ekskul 2' },
+            ];
+
+            return (
+                <table className="w-full text-left border-collapse whitespace-nowrap" style={isSelecting ? { userSelect: 'none' } : {}}>
+                    <thead className="sticky top-0 z-20">
+                        {/* HEADER BARIS 1 */}
+                        <tr className="bg-emerald-700 text-white text-xs uppercase tracking-wider font-bold">
+                            <th rowSpan={3} className="p-3 border-b border-r border-emerald-600 text-center w-12 sticky left-0 z-30 bg-emerald-800">No</th>
+                            <th rowSpan={3} className="p-3 border-b border-r border-emerald-600 text-center w-20 bg-emerald-800">NIS</th>
+                            <th rowSpan={3} className="p-3 border-b border-r border-emerald-600 sticky left-12 z-30 bg-emerald-800 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.15)]">Nama Santri</th>
+                            {subjectsInClass.length > 0 && (
+                                <th colSpan={subjectsInClass.length * 3} className="p-2 border-b border-r border-emerald-600 text-center bg-emerald-800">
+                                    NILAI MATA PELAJARAN (UTS & UAS)
+                                </th>
+                            )}
+                            {characterTraits.length > 0 && (
+                                <th colSpan={characterTraits.length} className="p-2 border-b border-r border-blue-600 text-center bg-blue-800">
+                                    SIKAP & KESANTRIAN
+                                </th>
+                            )}
+                            <th colSpan={ekskulSlots.length * 3} className="p-2 border-b border-r border-orange-600 text-center bg-orange-800">
+                                EKSTRAKURIKULER
+                            </th>
+                            <th rowSpan={3} className="p-3 border-b border-r border-pink-600 text-center bg-pink-800 w-64 min-w-[200px]">Catatan Wali Kelas</th>
+                            <th rowSpan={3} className="p-3 border-b border-emerald-600 text-center w-14 bg-red-900">Hapus</th>
+                        </tr>
+
+                        {/* HEADER BARIS 2 */}
+                        <tr className="text-white text-[11px] font-semibold">
+                            {subjectsInClass.map(sub => (
+                                <th key={sub.id} colSpan={3} className="p-2 border-b border-r border-emerald-500 text-center bg-emerald-600 min-w-[160px]">
+                                    <div className="font-bold text-[11px]">{sub.nameId}</div>
+                                    <div className="text-[9px] text-emerald-100 font-normal">Guru: {sub.guru || '-'}</div>
+                                    <div className="text-[9px] text-yellow-300 font-bold">KKM: {sub.kkm || '-'}</div>
+                                </th>
+                            ))}
+                            {characterTraits.map(trait => (
+                                <th key={trait.id} rowSpan={2} className="p-2 border-b border-r border-blue-500 text-center bg-blue-600 min-w-[95px]">
+                                    <div className="font-bold text-[11px]">{trait.name}</div>
+                                    <div className="text-[9px] text-blue-200 mt-0.5">{`{{${idToShortKey[trait.id] || trait.id}}}`}</div>
+                                </th>
+                            ))}
+                            {ekskulSlots.map(slot => (
+                                <th key={slot.namaKey} colSpan={3} className="p-2 border-b border-r border-orange-500 text-center bg-orange-600 min-w-[240px]">
+                                    <div className="font-bold text-[11px]">{slot.label}</div>
+                                </th>
+                            ))}
+                        </tr>
+
+                        {/* HEADER BARIS 3 */}
+                        <tr className="bg-gray-100 text-gray-700 text-[10px]">
+                            {subjectsInClass.map(sub => (
+                                <React.Fragment key={sub.id + '_det'}>
+                                    <th className="p-1 border-b border-r text-center w-10 bg-emerald-50 text-emerald-800 font-bold">UTS</th>
+                                    <th className="p-1 border-b border-r text-center w-10 bg-emerald-50 text-emerald-800 font-bold">UAS</th>
+                                    <th className="p-1 border-b border-r text-center w-10 bg-emerald-100 text-emerald-955 font-extrabold">Rpt</th>
+                                </React.Fragment>
+                            ))}
+                            {ekskulSlots.map(slot => (
+                                <React.Fragment key={slot.namaKey + '_det'}>
+                                    <th className="p-1 border-b border-r text-center w-28 bg-orange-50 text-orange-800 font-semibold text-[9px]">Nama</th>
+                                    <th className="p-1 border-b border-r text-center w-28 bg-orange-50 text-orange-800 font-semibold text-[9px]">Arab</th>
+                                    <th className="p-1 border-b border-r text-center w-10 bg-orange-100 text-orange-955 font-bold">Nilai</th>
+                                </React.Fragment>
+                            ))}
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {studentsInClass.map((st, idx) => {
+                            const lessonsStart = 0;
+                            const sikapStart = subjectsInClass.length * 3;
+                            const ekskulStart = sikapStart + characterTraits.length;
+                            const catatanColIdx = ekskulStart + ekskulSlots.length * 3;
+
+                            const catatanVal = localGrades[st.id]?.catatan_wali || '';
+                            const isCatatanSelected = isCellSelected(idx, catatanColIdx);
+                            const isCatatanDisabled = currentUser?.role === 'guru' && !isWaliKelas;
+
+                            return (
+                                <tr key={st.id} className="border-b hover:bg-gray-50 transition-colors">
+                                    <td className="p-3 text-center text-gray-500 sticky left-0 bg-white border-r z-10">{idx + 1}</td>
+                                    <td className="p-3 text-center bg-white border-r font-semibold">{st.nis || '-'}</td>
+                                    <td className="p-3 font-semibold sticky left-12 bg-white border-r shadow-[2px_0_5px_-2px_rgba(0,0,0,0.15)] z-10 text-gray-800">{st.nama}</td>
+                                    
+                                    {/* Kolom Pelajaran */}
+                                    {subjectsInClass.map((sub, sIdx) => {
+                                        const uts = localGrades[st.id]?.[sub.id]?.uts || '';
+                                        const uas = localGrades[st.id]?.[sub.id]?.uas || '';
+                                        const raport = computeRaportScore(uts, uas);
+
+                                        const utsColIdx = lessonsStart + sIdx * 3;
+                                        const uasColIdx = lessonsStart + sIdx * 3 + 1;
+                                        const raportColIdx = lessonsStart + sIdx * 3 + 2;
+
+                                        const isUtsSelected = isCellSelected(idx, utsColIdx);
+                                        const isUasSelected = isCellSelected(idx, uasColIdx);
+                                        const isRaportSelected = isCellSelected(idx, raportColIdx);
+
+                                        const isRed = raport !== '' && raport < Number(sub.kkm || 0);
+                                        const isPelajaranDisabled = currentUser?.role === 'guru' && !currentUser?.assignedSubjectIds?.includes(sub.id);
+
+                                        return (
+                                            <React.Fragment key={sub.id}>
+                                                <td className={`p-1 border-r text-center ${isUtsSelected ? 'bg-blue-100' : 'bg-white'}`}>
+                                                    <input 
+                                                        type="text" dir="auto" placeholder="UTS" 
+                                                        className={`w-full text-center font-bold text-xs p-1.5 border rounded outline-none ${isUtsSelected ? 'border-blue-500 ring-2 ring-blue-200 bg-blue-50' : 'bg-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-300'} disabled:bg-gray-100 disabled:text-gray-400`} 
+                                                        value={uts} onChange={e => handleGradeChange(st.id, sub.id, e.target.value, 'uts')} 
+                                                        disabled={isPelajaranDisabled}
+                                                        onPaste={e => handlePasteGrades(e, idx, utsColIdx)}
+                                                        onMouseDown={() => handleMouseDown(idx, utsColIdx)}
+                                                        onMouseEnter={() => handleMouseEnter(idx, utsColIdx)}
+                                                        onKeyDown={handleKeyDown}
+                                                        data-cell-type="grade-input" data-student-id={st.id} data-subject-id={sub.id} data-field-type="uts"
+                                                    />
+                                                </td>
+                                                <td className={`p-1 border-r text-center ${isUasSelected ? 'bg-blue-100' : 'bg-white'}`}>
+                                                    <input 
+                                                        type="text" dir="auto" placeholder="UAS" 
+                                                        className={`w-full text-center font-bold text-xs p-1.5 border rounded outline-none ${isUasSelected ? 'border-blue-500 ring-2 ring-blue-200 bg-blue-50' : 'bg-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-300'} disabled:bg-gray-100 disabled:text-gray-400`} 
+                                                        value={uas} onChange={e => handleGradeChange(st.id, sub.id, e.target.value, 'uas')} 
+                                                        disabled={isPelajaranDisabled}
+                                                        onPaste={e => handlePasteGrades(e, idx, uasColIdx)}
+                                                        onMouseDown={() => handleMouseDown(idx, uasColIdx)}
+                                                        onMouseEnter={() => handleMouseEnter(idx, uasColIdx)}
+                                                        onKeyDown={handleKeyDown}
+                                                        data-cell-type="grade-input" data-student-id={st.id} data-subject-id={sub.id} data-field-type="uas"
+                                                    />
+                                                </td>
+                                                <td 
+                                                    className={`p-1 border-r text-center text-xs font-extrabold select-none ${isRaportSelected ? 'bg-blue-100' : isRed ? 'text-red-700 bg-red-50' : 'text-gray-800 bg-gray-50'}`}
+                                                    onMouseDown={() => handleMouseDown(idx, raportColIdx)}
+                                                    onMouseEnter={() => handleMouseEnter(idx, raportColIdx)}
+                                                >
+                                                    {raport === '' ? '-' : raport}
+                                                </td>
+                                            </React.Fragment>
+                                        );
+                                    })}
+
+                                    {/* Kolom Sikap */}
+                                    {characterTraits.map((trait, tIdx) => {
+                                        const val = localGrades[st.id]?.[trait.id] || '';
+                                        const traitColIdx = sikapStart + tIdx;
+                                        const isTraitSelected = isCellSelected(idx, traitColIdx);
+                                        const isSikapDisabled = currentUser?.role === 'guru' && !isWaliKelas;
+
+                                        return (
+                                            <td key={trait.id} className={`p-1 border-r text-center ${isTraitSelected ? 'bg-blue-100' : 'bg-white hover:bg-blue-50/50'}`}>
+                                                <input 
+                                                    type="text" dir="auto" placeholder="A/B/C" 
+                                                    className={`w-full text-center font-bold text-xs p-1.5 border rounded outline-none ${isTraitSelected ? 'border-blue-500 ring-2 ring-blue-200 bg-blue-50' : 'bg-white focus:border-blue-500 text-blue-900'} disabled:bg-gray-100 disabled:text-gray-400`} 
+                                                    value={val} onChange={e => handleGradeChange(st.id, trait.id, e.target.value)} 
+                                                    disabled={isSikapDisabled}
+                                                    onPaste={e => handlePasteGrades(e, idx, traitColIdx)}
+                                                    onMouseDown={() => handleMouseDown(idx, traitColIdx)}
+                                                    onMouseEnter={() => handleMouseEnter(idx, traitColIdx)}
+                                                    onKeyDown={handleKeyDown}
+                                                    data-cell-type="grade-input" data-student-id={st.id} data-trait-id={trait.id} data-field-type="sikap"
+                                                />
+                                            </td>
+                                        );
+                                    })}
+
+                                    {/* Kolom Ekskul */}
+                                    {ekskulSlots.map((slot, eIdx) => {
+                                        const namaVal = localGrades[st.id]?.[slot.namaKey] || '';
+                                        const namaArVal = localGrades[st.id]?.[slot.namaArKey] || '';
+                                        const nilaiVal = localGrades[st.id]?.[slot.nilaiKey] || '';
+
+                                        const colNamaIdx = ekskulStart + eIdx * 3;
+                                        const colNamaArIdx = ekskulStart + eIdx * 3 + 1;
+                                        const colNilaiIdx = ekskulStart + eIdx * 3 + 2;
+
+                                        const isNamaSelected = isCellSelected(idx, colNamaIdx);
+                                        const isNamaArSelected = isCellSelected(idx, colNamaArIdx);
+                                        const isNilaiSelected = isCellSelected(idx, colNilaiIdx);
+
+                                        const isEkskulDisabled = currentUser?.role === 'guru' && !isWaliKelas;
+
+                                        return (
+                                            <React.Fragment key={slot.namaKey}>
+                                                <td className={`p-1 border-r text-center ${isNamaSelected ? 'bg-blue-100' : 'bg-white hover:bg-orange-50/50'}`}>
+                                                    <input 
+                                                        type="text" placeholder="Nama Ekskul" 
+                                                        className={`w-full font-medium text-xs p-1.5 border rounded outline-none ${isNamaSelected ? 'border-blue-500 ring-2 ring-blue-200 bg-blue-50' : 'bg-white focus:border-orange-500 text-gray-800'} disabled:bg-gray-100 disabled:text-gray-400`} 
+                                                        value={namaVal} onChange={e => handleGradeChange(st.id, slot.namaKey, e.target.value)} 
+                                                        disabled={isEkskulDisabled}
+                                                        onPaste={e => handlePasteGrades(e, idx, colNamaIdx)}
+                                                        onMouseDown={() => handleMouseDown(idx, colNamaIdx)}
+                                                        onMouseEnter={() => handleMouseEnter(idx, colNamaIdx)}
+                                                        onKeyDown={handleKeyDown}
+                                                        data-cell-type="grade-input" data-student-id={st.id} data-ekskul-key={slot.namaKey}
+                                                    />
+                                                </td>
+                                                <td className={`p-1 border-r text-center ${isNamaArSelected ? 'bg-blue-100' : 'bg-white hover:bg-orange-50/50'}`}>
+                                                    <input 
+                                                        type="text" dir="rtl" placeholder="Nama Arab" 
+                                                        className={`w-full font-medium text-xs p-1.5 border rounded outline-none ${isNamaArSelected ? 'border-blue-500 ring-2 ring-blue-200 bg-blue-50' : 'bg-white focus:border-orange-500 text-gray-800'} disabled:bg-gray-100 disabled:text-gray-400`} 
+                                                        value={namaArVal} onChange={e => handleGradeChange(st.id, slot.namaArKey, e.target.value)} 
+                                                        disabled={isEkskulDisabled}
+                                                        onPaste={e => handlePasteGrades(e, idx, colNamaArIdx)}
+                                                        onMouseDown={() => handleMouseDown(idx, colNamaArIdx)}
+                                                        onMouseEnter={() => handleMouseEnter(idx, colNamaArIdx)}
+                                                        onKeyDown={handleKeyDown}
+                                                        data-cell-type="grade-input" data-student-id={st.id} data-ekskul-key={slot.namaArKey}
+                                                    />
+                                                </td>
+                                                <td className={`p-1 border-r text-center ${isNilaiSelected ? 'bg-blue-100' : 'bg-white hover:bg-orange-50/50'}`}>
+                                                    <input 
+                                                        type="text" dir="auto" placeholder="A/B/C" 
+                                                        className={`w-full text-center font-bold text-xs p-1.5 border rounded outline-none ${isNilaiSelected ? 'border-blue-500 ring-2 ring-blue-200 bg-blue-50' : 'bg-white focus:border-orange-500 text-orange-900'} disabled:bg-gray-100 disabled:text-gray-400`} 
+                                                        value={nilaiVal} onChange={e => handleGradeChange(st.id, slot.nilaiKey, e.target.value)} 
+                                                        disabled={isEkskulDisabled}
+                                                        onPaste={e => handlePasteGrades(e, idx, colNilaiIdx)}
+                                                        onMouseDown={() => handleMouseDown(idx, colNilaiIdx)}
+                                                        onMouseEnter={() => handleMouseEnter(idx, colNilaiIdx)}
+                                                        onKeyDown={handleKeyDown}
+                                                        data-cell-type="grade-input" data-student-id={st.id} data-ekskul-key={slot.nilaiKey}
+                                                    />
+                                                </td>
+                                            </React.Fragment>
+                                        );
+                                    })}
+
+                                    {/* Kolom Catatan Wali Kelas */}
+                                    <td className={`p-1 border-r text-center ${isCatatanSelected ? 'bg-blue-100' : 'bg-white hover:bg-pink-50/50'}`}>
+                                        <textarea 
+                                            rows={1} placeholder="Catatan Wali..." 
+                                            className={`w-full font-medium text-xs p-1 border rounded outline-none min-h-[32px] resize-y ${isCatatanSelected ? 'border-blue-500 ring-2 ring-blue-200 bg-blue-50' : 'bg-white focus:border-pink-500 text-pink-900'} disabled:bg-gray-100 disabled:text-gray-400`} 
+                                            value={catatanVal} onChange={e => handleGradeChange(st.id, 'catatan_wali', e.target.value)} 
+                                            disabled={isCatatanDisabled}
+                                            onPaste={e => handlePasteGrades(e, idx, catatanColIdx)}
+                                            onMouseDown={() => handleMouseDown(idx, catatanColIdx)}
+                                            onMouseEnter={() => handleMouseEnter(idx, catatanColIdx)}
+                                            onKeyDown={handleKeyDown}
+                                            data-cell-type="grade-input" data-student-id={st.id} data-field-type="catatan_wali"
+                                        />
+                                    </td>
+
+                                    {/* Tombol Hapus */}
+                                    <td className="p-1 text-center bg-white">
+                                        <button onClick={() => handleClearStudentData(st.id, st.nama)} className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title={`Hapus data ${st.nama}`}><Trash2 size={14}/></button>
+                                    </td>
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                </table>
+            );
+        }
         if (activeInputTab.startsWith('pelajaran')) {
             const groupedSubjects = groupBy(subjectsInClass, 'kategori');
             const orderedGroups = Object.entries(groupedSubjects).sort(([aKey], [bKey]) => {
@@ -8877,7 +9198,7 @@ const InputNilai = ({ activeInputTab }) => {
                                                         className={`w-full min-w-[48px] p-1.5 border rounded text-center text-sm font-bold outline-none text-gray-800 transition-all ${isUtsSelected ? 'bg-blue-100/80 border-blue-500 ring-2 ring-blue-200' : 'bg-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-300'} disabled:bg-gray-100 disabled:text-gray-400`} 
                                                         value={uts} onChange={e => handleGradeChange(st.id, sub.id, e.target.value, 'uts')} 
                                                         disabled={currentUser?.role === 'guru' && !currentUser?.assignedSubjectIds?.includes(sub.id)}
-                                                        onPaste={e => handlePasteGrades(e, st.id, sub.id, 'uts')}
+                                                        onPaste={e => handlePasteGrades(e, idx, utsColIdx)}
                                                         onMouseDown={() => handleMouseDown(idx, utsColIdx)}
                                                         onMouseEnter={() => handleMouseEnter(idx, utsColIdx)}
                                                         onKeyDown={handleKeyDown}
@@ -8888,7 +9209,7 @@ const InputNilai = ({ activeInputTab }) => {
                                                         className={`w-full min-w-[48px] p-1.5 border rounded text-center text-sm font-bold outline-none text-gray-800 transition-all ${isUasSelected ? 'bg-blue-100/80 border-blue-500 ring-2 ring-blue-200' : 'bg-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-300'} disabled:bg-gray-100 disabled:text-gray-400`} 
                                                         value={uas} onChange={e => handleGradeChange(st.id, sub.id, e.target.value, 'uas')} 
                                                         disabled={currentUser?.role === 'guru' && !currentUser?.assignedSubjectIds?.includes(sub.id)}
-                                                        onPaste={e => handlePasteGrades(e, st.id, sub.id, 'uas')}
+                                                        onPaste={e => handlePasteGrades(e, idx, uasColIdx)}
                                                         onMouseDown={() => handleMouseDown(idx, uasColIdx)}
                                                         onMouseEnter={() => handleMouseEnter(idx, uasColIdx)}
                                                         onKeyDown={handleKeyDown}
@@ -9195,23 +9516,27 @@ const InputNilai = ({ activeInputTab }) => {
                 {/* Excel Import/Export Buttons */}
                 {selectedClass && (
                     <div className="flex flex-wrap gap-3 items-center bg-blue-50 p-3 rounded-xl border border-blue-200">
-                        <button 
-                            onClick={handleExportGrades}
-                            disabled={!selectedClass || (activeInputTab.startsWith('pelajaran') && subjectsInClass.length === 0)}
-                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 disabled:opacity-50 transition"
-                        >
-                            <Download size={16}/> Unduh Template Excel
-                        </button>
-                        <label className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 cursor-pointer disabled:opacity-50 transition">
-                            <Upload size={16}/> {isImporting ? 'Mengimpor...' : 'Impor dari Excel'}
-                            <input 
-                                type="file" 
-                                accept=".xlsx,.xls" 
-                                className="hidden" 
-                                onChange={handleImportGrades}
-                                disabled={!selectedClass || (activeInputTab.startsWith('pelajaran') && subjectsInClass.length === 0) || isImporting}
-                            />
-                        </label>
+                        {activeInputTab !== 'terpadu' && (
+                            <>
+                                <button 
+                                    onClick={handleExportGrades}
+                                    disabled={!selectedClass || (activeInputTab.startsWith('pelajaran') && subjectsInClass.length === 0)}
+                                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 disabled:opacity-50 transition"
+                                >
+                                    <Download size={16}/> Unduh Template Excel
+                                </button>
+                                <label className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 cursor-pointer disabled:opacity-50 transition">
+                                    <Upload size={16}/> {isImporting ? 'Mengimpor...' : 'Impor dari Excel'}
+                                    <input 
+                                        type="file" 
+                                        accept=".xlsx,.xls" 
+                                        className="hidden" 
+                                        onChange={handleImportGrades}
+                                        disabled={!selectedClass || (activeInputTab.startsWith('pelajaran') && subjectsInClass.length === 0) || isImporting}
+                                    />
+                                </label>
+                            </>
+                        )}
                         {activeInputTab === 'presensi' && (
                             <button 
                                 onClick={handleRekapPresensi}
@@ -12814,6 +13139,7 @@ const Dashboard = () => {
 
   const inputNilaiSubItems = useMemo(() => {
     const items = [
+      { id: 'terpadu', label: 'Input Nilai Terpadu' },
       { id: 'pelajaran', label: 'Nilai Pelajaran' }
     ];
     if (currentUser?.role === 'guru') {
