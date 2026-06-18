@@ -2383,8 +2383,8 @@ const MasterData = ({ activeTab }) => {
       // Filter by class for students tab
       if (activeTab === 'students' && studentClassFilter && studentClassFilter !== '') {
           sortableItems = sortableItems.filter(st => {
-              const classId = getClassIdFromValue(allData?.classes || data.classes, st.kelas);
-              return classId === studentClassFilter;
+              const stClassName = getClassNameFromValue(allData?.classes || data.classes, st.kelas) || st.kelas;
+              return normalizeLookupValue(stClassName) === normalizeLookupValue(studentClassFilter);
           });
       }
 
@@ -3633,9 +3633,25 @@ const MasterData = ({ activeTab }) => {
                                         }}
                                     >
                                         <option value="">Semua Kelas</option>
-                                        {(allData?.classes || data.classes).map(cls => (
-                                            <option key={cls.id} value={cls.id}>{cls.name}</option>
-                                        ))}
+                                        {(() => {
+                                            const seen = new Set();
+                                            const uniqueClasses = [];
+                                            (allData?.classes || data.classes || []).forEach(cls => {
+                                                const name = (cls.name || '').trim();
+                                                if (name && !seen.has(name)) {
+                                                    seen.add(name);
+                                                    uniqueClasses.push(cls);
+                                                }
+                                            });
+                                            uniqueClasses.sort((a, b) => {
+                                                const na = parseFloat(a.name), nb = parseFloat(b.name);
+                                                if (!isNaN(na) && !isNaN(nb)) return na - nb;
+                                                return (a.name || '').localeCompare(b.name || '', undefined, { numeric: true, sensitivity: 'base' });
+                                            });
+                                            return uniqueClasses.map(cls => (
+                                                <option key={cls.id} value={cls.name}>{cls.name}</option>
+                                            ));
+                                        })()}
                                     </select>
                                     <div className="relative flex-1">
                                         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
