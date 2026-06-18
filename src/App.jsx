@@ -9961,9 +9961,18 @@ const PresensiSantri = () => {
     const [selectedClass, setSelectedClass] = useState('');
     const [selectedSubject, setSelectedSubject] = useState('general');
     const [selectedDateTime, setSelectedDateTime] = useState(() => {
-        const tzoffset = (new Date()).getTimezoneOffset() * 60000;
-        return (new Date(Date.now() - tzoffset)).toISOString().slice(0, 10);
+        const d = new Date();
+        d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+        return d.toISOString().slice(0, 16);
     });
+
+    const formatDateTimeFull = (dtStr) => {
+        if (!dtStr) return '-';
+        const d = new Date(dtStr);
+        const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', "Jum'at", 'Sabtu'];
+        const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+        return `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()} – ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+    };
     const [dailyPresence, setDailyPresence] = useState({});
     const [rekapData, setRekapData] = useState({});
     const [isSaving, setIsSaving] = useState(false);
@@ -10006,14 +10015,14 @@ const PresensiSantri = () => {
             setDailyPresence({});
             return;
         }
-        const dailyDocId = `daily_presence_${selectedClass}_${selectedSubject}_${selectedDate}`;
+        const dailyDocId = `daily_presence_${selectedClass}_${selectedSubject}_${selectedDateTime.split('T')[0]}`;
         const existingDoc = (allData?.grades || []).find(g => g.id === dailyDocId);
         if (existingDoc && existingDoc.data) {
             setDailyPresence(JSON.parse(JSON.stringify(existingDoc.data)));
         } else {
             setDailyPresence({});
         }
-    }, [selectedClass, selectedSubject, selectedDate, allData?.grades]);
+    }, [selectedClass, selectedSubject, selectedDateTime, allData?.grades]);
 
     // Load existing rekap semester grades document
     const gradeDocId = useMemo(() => {
@@ -10052,17 +10061,18 @@ const PresensiSantri = () => {
             return;
         }
         setIsSaving(true);
-        const dailyDocId = `daily_presence_${selectedClass}_${selectedSubject}_${selectedDate}`;
+        const dailyDocId = `daily_presence_${selectedClass}_${selectedSubject}_${selectedDateTime.split('T')[0]}`;
         const payload = {
             class: selectedClass,
             subject: selectedSubject,
-            date: selectedDate,
+            date: selectedDateTime.split('T')[0],
+            dateTime: selectedDateTime,
             data: dailyPresence,
             tahun: activeSetting.tahun,
             semester: activeSetting.semester
         };
         try {
-            await saveToDb('grades', dailyDocId, payload, false, `Menyimpan presensi harian kelas ${selectedClassObj?.name || selectedClass} tanggal ${selectedDate}`);
+            await saveToDb('grades', dailyDocId, payload, false, `Menyimpan presensi harian kelas ${selectedClassObj?.name || selectedClass} tanggal ${selectedDateTime.split('T')[0]}`);
         } catch (err) {
             showNotification('Gagal menyimpan presensi harian.', 'error');
         } finally {
@@ -10221,14 +10231,19 @@ const PresensiSantri = () => {
 
                             {/* Date Selector */}
                             <div>
-                                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Tanggal Mengajar</label>
+                                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Waktu Mengajar</label>
                                 <input
-                                    type="date"
+                                    type="datetime-local"
                                     className="w-full p-2.5 border rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition"
-                                    value={selectedDate}
-                                    onChange={e => setSelectedDate(e.target.value)}
+                                    value={selectedDateTime}
+                                    onChange={e => setSelectedDateTime(e.target.value)}
                                     disabled={!selectedClass}
                                 />
+                                {selectedDateTime && (
+                                    <div className="text-xs text-gray-500 mt-1 font-medium bg-gray-50 p-1.5 rounded border border-gray-100">
+                                        {formatDateTimeFull(selectedDateTime)}
+                                    </div>
+                                )}
                             </div>
                         </>
                     )}
@@ -10245,7 +10260,7 @@ const PresensiSantri = () => {
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
                     <div className="p-6 border-b border-gray-100 flex flex-wrap justify-between items-center gap-4 bg-gray-50/50">
                         <div className="font-semibold text-gray-800">
-                            Daftar Kehadiran: <span className="text-emerald-700 font-bold">{selectedClassObj?.name}</span> ({selectedDate})
+                            Daftar Kehadiran: <span className="text-emerald-700 font-bold">{selectedClassObj?.name}</span> ({selectedDateTime.split('T')[0]})
                         </div>
                         <div className="flex gap-2">
                             <button
