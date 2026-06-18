@@ -7595,7 +7595,7 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
 // ==========================================
 // UTILITY: EXCEL IMPORT/EXPORT FOR GRADES
 // ==========================================
-const exportGradesToExcel = (grades, studentsInClass, subjectsInClass, className, activeInputTab, data, includePresensi = true) => {
+const exportGradesToExcel = (grades, studentsInClass, subjectsInClass, className, activeInputTab, data) => {
     const safeVal = (v) => (v !== null && v !== undefined && v !== '') ? v : '';
 
     let headers1 = ['No', 'NIS', 'Nama Santri'];
@@ -7614,16 +7614,9 @@ const exportGradesToExcel = (grades, studentsInClass, subjectsInClass, className
             headers2.push('UTS');
             headers2.push('UAS');
             headers2.push('Raport');
-            if (includePresensi) {
-                headers1.push('', '', '', '', ''); // span 6
-                headers2.push('S', 'I', 'A');
-                merges.push({ s: { r: 0, c: currentCol }, e: { r: 0, c: currentCol + 5 } });
-                currentCol += 6;
-            } else {
-                headers1.push('', ''); // span 3
-                merges.push({ s: { r: 0, c: currentCol }, e: { r: 0, c: currentCol + 2 } });
-                currentCol += 3;
-            }
+            headers1.push('', ''); // span 3
+            merges.push({ s: { r: 0, c: currentCol }, e: { r: 0, c: currentCol + 2 } });
+            currentCol += 3;
             cols.push(sub.id);
         });
     } else if (activeInputTab === 'presensi') {
@@ -7651,11 +7644,6 @@ const exportGradesToExcel = (grades, studentsInClass, subjectsInClass, className
                 row.push(uts);
                 row.push(uas);
                 row.push(raport !== '' ? raport : '');
-                if (includePresensi) {
-                    row.push(g && typeof g === 'object' ? safeVal(g.sakit) : '');
-                    row.push(g && typeof g === 'object' ? safeVal(g.izin) : '');
-                    row.push(g && typeof g === 'object' ? safeVal(g.alpa) : '');
-                }
             });
         } else if (['presensi', 'sikap', 'ekskul'].includes(activeInputTab)) {
             cols.forEach(colId => {
@@ -7675,11 +7663,7 @@ const exportGradesToExcel = (grades, studentsInClass, subjectsInClass, className
     const colWidths = [8, 15, 25];
     cols.forEach(() => {
         if (activeInputTab.startsWith('pelajaran')) { 
-            if (includePresensi) {
-                colWidths.push(10, 10, 10, 8, 8, 8); // UTS, UAS, Raport, S, I, A
-            } else {
-                colWidths.push(10, 10, 10); // UTS, UAS, Raport
-            }
+            colWidths.push(10, 10, 10); // UTS, UAS, Raport
         }
         else if (activeInputTab === 'catatan' || activeInputTab === 'catatan_wali') { colWidths.push(50); }
         else { colWidths.push(15); }
@@ -7747,9 +7731,6 @@ const importGradesFromExcel = async (file, studentsInClass, subjectsInClass, act
                                 const typeVal = String(headerRow1[i]).trim().toUpperCase();
                                 if (typeVal === 'UTS') colMap[i] = { subId: currentSubId, type: 'uts' };
                                 if (typeVal === 'UAS') colMap[i] = { subId: currentSubId, type: 'uas' };
-                                if (typeVal === 'S' || typeVal === 'SAKIT') colMap[i] = { subId: currentSubId, type: 'sakit' };
-                                if (typeVal === 'I' || typeVal === 'IZIN') colMap[i] = { subId: currentSubId, type: 'izin' };
-                                if (typeVal === 'A' || typeVal === 'ALPA') colMap[i] = { subId: currentSubId, type: 'alpa' };
                             }
                         }
                     } else {
@@ -7760,9 +7741,6 @@ const importGradesFromExcel = async (file, studentsInClass, subjectsInClass, act
                                 if (val.includes(subName)) {
                                     if (val.includes('uts')) colMap[i] = { subId: sub.id, type: 'uts' };
                                     if (val.includes('uas')) colMap[i] = { subId: sub.id, type: 'uas' };
-                                    if (val.includes('sakit')) colMap[i] = { subId: sub.id, type: 'sakit' };
-                                    if (val.includes('izin')) colMap[i] = { subId: sub.id, type: 'izin' };
-                                    if (val.includes('alpa')) colMap[i] = { subId: sub.id, type: 'alpa' };
                                 }
                             });
                         });
@@ -7911,7 +7889,6 @@ const InputNilai = ({ activeInputTab }) => {
     const [zoomLevel, setZoomLevel] = useState(100);
     const [isHeaderHidden, setIsHeaderHidden] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
-    const [includePresensiInExport, setIncludePresensiInExport] = useState(true);
     const containerRef = useRef(null);
     
     // Gunakan useRef untuk melacak status terakhir yang disave ke database (Debouncing Check)
@@ -8066,7 +8043,7 @@ const InputNilai = ({ activeInputTab }) => {
             return;
         }
         const className = getClassNameFromValue(allData?.classes || rawClassesData, selectedClass);
-        exportGradesToExcel(localGrades, studentsInClass, subjectsInClass, className, activeInputTab, data, includePresensiInExport);
+        exportGradesToExcel(localGrades, studentsInClass, subjectsInClass, className, activeInputTab, data, false);
     };
 
     const handleImportGrades = async (e) => {
@@ -8690,7 +8667,7 @@ const InputNilai = ({ activeInputTab }) => {
                         )}
                         <tr className="bg-emerald-600 text-white text-sm">
                             {subjectsInClass.map(sub => (
-                                <th key={sub.id} className="p-3 border-b border-r border-emerald-500 text-center min-w-[210px] bg-emerald-700">
+                                <th key={sub.id} className="p-3 border-b border-r border-emerald-500 text-center min-w-[155px] bg-emerald-700">
                                     <div className="font-bold">{sub.nameId}</div>
                                     <div className="text-[11px] text-emerald-200 font-normal mt-0.5">(Guru: {sub.guru || '-'})</div>
                                     <div className="text-[11px] text-yellow-300 font-bold mt-0.5">KKM: {sub.kkm || '-'}</div>
@@ -8711,38 +8688,28 @@ const InputNilai = ({ activeInputTab }) => {
                                     {subjectsInClass.map(sub => {
                                         const uts = localGrades[st.id]?.[sub.id]?.uts || '';
                                         const uas = localGrades[st.id]?.[sub.id]?.uas || '';
-                                        const sakit = localGrades[st.id]?.[sub.id]?.sakit || '';
-                                        const izin = localGrades[st.id]?.[sub.id]?.izin || '';
-                                        const alpa = localGrades[st.id]?.[sub.id]?.alpa || '';
                                         const raport = computeRaportScore(uts, uas);
                                         if (raport !== '') { rowRaportTotal += raport; rowRaportCount++; classTotals[sub.id] += raport; classCounts[sub.id]++; }
                                         const isRed = raport !== '' && raport < Number(sub.kkm || 0);
                                         return (
-                                        <td key={sub.id} className={`p-2 border-r bg-white hover:bg-emerald-50`}>
-                                                <div className="flex flex-col gap-1">
-                                                    <div className="grid grid-cols-3 gap-1 items-center">
-                                                        <input 
-                                                            type="text" dir="auto" title="Nilai UTS (angka)" placeholder="UTS" 
-                                                            className="w-full min-w-[48px] p-1.5 border rounded text-center text-sm font-bold outline-none text-gray-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-300 disabled:bg-gray-100 disabled:text-gray-400" 
-                                                            value={uts} onChange={e => handleGradeChange(st.id, sub.id, e.target.value, 'uts')} 
-                                                            disabled={currentUser?.role === 'guru' && !currentUser?.assignedSubjectIds?.includes(sub.id)}
-                                                            data-cell-type="grade-input" data-student-id={st.id} data-subject-id={sub.id} data-field-type="uts"
-                                                        />
-                                                        <input 
-                                                            type="text" dir="auto" title="Nilai UAS (angka)" placeholder="UAS" 
-                                                            className="w-full min-w-[48px] p-1.5 border rounded text-center text-sm font-bold outline-none text-gray-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-300 disabled:bg-gray-100 disabled:text-gray-400" 
-                                                            value={uas} onChange={e => handleGradeChange(st.id, sub.id, e.target.value, 'uas')} 
-                                                            disabled={currentUser?.role === 'guru' && !currentUser?.assignedSubjectIds?.includes(sub.id)}
-                                                            data-cell-type="grade-input" data-student-id={st.id} data-subject-id={sub.id} data-field-type="uas"
-                                                        />
-                                                        <div className={`rounded border p-1.5 text-sm font-bold text-center min-w-[48px] ${isRed ? 'text-red-600 bg-red-50 border-red-200' : 'text-gray-800 bg-gray-50 border-gray-200'}`}>
-                                                            {raport === '' ? '-' : raport}
-                                                        </div>
-                                                    </div>
-                                                    <div className="grid grid-cols-3 gap-1 items-center">
-                                                        <input type="text" dir="auto" title="Sakit (angka)" placeholder="S" className="w-full min-w-[48px] p-1 border rounded text-center text-xs font-semibold outline-none text-yellow-700 bg-yellow-50 focus:border-emerald-500 disabled:bg-gray-100 disabled:text-gray-400" value={sakit} onChange={e => handleGradeChange(st.id, sub.id, e.target.value, 'sakit')} disabled={currentUser?.role === 'guru' && !currentUser?.assignedSubjectIds?.includes(sub.id)} data-cell-type="grade-input" data-student-id={st.id} data-subject-id={sub.id} data-field-type="sakit" />
-                                                        <input type="text" dir="auto" title="Izin (angka)" placeholder="I" className="w-full min-w-[48px] p-1 border rounded text-center text-xs font-semibold outline-none text-blue-700 bg-blue-50 focus:border-emerald-500 disabled:bg-gray-100 disabled:text-gray-400" value={izin} onChange={e => handleGradeChange(st.id, sub.id, e.target.value, 'izin')} disabled={currentUser?.role === 'guru' && !currentUser?.assignedSubjectIds?.includes(sub.id)} data-cell-type="grade-input" data-student-id={st.id} data-subject-id={sub.id} data-field-type="izin" />
-                                                        <input type="text" dir="auto" title="Alpa (angka)" placeholder="A" className="w-full min-w-[48px] p-1 border rounded text-center text-xs font-semibold outline-none text-red-700 bg-red-50 focus:border-emerald-500 disabled:bg-gray-100 disabled:text-gray-400" value={alpa} onChange={e => handleGradeChange(st.id, sub.id, e.target.value, 'alpa')} disabled={currentUser?.role === 'guru' && !currentUser?.assignedSubjectIds?.includes(sub.id)} data-cell-type="grade-input" data-student-id={st.id} data-subject-id={sub.id} data-field-type="alpa" />
+                                            <td key={sub.id} className={`p-2 border-r hover:bg-emerald-50 ${isRed ? 'bg-red-100/70' : 'bg-white'}`}>
+                                                <div className="grid grid-cols-3 gap-1 items-center">
+                                                    <input 
+                                                        type="text" dir="auto" title="Nilai UTS (angka)" placeholder="UTS" 
+                                                        className="w-full min-w-[48px] p-1.5 border rounded text-center text-sm font-bold outline-none text-gray-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-300 disabled:bg-gray-100 disabled:text-gray-400" 
+                                                        value={uts} onChange={e => handleGradeChange(st.id, sub.id, e.target.value, 'uts')} 
+                                                        disabled={currentUser?.role === 'guru' && !currentUser?.assignedSubjectIds?.includes(sub.id)}
+                                                        data-cell-type="grade-input" data-student-id={st.id} data-subject-id={sub.id} data-field-type="uts"
+                                                    />
+                                                    <input 
+                                                        type="text" dir="auto" title="Nilai UAS (angka)" placeholder="UAS" 
+                                                        className="w-full min-w-[48px] p-1.5 border rounded text-center text-sm font-bold outline-none text-gray-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-300 disabled:bg-gray-100 disabled:text-gray-400" 
+                                                        value={uas} onChange={e => handleGradeChange(st.id, sub.id, e.target.value, 'uas')} 
+                                                        disabled={currentUser?.role === 'guru' && !currentUser?.assignedSubjectIds?.includes(sub.id)}
+                                                        data-cell-type="grade-input" data-student-id={st.id} data-subject-id={sub.id} data-field-type="uas"
+                                                    />
+                                                    <div className={`rounded border p-1.5 text-sm font-bold text-center min-w-[48px] ${isRed ? 'text-red-700 bg-white border-red-300 shadow-sm font-extrabold' : 'text-gray-800 bg-gray-50 border-gray-200'}`}>
+                                                        {raport === '' ? '-' : raport}
                                                     </div>
                                                 </div>
                                             </td>
@@ -8761,9 +8728,9 @@ const InputNilai = ({ activeInputTab }) => {
                         <tr className="bg-gray-100 text-gray-800">
                             <td colSpan="3" className="p-3 text-right font-bold border-r sticky left-0 z-30 bg-gray-200">Rata-rata Raport per Pelajaran</td>
                             {subjectsInClass.map(sub => (
-                                <td key={sub.id} className="p-3 text-center font-bold border-r text-blue-700">{classCounts[sub.id] > 0 ? Math.round(classTotals[sub.id] / classCounts[sub.id]) : '-'}</td>
+                                <td key={sub.id} className="p-3 text-center font-bold border-r text-blue-700 bg-gray-100">{classCounts[sub.id] > 0 ? Math.round(classTotals[sub.id] / classCounts[sub.id]) : '-'}</td>
                             ))}
-                            <td className="p-3 text-center font-bold border-r text-blue-700">-</td>
+                            <td className="p-3 text-center font-bold border-r text-blue-700 bg-gray-100">-</td>
                             <td className="bg-gray-200 border-l"></td>
                         </tr>
                     </tfoot>
@@ -9042,26 +9009,13 @@ const InputNilai = ({ activeInputTab }) => {
                 {/* Excel Import/Export Buttons */}
                 {selectedClass && (
                     <div className="flex flex-wrap gap-3 items-center bg-blue-50 p-3 rounded-xl border border-blue-200">
-                        <div className="flex flex-col gap-1">
-                            <button 
-                                onClick={handleExportGrades}
-                                disabled={!selectedClass || (activeInputTab.startsWith('pelajaran') && subjectsInClass.length === 0)}
-                                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 disabled:opacity-50 transition"
-                            >
-                                <Download size={16}/> Unduh Template Excel
-                            </button>
-                            {activeInputTab.startsWith('pelajaran') && (
-                                <label className="flex items-center gap-1.5 text-[11px] text-blue-800 font-medium cursor-pointer ml-1 mt-0.5">
-                                    <input 
-                                        type="checkbox" 
-                                        checked={includePresensiInExport} 
-                                        onChange={e => setIncludePresensiInExport(e.target.checked)}
-                                        className="rounded border-blue-300 text-blue-600 focus:ring-blue-500 w-3 h-3 cursor-pointer"
-                                    />
-                                    Sertakan Presensi (Sakit, Izin, Alpa)
-                                </label>
-                            )}
-                        </div>
+                        <button 
+                            onClick={handleExportGrades}
+                            disabled={!selectedClass || (activeInputTab.startsWith('pelajaran') && subjectsInClass.length === 0)}
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 disabled:opacity-50 transition"
+                        >
+                            <Download size={16}/> Unduh Template Excel
+                        </button>
                         <label className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 cursor-pointer disabled:opacity-50 transition">
                             <Upload size={16}/> {isImporting ? 'Mengimpor...' : 'Impor dari Excel'}
                             <input 
@@ -9102,6 +9056,467 @@ const InputNilai = ({ activeInputTab }) => {
                 </div>
             ) : (
                 <div className="flex-1 flex flex-col items-center justify-center text-gray-400 bg-gray-50 rounded-xl border border-dashed border-gray-200"><BookOpen size={48} className="mb-4 opacity-50" /><p>Silakan pilih Kelas di atas.</p></div>
+            )}
+        </div>
+    );
+};
+
+const PresensiSantri = () => {
+    const { data, allData, activeSetting, currentUser, saveToDb, showNotification } = useContext(AppContext);
+    const [activeTab, setActiveTab] = useState('harian'); // 'harian' | 'rekap'
+    const [selectedClass, setSelectedClass] = useState('');
+    const [selectedSubject, setSelectedSubject] = useState('general');
+    const [selectedDate, setSelectedDate] = useState(() => {
+        const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+        return (new Date(Date.now() - tzoffset)).toISOString().slice(0, 10);
+    });
+    const [dailyPresence, setDailyPresence] = useState({});
+    const [rekapData, setRekapData] = useState({});
+    const [isSaving, setIsSaving] = useState(false);
+
+    const classesData = allData?.classes || data.classes || [];
+    
+    // Filter classes based on Guru's assignments
+    const availableClasses = useMemo(() => {
+        if (currentUser?.role === 'guru' && currentUser?.assignedClassIds) {
+            return classesData.filter(c => {
+                const assignedNames = currentUser.assignedClassIds.map(id => getClassNameFromValue(classesData, id));
+                return currentUser.assignedClassIds.includes(c.id) || assignedNames.includes(c.name);
+            });
+        }
+        return classesData;
+    }, [currentUser, classesData]);
+
+    const selectedClassObj = classesData.find(c => c.id === selectedClass);
+    const isWaliKelas = selectedClassObj?.wali === currentUser.nama;
+    const hasRekapAccess = currentUser?.role === 'admin' || isWaliKelas;
+
+    // Filter subjects for the selected class
+    const subjectsInClass = useMemo(() => {
+        if (!selectedClass) return [];
+        let subs = filterSubjectsByClass(data.subjects || [], selectedClass, classesData);
+        if (currentUser?.role === 'guru') {
+            subs = subs.filter(s => s.guru === currentUser.nama);
+        }
+        return subs;
+    }, [selectedClass, data.subjects, classesData, currentUser]);
+
+    const activeStudents = getStudentsForYear(data.studentSnapshots || [], activeSetting, data.students || []);
+    const studentsInClass = useMemo(() => {
+        return getStudentsInClass(activeStudents, classesData, selectedClass);
+    }, [activeStudents, classesData, selectedClass]);
+
+    // Load existing daily presence
+    useEffect(() => {
+        if (!selectedClass) {
+            setDailyPresence({});
+            return;
+        }
+        const dailyDocId = `daily_presence_${selectedClass}_${selectedSubject}_${selectedDate}`;
+        const existingDoc = (allData?.grades || []).find(g => g.id === dailyDocId);
+        if (existingDoc && existingDoc.data) {
+            setDailyPresence(JSON.parse(JSON.stringify(existingDoc.data)));
+        } else {
+            setDailyPresence({});
+        }
+    }, [selectedClass, selectedSubject, selectedDate, allData?.grades]);
+
+    // Load existing rekap semester grades document
+    const gradeDocId = useMemo(() => {
+        if (!selectedClass || !activeSetting) return null;
+        return getGradeDocId(selectedClass, classesData, activeSetting, allData?.grades || []);
+    }, [selectedClass, classesData, activeSetting, allData?.grades]);
+
+    useEffect(() => {
+        if (!selectedClass || !gradeDocId) {
+            setRekapData({});
+            return;
+        }
+        const classGrades = (allData?.grades || []).find(g => g.id === gradeDocId)?.data || {};
+        setRekapData(JSON.parse(JSON.stringify(classGrades)));
+    }, [selectedClass, gradeDocId, allData?.grades]);
+
+    const handleSetAllHadir = () => {
+        const newPresence = { ...dailyPresence };
+        studentsInClass.forEach(st => {
+            newPresence[st.id] = 'H';
+        });
+        setDailyPresence(newPresence);
+        showNotification('Semua santri diatur Hadir (H).', 'info');
+    };
+
+    const handleDailyStatusChange = (studentId, status) => {
+        setDailyPresence(prev => ({
+            ...prev,
+            [studentId]: status
+        }));
+    };
+
+    const handleSaveDailyPresence = async () => {
+        if (!selectedClass) {
+            showNotification('Pilih kelas terlebih dahulu.', 'error');
+            return;
+        }
+        setIsSaving(true);
+        const dailyDocId = `daily_presence_${selectedClass}_${selectedSubject}_${selectedDate}`;
+        const payload = {
+            class: selectedClass,
+            subject: selectedSubject,
+            date: selectedDate,
+            data: dailyPresence,
+            tahun: activeSetting.tahun,
+            semester: activeSetting.semester
+        };
+        try {
+            await saveToDb('grades', dailyDocId, payload, false, `Menyimpan presensi harian kelas ${selectedClassObj?.name || selectedClass} tanggal ${selectedDate}`);
+        } catch (err) {
+            showNotification('Gagal menyimpan presensi harian.', 'error');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleRekapChange = (studentId, presenceFieldId, value) => {
+        const valLatin = convertArabicToLatin(value);
+        setRekapData(prev => {
+            const copy = { ...prev };
+            if (!copy[studentId]) copy[studentId] = {};
+            copy[studentId][presenceFieldId] = valLatin;
+            return copy;
+        });
+    };
+
+    const handleAutoRecap = () => {
+        if (!selectedClass) {
+            showNotification('Silakan pilih kelas terlebih dahulu.', 'error');
+            return;
+        }
+        
+        const pSakit = data.presences.find(p => p.name.toLowerCase().includes('sakit'));
+        const pIzin = data.presences.find(p => p.name.toLowerCase().includes('izin'));
+        const pAlpa = data.presences.find(p => p.name.toLowerCase().includes('alpa'));
+        
+        if (!pSakit || !pIzin || !pAlpa) {
+            showNotification('Konfigurasi aspek presensi (Sakit, Izin, Alpa) tidak ditemukan.', 'error');
+            return;
+        }
+        
+        const dailyDocs = (allData?.grades || []).filter(g => 
+            g.id.startsWith(`daily_presence_${selectedClass}_`) &&
+            g.tahun === activeSetting.tahun &&
+            g.semester === activeSetting.semester
+        );
+        
+        if (dailyDocs.length === 0) {
+            showNotification('Tidak ada data presensi harian untuk kelas & semester ini.', 'info');
+            return;
+        }
+        
+        const newRekapData = { ...rekapData };
+        
+        studentsInClass.forEach(st => {
+            let sakitCount = 0;
+            let izinCount = 0;
+            let alpaCount = 0;
+            
+            dailyDocs.forEach(doc => {
+                const status = doc.data?.[st.id];
+                if (status === 'S') sakitCount++;
+                if (status === 'I') izinCount++;
+                if (status === 'A') alpaCount++;
+            });
+            
+            if (!newRekapData[st.id]) newRekapData[st.id] = {};
+            newRekapData[st.id][pSakit.id] = sakitCount > 0 ? String(sakitCount) : '';
+            newRekapData[st.id][pIzin.id] = izinCount > 0 ? String(izinCount) : '';
+            newRekapData[st.id][pAlpa.id] = alpaCount > 0 ? String(alpaCount) : '';
+        });
+        
+        setRekapData(newRekapData);
+        showNotification('Berhasil merekap presensi harian! Klik Simpan Rekap Semester untuk menyimpan permanen.', 'success');
+    };
+
+    const handleSaveSemesterRecap = async () => {
+        if (!selectedClass || !gradeDocId) {
+            showNotification('Pilih kelas terlebih dahulu.', 'error');
+            return;
+        }
+        setIsSaving(true);
+        try {
+            await saveToDb('grades', gradeDocId, {
+                data: rekapData,
+                class: selectedClass,
+                tahun: activeSetting.tahun,
+                semester: activeSetting.semester
+            }, false, `Menyimpan rekap presensi semester kelas ${selectedClassObj?.name || selectedClass}`);
+        } catch (err) {
+            showNotification('Gagal menyimpan rekap semester.', 'error');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const pSakit = data.presences.find(p => p.name.toLowerCase().includes('sakit'));
+    const pIzin = data.presences.find(p => p.name.toLowerCase().includes('izin'));
+    const pAlpa = data.presences.find(p => p.name.toLowerCase().includes('alpa'));
+
+    return (
+        <div className="space-y-6 p-6 max-w-6xl mx-auto">
+            {/* Header Card */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                        <Calendar className="text-emerald-600" /> Presensi Santri
+                    </h2>
+                    <p className="text-gray-500 text-sm mt-1">
+                        Kelola data kehadiran harian mengajar dan rekap semester untuk Rapor.
+                    </p>
+                </div>
+                {/* Tabs Selector */}
+                <div className="bg-gray-100 p-1 rounded-xl flex gap-1 self-stretch md:self-auto">
+                    <button
+                        onClick={() => setActiveTab('harian')}
+                        className={`flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center justify-center gap-2 ${activeTab === 'harian' ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-600 hover:text-gray-800'}`}
+                    >
+                        <Clock size={16} /> Presensi Harian
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('rekap')}
+                        className={`flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center justify-center gap-2 ${activeTab === 'rekap' ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-600 hover:text-gray-800'}`}
+                    >
+                        <FileText size={16} /> Rekap Semester
+                    </button>
+                </div>
+            </div>
+
+            {/* Selection Form */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Class Selector */}
+                    <div>
+                        <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Kelas</label>
+                        <select
+                            className="w-full p-2.5 border rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition"
+                            value={selectedClass}
+                            onChange={e => setSelectedClass(e.target.value)}
+                        >
+                            <option value="">-- Pilih Kelas --</option>
+                            {availableClasses.map(c => (
+                                <option key={c.id} value={c.id}>{c.name}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {activeTab === 'harian' && (
+                        <>
+                            {/* Subject Selector */}
+                            <div>
+                                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Mata Pelajaran</label>
+                                <select
+                                    className="w-full p-2.5 border rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition"
+                                    value={selectedSubject}
+                                    onChange={e => setSelectedSubject(e.target.value)}
+                                    disabled={!selectedClass}
+                                >
+                                    <option value="general">Kehadiran Umum (Tanpa Mapel)</option>
+                                    {subjectsInClass.map(s => (
+                                        <option key={s.id} value={s.id}>{s.nameId || s.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Date Selector */}
+                            <div>
+                                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Tanggal Mengajar</label>
+                                <input
+                                    type="date"
+                                    className="w-full p-2.5 border rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition"
+                                    value={selectedDate}
+                                    onChange={e => setSelectedDate(e.target.value)}
+                                    disabled={!selectedClass}
+                                />
+                            </div>
+                        </>
+                    )}
+                </div>
+            </div>
+
+            {/* Table Area */}
+            {!selectedClass ? (
+                <div className="bg-white rounded-2xl p-12 shadow-sm border border-gray-100 text-center text-gray-500">
+                    Silakan pilih kelas terlebih dahulu untuk mengelola presensi.
+                </div>
+            ) : activeTab === 'harian' ? (
+                /* DAILY ATTENDANCE TAB */
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
+                    <div className="p-6 border-b border-gray-100 flex flex-wrap justify-between items-center gap-4 bg-gray-50/50">
+                        <div className="font-semibold text-gray-800">
+                            Daftar Kehadiran: <span className="text-emerald-700 font-bold">{selectedClassObj?.name}</span> ({selectedDate})
+                        </div>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={handleSetAllHadir}
+                                className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition"
+                            >
+                                <CheckCircle2 size={16} /> Set Semua Hadir (H)
+                            </button>
+                        </div>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-emerald-800 text-white text-xs uppercase tracking-wider">
+                                    <th className="p-4 w-16 text-center">No</th>
+                                    <th className="p-4 w-28 text-center">NIS</th>
+                                    <th className="p-4">Nama Santri</th>
+                                    <th className="p-4 w-[320px] text-center">Status Kehadiran</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {studentsInClass.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="4" className="p-8 text-center text-gray-500">Tidak ada santri di kelas ini.</td>
+                                    </tr>
+                                ) : (
+                                    studentsInClass.map((st, idx) => {
+                                        const currentStatus = dailyPresence[st.id] || '';
+                                        return (
+                                            <tr key={st.id} className="hover:bg-gray-50/50 transition">
+                                                <td className="p-4 text-center text-gray-500 text-sm">{idx + 1}</td>
+                                                <td className="p-4 text-center font-semibold text-gray-600 text-sm">{st.nis || '-'}</td>
+                                                <td className="p-4 font-semibold text-gray-800">{st.nama}</td>
+                                                <td className="p-4">
+                                                    <div className="flex justify-center gap-1 bg-gray-100 p-1 rounded-xl w-max mx-auto border border-gray-200">
+                                                        {[
+                                                            { label: 'Hadir', key: 'H', activeClass: 'bg-green-500 text-white border-green-600 shadow-sm', hoverClass: 'hover:bg-green-50 text-green-700' },
+                                                            { label: 'Sakit', key: 'S', activeClass: 'bg-yellow-500 text-white border-yellow-600 shadow-sm', hoverClass: 'hover:bg-yellow-50 text-yellow-700' },
+                                                            { label: 'Izin', key: 'I', activeClass: 'bg-blue-500 text-white border-blue-600 shadow-sm', hoverClass: 'hover:bg-blue-50 text-blue-700' },
+                                                            { label: 'Alpa', key: 'A', activeClass: 'bg-red-500 text-white border-red-600 shadow-sm', hoverClass: 'hover:bg-red-50 text-red-700' }
+                                                        ].map(opt => (
+                                                            <button
+                                                                key={opt.key}
+                                                                onClick={() => handleDailyStatusChange(st.id, opt.key)}
+                                                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border border-transparent ${currentStatus === opt.key ? opt.activeClass : `text-gray-500 ${opt.hoverClass}`}`}
+                                                            >
+                                                                {opt.key}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                    {studentsInClass.length > 0 && (
+                        <div className="p-6 border-t border-gray-100 flex justify-end bg-gray-50/35">
+                            <button
+                                onClick={handleSaveDailyPresence}
+                                disabled={isSaving}
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 shadow-md transition disabled:opacity-50"
+                            >
+                                <Save size={18} /> {isSaving ? 'Menyimpan...' : 'Simpan Presensi Harian'}
+                            </button>
+                        </div>
+                    )}
+                </div>
+            ) : (
+                /* SEMESTER RECAP TAB */
+                !hasRekapAccess ? (
+                    <div className="bg-red-50 rounded-2xl p-8 shadow-sm border border-red-200 text-center text-red-700 font-bold">
+                        Maaf, Tab Rekap Semester hanya dapat diakses oleh Wali Kelas untuk kelas ini atau oleh Admin.
+                    </div>
+                ) : (
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
+                        <div className="p-6 border-b border-gray-100 flex flex-wrap justify-between items-center gap-4 bg-gray-50/50">
+                            <div className="font-semibold text-gray-800">
+                                Rekap Semester: <span className="text-emerald-700 font-bold">{selectedClassObj?.name}</span> ({activeSetting?.tahun} - {activeSetting?.semester})
+                            </div>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={handleAutoRecap}
+                                    className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition"
+                                >
+                                    <RefreshCw size={16} /> Rekap Otomatis dari Harian
+                                </button>
+                            </div>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-emerald-800 text-white text-xs uppercase tracking-wider">
+                                        <th className="p-4 w-16 text-center">No</th>
+                                        <th className="p-4 w-28 text-center">NIS</th>
+                                        <th className="p-4">Nama Santri</th>
+                                        <th className="p-4 w-32 text-center">Sakit (S)</th>
+                                        <th className="p-4 w-32 text-center">Izin (I)</th>
+                                        <th className="p-4 w-32 text-center">Alpa (A)</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {studentsInClass.length === 0 ? (
+                                        <tr>
+                                            <td colSpan="6" className="p-8 text-center text-gray-500">Tidak ada santri di kelas ini.</td>
+                                        </tr>
+                                    ) : (
+                                        studentsInClass.map((st, idx) => {
+                                            const sVal = rekapData[st.id]?.[pSakit?.id] || '';
+                                            const iVal = rekapData[st.id]?.[pIzin?.id] || '';
+                                            const aVal = rekapData[st.id]?.[pAlpa?.id] || '';
+                                            return (
+                                                <tr key={st.id} className="hover:bg-gray-50/50 transition">
+                                                    <td className="p-4 text-center text-gray-500 text-sm">{idx + 1}</td>
+                                                    <td className="p-4 text-center font-semibold text-gray-600 text-sm">{st.nis || '-'}</td>
+                                                    <td className="p-4 font-semibold text-gray-800">{st.nama}</td>
+                                                    <td className="p-4 text-center">
+                                                        <input
+                                                            type="text"
+                                                            placeholder="0"
+                                                            value={sVal}
+                                                            onChange={e => handleRekapChange(st.id, pSakit?.id, e.target.value)}
+                                                            className="w-20 p-2 border rounded-xl text-center font-bold focus:ring-2 focus:ring-emerald-500 outline-none text-yellow-700 bg-yellow-50/50 border-yellow-200"
+                                                        />
+                                                    </td>
+                                                    <td className="p-4 text-center">
+                                                        <input
+                                                            type="text"
+                                                            placeholder="0"
+                                                            value={iVal}
+                                                            onChange={e => handleRekapChange(st.id, pIzin?.id, e.target.value)}
+                                                            className="w-20 p-2 border rounded-xl text-center font-bold focus:ring-2 focus:ring-emerald-500 outline-none text-blue-700 bg-blue-50/50 border-blue-200"
+                                                        />
+                                                    </td>
+                                                    <td className="p-4 text-center">
+                                                        <input
+                                                            type="text"
+                                                            placeholder="0"
+                                                            value={aVal}
+                                                            onChange={e => handleRekapChange(st.id, pAlpa?.id, e.target.value)}
+                                                            className="w-20 p-2 border rounded-xl text-center font-bold focus:ring-2 focus:ring-emerald-500 outline-none text-red-700 bg-red-50/50 border-red-200"
+                                                        />
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                        {studentsInClass.length > 0 && (
+                            <div className="p-6 border-t border-gray-100 flex justify-end bg-gray-50/35">
+                                <button
+                                    onClick={handleSaveSemesterRecap}
+                                    disabled={isSaving}
+                                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 shadow-md transition disabled:opacity-50"
+                                >
+                                    <Save size={18} /> {isSaving ? 'Menyimpan...' : 'Simpan Rekap Semester'}
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                )
             )}
         </div>
     );
@@ -12031,7 +12446,6 @@ const Dashboard = () => {
       });
     }
     if (currentUser?.role === 'admin' || isWaliKelasAny) {
-      items.push({ id: 'presensi', label: 'Presensi' });
       items.push({ id: 'sikap', label: 'Sikap & Kesantrian' });
       items.push({ id: 'catatan', label: 'Catatan Wali Kelas' });
     }
@@ -12050,13 +12464,14 @@ const Dashboard = () => {
       { id: 'dashboard', label: 'Dashboard', icon: Home, roles: ['admin', 'guru', 'user'] },
       { id: 'master_data', label: 'Master Data', icon: Users, roles: ['admin'], subItems: masterDataSubItems },
       { id: 'layout_builder', label: 'Desain Layout', icon: LayoutTemplate, roles: ['admin'], subItems: layoutBuilderSubItems },
-    { id: 'input_nilai', label: 'Input Nilai', icon: CheckSquare, roles: ['admin', 'guru', 'user'], subItems: inputNilaiSubItems },
-    { id: 'input_ijazah', label: 'Kelola Nilai Ijazah', icon: FileSignature, roles: ['admin', 'user'] },
-    { id: 'legger', label: 'Legger Kelas', icon: BookOpen, roles: ['admin', 'user'] },
-    { id: 'cetak_raport', label: 'Cetak Raport', icon: Printer, roles: ['admin', 'user'] },
-    { id: 'kirim_raport', label: 'Kirim Raport WA', icon: Send, roles: ['admin'] },
-    { id: 'cetak_ijazah', label: 'Cetak Ijazah', icon: Printer, roles: ['admin'] },
-    { id: 'export_data', label: 'Export Data Lengkap', icon: Database, roles: ['admin'] },
+      { id: 'input_nilai', label: 'Input Nilai', icon: CheckSquare, roles: ['admin', 'guru', 'user'], subItems: inputNilaiSubItems },
+      { id: 'presensi_harian', label: 'Presensi Santri', icon: Calendar, roles: ['admin', 'guru', 'user'] },
+      { id: 'input_ijazah', label: 'Kelola Nilai Ijazah', icon: FileSignature, roles: ['admin', 'user'] },
+      { id: 'legger', label: 'Legger Kelas', icon: BookOpen, roles: ['admin', 'user'] },
+      { id: 'cetak_raport', label: 'Cetak Raport', icon: Printer, roles: ['admin', 'user'] },
+      { id: 'kirim_raport', label: 'Kirim Raport WA', icon: Send, roles: ['admin'] },
+      { id: 'cetak_ijazah', label: 'Cetak Ijazah', icon: Printer, roles: ['admin'] },
+      { id: 'export_data', label: 'Export Data Lengkap', icon: Database, roles: ['admin'] },
       ];
 
   const filteredMenu = menuItems.filter(m => {
@@ -12079,13 +12494,14 @@ const Dashboard = () => {
 
     switch (activeMenu) {
       case 'dashboard': return <HomeDashboard />;
+      case 'presensi_harian': return <PresensiSantri />;
       case 'input_ijazah': return <InputIjazah />;
       case 'cetak_raport': return <ErrorBoundary key="eb-raport"><CetakDokumen key="raport" mode="raport" /></ErrorBoundary>;
       case 'cetak_ijazah': return <ErrorBoundary key="eb-ijazah"><CetakDokumen key="ijazah" mode="ijazah" /></ErrorBoundary>;
       case 'legger': return <LeggerKelas />;
       case 'export_data': return <ExportDataLengkap />;
       case 'kirim_raport': return <KirimRaport />;
-            default: return <div className="p-8 text-center text-gray-500">Menu tidak ditemukan</div>;
+      default: return <div className="p-8 text-center text-gray-500">Menu tidak ditemukan</div>;
     }
   };
 
@@ -12263,7 +12679,7 @@ const PublicRaportPage = ({ santriId }) => {
             <header className="bg-white/10 backdrop-blur-md border-b border-white/20 shadow-lg print:hidden">
                 <div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-4">
                     <div className="w-12 h-12 bg-white/20 flex items-center justify-center shrink-0 overflow-hidden">
-                        <img src="https://ikoqsyrvspfjyyjujfhc.supabase.co/storage/v1/object/public/layout-images/logo%20pondok.png" alt="Logo" className="w-full h-full object-contain drop-shadow-md" />
+                        <img src="https://ikoqsyrvspfjyyjujfhc.supabase.co/storage/v1/object/public/layout-images/logo%20ppisb.png" alt="Logo" className="w-full h-full object-contain drop-shadow-md" />
                     </div>
                     <div>
                         <h1 className="text-white font-bold text-base leading-tight">Ponpes Imam Syafi'i Brebes</h1>
