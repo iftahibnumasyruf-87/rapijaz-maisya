@@ -39,7 +39,7 @@ class ErrorBoundary extends React.Component {
                 <div className="flex items-center justify-center min-h-screen bg-gray-50">
                     <div className="bg-white rounded-xl shadow-lg p-8 max-w-lg w-full border border-red-200">
                         <div className="flex items-center gap-3 mb-4">
-                            <span className="text-3xl">⚠️</span>
+                            <span className="text-3xl">ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ·ط¢آ¹ط£آ¢أ¢â€ڑآ¬ط¹آ©ط·آ·ط¢آ¢ط·آ¢ط¢آ ط·آ·ط¢آ£ط·آ¢ط¢آ¯ط·آ·ط¢آ¢ط·آ¢ط¢آ¸ط·آ·ط¢آ¹ط·آ«أ¢â‚¬آ </span>
                             <h2 className="text-xl font-bold text-red-700">Terjadi Error</h2>
                         </div>
                         <p className="text-gray-600 mb-4">Ada kesalahan saat menampilkan halaman ini. Silakan refresh atau hubungi admin.</p>
@@ -77,16 +77,16 @@ const convertArabicToLatin = (value) => {
   if (typeof value !== 'string') return value;
   
   return value
-    .replace(/٠/g, '0')
-    .replace(/١/g, '1')
-    .replace(/٢/g, '2')
-    .replace(/٣/g, '3')
-    .replace(/٤/g, '4')
-    .replace(/٥/g, '5')
-    .replace(/٦/g, '6')
-    .replace(/٧/g, '7')
-    .replace(/٨/g, '8')
-    .replace(/٩/g, '9');
+    .replace(/ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ /g, '0')
+    .replace(/ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ·ط·آ¥أ¢â‚¬â„¢/g, '1')
+    .replace(/ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ¢/g, '2')
+    .replace(/ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ£/g, '3')
+    .replace(/ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ¤/g, '4')
+    .replace(/ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ¥/g, '5')
+    .replace(/ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ¦/g, '6')
+    .replace(/ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ§/g, '7')
+    .replace(/ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ¨/g, '8')
+    .replace(/ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ©/g, '9');
 };
 
 // ==========================================
@@ -364,7 +364,7 @@ const isSubjectVisibleInClass = (subject, selectedClass, classes = []) => {
 
 const toArabicNumerals = (str) => {
     if (!str) return str;
-    const arabicNumbers = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+    const arabicNumbers = ['ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ ', 'ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ·ط·آ¥أ¢â‚¬â„¢', 'ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ¢', 'ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ£', 'ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ¤', 'ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ¥', 'ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ¦', 'ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ§', 'ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ¨', 'ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ©'];
     return String(str).replace(/[0-9]/g, w => arabicNumbers[parseInt(w, 10)]);
 };
 
@@ -374,10 +374,10 @@ const toArabicWords = (numStr) => {
     const n = Math.round(Number(trimmed));
     if (n < 0 || n > 999) return numStr;
     
-    const units = ['صفر', 'واحد', 'اثنان', 'ثلاثة', 'أربعة', 'خمسة', 'ستة', 'سبعة', 'ثمانية', 'تسعة'];
-    const teens = ['عشرة', 'أحد عشر', 'اثنا عشر', 'ثلاثة عشر', 'أربعة عشر', 'خمسة عشر', 'ستة عشر', 'سبعة عشر', 'ثمانية عشر', 'تسعة عشر'];
-    const tens = ['', 'عشرة', 'عشرون', 'ثلاثون', 'أربعون', 'خمسون', 'ستون', 'سبعون', 'ثمانون', 'تسعون'];
-    const hundreds = ['', 'مائة', 'مائتان', 'ثلاثمائة', 'أربعمائة', 'خمسمائة', 'ستمائة', 'سبعمائة', 'ثمانمائة', 'تسعمائة'];
+    const units = ['ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آµط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¸ط·آ¢ط¢آ¾ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ±', 'ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ«ط£آ¢أ¢â€ڑآ¬ط¢آ ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ­ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¯', 'ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ«ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ', 'ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ«ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¹â€ ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ«ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ©', 'ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ£ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ±ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¨ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¹ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ©', 'ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ®ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¦ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ³ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ©', 'ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ³ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¹ط·آ¢ط¢آ¾ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ©', 'ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ³ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¨ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¹ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ©', 'ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ«ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¦ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¸ط·آ¢ط¢آ¹ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ©', 'ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¹ط·آ¢ط¢آ¾ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ³ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¹ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ©'];
+    const teens = ['ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¹ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ´ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ±ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ©', 'ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ£ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ­ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¯ ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¹ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ´ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ±', 'ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ«ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¹ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ´ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ±', 'ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ«ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¹â€ ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ«ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ© ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¹ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ´ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ±', 'ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ£ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ±ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¨ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¹ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ© ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¹ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ´ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ±', 'ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ®ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¦ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ³ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ© ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¹ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ´ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ±', 'ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ³ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¹ط·آ¢ط¢آ¾ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ© ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¹ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ´ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ±', 'ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ³ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¨ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¹ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ© ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¹ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ´ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ±', 'ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ«ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¦ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¸ط·آ¢ط¢آ¹ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ© ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¹ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ´ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ±', 'ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¹ط·آ¢ط¢آ¾ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ³ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¹ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ© ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¹ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ´ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ±'];
+    const tens = ['', 'ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¹ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ´ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ±ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ©', 'ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¹ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ´ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ±ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ«ط£آ¢أ¢â€ڑآ¬ط¢آ ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ', 'ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ«ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¹â€ ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ«ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ«ط£آ¢أ¢â€ڑآ¬ط¢آ ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ', 'ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ£ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ±ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¨ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¹ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ«ط£آ¢أ¢â€ڑآ¬ط¢آ ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ', 'ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ®ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¦ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ³ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ«ط£آ¢أ¢â€ڑآ¬ط¢آ ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ', 'ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ³ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¹ط·آ¢ط¢آ¾ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ«ط£آ¢أ¢â€ڑآ¬ط¢آ ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ', 'ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ³ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¨ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¹ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ«ط£آ¢أ¢â€ڑآ¬ط¢آ ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ', 'ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ«ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¦ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ«ط£آ¢أ¢â€ڑآ¬ط¢آ ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ', 'ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¹ط·آ¢ط¢آ¾ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ³ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¹ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ«ط£آ¢أ¢â€ڑآ¬ط¢آ ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ '];
+    const hundreds = ['', 'ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¦ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¦ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ©', 'ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¦ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¦ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¹ط·آ¢ط¢آ¾ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ', 'ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ«ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¹â€ ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ«ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¦ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¦ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ©', 'ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ£ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ±ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¨ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¹ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¦ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¦ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ©', 'ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ®ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¦ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ³ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¦ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¦ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ©', 'ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ³ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¹ط·آ¢ط¢آ¾ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¦ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¦ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ©', 'ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ³ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¨ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¹ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¦ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¦ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ©', 'ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ«ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¦ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¦ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¦ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ©', 'ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¹ط·آ¢ط¢آ¾ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ³ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¹ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¦ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¦ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ©'];
 
     if (n === 0) return units[0];
 
@@ -397,11 +397,11 @@ const toArabicWords = (numStr) => {
             if (u === 0) {
                 parts.push(tens[t]);
             } else {
-                parts.push(units[u] + ' و ' + tens[t]);
+                parts.push(units[u] + ' ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ«ط£آ¢أ¢â€ڑآ¬ط¢آ  ' + tens[t]);
             }
         }
     }
-    return parts.join(' و ');
+    return parts.join(' ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ«ط£آ¢أ¢â€ڑآ¬ط¢آ  ');
 };
 
 const isReligiousCategory = (cat) => {
@@ -1184,13 +1184,13 @@ const Login = () => {
 
                 {selectedGuruName && uniqueGuruMapel.length === 0 && (
                   <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-700">
-                    ⚠️ Guru ini belum ditugaskan mengajar mapel apapun. Hubungi admin.
+                    ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ·ط¢آ¹ط£آ¢أ¢â€ڑآ¬ط¹آ©ط·آ·ط¢آ¢ط·آ¢ط¢آ ط·آ·ط¢آ£ط·آ¢ط¢آ¯ط·آ·ط¢آ¢ط·آ¢ط¢آ¸ط·آ·ط¢آ¹ط·آ«أ¢â‚¬آ  Guru ini belum ditugaskan mengajar mapel apapun. Hubungi admin.
                   </div>
                 )}
 
                 {selectedGuruName && uniqueGuruMapel.length > 0 && (
                   <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs text-emerald-700">
-                    <div className="font-semibold mb-1.5">✅ {uniqueGuruMapel.length} mata pelajaran ditemukan:</div>
+                    <div className="font-semibold mb-1.5">ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ·ط¢آ¥ط£آ¢أ¢â€ڑآ¬ط¥â€œط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¦ {uniqueGuruMapel.length} mata pelajaran ditemukan:</div>
                     <ul className="space-y-1">
                       {uniqueGuruMapel.map((s, i) => {
                         // Kumpulkan semua baris untuk mapel ini (bisa di beberapa kelas)
@@ -1199,10 +1199,10 @@ const Login = () => {
                         const jumlahKelas = allRowsForSubject.length;
                         return (
                           <li key={i} className="flex items-start gap-1.5">
-                            <span className="mt-0.5">📖</span>
+                            <span className="mt-0.5">ط·آ·ط¢آ¸ط£آ¢أ¢â€ڑآ¬ط¢آ¹ط·آ·ط¢آ¹ط·آ·أ¢â‚¬ط›ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¥أ¢â‚¬إ“ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€œ</span>
                             <span>
                               <span className="font-semibold">{s.nameId || s.name || s.id}</span>
-                              <span className="text-emerald-600"> — {jumlahKelas} kelas: {kelasLabel}</span>
+                              <span className="text-emerald-600"> ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ {jumlahKelas} kelas: {kelasLabel}</span>
                             </span>
                           </li>
                         );
@@ -1383,7 +1383,7 @@ const HomeDashboard = () => {
                 <div className="flex items-center justify-between gap-1">
                     <span>{label}</span>
                     <span className={`text-[10px] ${isActive ? 'text-blue-600 font-bold' : 'text-gray-400'}`}>
-                        {isActive ? (logSort.direction === 'ascending' ? '▲' : '▼') : '↕'}
+                        {isActive ? (logSort.direction === 'ascending' ? 'ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€œط·آ·ط¢آ¢ط·آ¢ط¢آ²' : 'ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€œط·آ·ط¢آ¢ط·آ¢ط¢آ¼') : 'ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¢'}
                     </span>
                 </div>
             </th>
@@ -1406,7 +1406,7 @@ const HomeDashboard = () => {
         <div className="flex flex-col gap-6 h-[85vh] overflow-y-auto custom-scrollbar pb-6">
             <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-6 shadow-sm">
                 <h2 className="text-2xl font-bold text-emerald-800 flex items-center gap-2">
-                    <span>🙏</span> Assalamu'alaikum, {currentUser?.name}
+                    <span>ط·آ·ط¢آ¸ط£آ¢أ¢â€ڑآ¬ط¢آ¹ط·آ·ط¢آ¹ط·آ·أ¢â‚¬ط›ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬أ¢â‚¬ع†ط·آ¢ط¢آ¢ط·آ·ط¢آ¹ط·آ«أ¢â‚¬آ </span> Assalamu'alaikum, {currentUser?.name}
                 </h2>
                 <p className="text-emerald-600 mt-1">{APP_CONFIG.welcomeMessage}</p>
             </div>
@@ -1673,7 +1673,7 @@ CREATE POLICY "Allow all" ON "studentSnapshots"
         <div className={`border p-5 rounded-xl ${status === 'missing' ? 'bg-red-50 border-red-200' : 'bg-yellow-50 border-yellow-200'}`}>
             <h4 className={`font-bold text-lg mb-2 flex items-center gap-2 ${status === 'missing' ? 'text-red-900' : 'text-yellow-900'}`}>
                 <AlertCircle size={20}/>
-                {status === 'missing' ? '⚠️ Tabel "studentSnapshots" Belum Dibuat' : '⚠️ Peringatan Tabel "studentSnapshots"'}
+                {status === 'missing' ? 'ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ·ط¢آ¹ط£آ¢أ¢â€ڑآ¬ط¹آ©ط·آ·ط¢آ¢ط·آ¢ط¢آ ط·آ·ط¢آ£ط·آ¢ط¢آ¯ط·آ·ط¢آ¢ط·آ¢ط¢آ¸ط·آ·ط¢آ¹ط·آ«أ¢â‚¬آ  Tabel "studentSnapshots" Belum Dibuat' : 'ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ·ط¢آ¹ط£آ¢أ¢â€ڑآ¬ط¹آ©ط·آ·ط¢آ¢ط·آ¢ط¢آ ط·آ·ط¢آ£ط·آ¢ط¢آ¯ط·آ·ط¢آ¢ط·آ¢ط¢آ¸ط·آ·ط¢آ¹ط·آ«أ¢â‚¬آ  Peringatan Tabel "studentSnapshots"'}
             </h4>
             <p className={`text-sm mb-3 ${status === 'missing' ? 'text-red-800' : 'text-yellow-800'}`}>
                 {status === 'missing'
@@ -1683,7 +1683,7 @@ CREATE POLICY "Allow all" ON "studentSnapshots"
             </p>
             {status === 'missing' && (
                 <>
-                    <p className="text-sm text-red-700 font-semibold mb-2">📋 Cara membuat tabel:</p>
+                    <p className="text-sm text-red-700 font-semibold mb-2">ط·آ·ط¢آ¸ط£آ¢أ¢â€ڑآ¬ط¢آ¹ط·آ·ط¢آ¹ط·آ·أ¢â‚¬ط›ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¥أ¢â‚¬إ“ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¹ Cara membuat tabel:</p>
                     <ol className="text-sm text-red-800 list-decimal ml-5 space-y-1 mb-3">
                         <li>Buka <a href="https://supabase.com/dashboard" target="_blank" rel="noreferrer" className="underline font-bold">dashboard.supabase.com</a></li>
                         <li>Pilih project Anda</li>
@@ -1696,7 +1696,7 @@ CREATE POLICY "Allow all" ON "studentSnapshots"
                         className="text-sm bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-bold transition mb-3 flex items-center gap-2"
                     >
                         {showSql ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}
-                        {showSql ? 'Sembunyikan SQL' : 'Tampilkan Kode SQL →'}
+                        {showSql ? 'Sembunyikan SQL' : 'Tampilkan Kode SQL ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â‚¬â€چط¢آ¢'}
                     </button>
                     {showSql && (
                         <div className="relative">
@@ -2139,7 +2139,7 @@ const BackupRestorePanel = () => {
                                 </div>
                             </div>
                             <p className="text-xs text-gray-500 bg-amber-50 border border-amber-200 rounded-lg p-3">
-                                ⚠️ Data yang namanya sudah ada di semester aktif TIDAK akan ditimpa. Hanya data baru yang akan disalin.
+                                ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ·ط¢آ¹ط£آ¢أ¢â€ڑآ¬ط¹آ©ط·آ·ط¢آ¢ط·آ¢ط¢آ ط·آ·ط¢آ£ط·آ¢ط¢آ¯ط·آ·ط¢آ¢ط·آ¢ط¢آ¸ط·آ·ط¢آ¹ط·آ«أ¢â‚¬آ  Data yang namanya sudah ada di semester aktif TIDAK akan ditimpa. Hanya data baru yang akan disalin.
                             </p>
                         </div>
                         <div className="flex gap-3 p-4 border-t">
@@ -2172,8 +2172,8 @@ const BackupRestorePanel = () => {
                         </p>
                         <p className={`text-sm mt-1 font-medium ${currentSnapshot ? 'text-emerald-700' : 'text-orange-600'}`}>
                             {currentSnapshot 
-                                ? `🔒 Terkunci — ${currentSnapshot.students?.length || 0} santri (Update: ${new Date(currentSnapshot.createdAt).toLocaleString('id-ID')})`
-                                : '🔓 Tidak dikunci — Menggunakan data santri terkini (live)'}
+                                ? `ط·آ·ط¢آ¸ط£آ¢أ¢â€ڑآ¬ط¢آ¹ط·آ·ط¢آ¹ط·آ·أ¢â‚¬ط›ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â‚¬â€چط¢آ¢ Terkunci ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ ${currentSnapshot.students?.length || 0} santri (Update: ${new Date(currentSnapshot.createdAt).toLocaleString('id-ID')})`
+                                : 'ط·آ·ط¢آ¸ط£آ¢أ¢â€ڑآ¬ط¢آ¹ط·آ·ط¢آ¹ط·آ·أ¢â‚¬ط›ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¥أ¢â‚¬إ“ Tidak dikunci ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ Menggunakan data santri terkini (live)'}
                         </p>
                     </div>
                     <div className="flex gap-2 flex-wrap">
@@ -2544,7 +2544,7 @@ const MasterData = ({ activeTab }) => {
               <div className="flex items-center justify-between gap-2">
                   <span>{label}</span>
                   <span className={`text-[10px] ${isActive ? 'text-emerald-600 font-bold' : 'text-gray-400'}`}>
-                      {isActive ? (sortConfig.direction === 'ascending' ? '▲' : '▼') : '↕'}
+                      {isActive ? (sortConfig.direction === 'ascending' ? 'ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€œط·آ·ط¢آ¢ط·آ¢ط¢آ²' : 'ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€œط·آ·ط¢آ¢ط·آ¢ط¢آ¼') : 'ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¢'}
                   </span>
               </div>
           </th>
@@ -2576,14 +2576,14 @@ const MasterData = ({ activeTab }) => {
       const ganjilPayload = {
         ...payload,
         semester: 'Ganjil',
-        semester_arab: 'الفصل الدراسي الأول',
+        semester_arab: 'ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¹â€ ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¸ط·آ¢ط¢آ¾ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آµط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¹â€  ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¹â€ ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¯ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ±ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ³ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¸ط·آ¢ط¢آ¹ ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¹â€ ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ£ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ«ط£آ¢أ¢â€ڑآ¬ط¢آ ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¹â€ ',
         isActive: payload.isActive || false
       };
       
       const genapPayload = {
         ...payload,
         semester: 'Genap',
-        semester_arab: 'الفصل الدراسي الثاني',
+        semester_arab: 'ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¹â€ ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¸ط·آ¢ط¢آ¾ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آµط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¹â€  ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¹â€ ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¯ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ±ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ³ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¸ط·آ¢ط¢آ¹ ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¹â€ ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ«ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¸ط·آ¢ط¢آ¹',
         isActive: false
       };
 
@@ -2634,7 +2634,7 @@ const MasterData = ({ activeTab }) => {
 
   const convertLatinDigitsToArabic = (value) => {
       if (typeof value !== 'string') return value;
-      const map = { '0': '٠', '1': '١', '2': '٢', '3': '٣', '4': '٤', '5': '٥', '6': '٦', '7': '٧', '8': '٨', '9': '٩' };
+      const map = { '0': 'ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ ', '1': 'ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ·ط·آ¥أ¢â‚¬â„¢', '2': 'ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ¢', '3': 'ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ£', '4': 'ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ¤', '5': 'ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ¥', '6': 'ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ¦', '7': 'ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ§', '8': 'ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ¨', '9': 'ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ©' };
       return value.replace(/[0-9]/g, digit => map[digit] || digit);
   };
 
@@ -2732,7 +2732,7 @@ const MasterData = ({ activeTab }) => {
         a.remove();
         URL.revokeObjectURL(url);
         const label = filterKelas === '__all__' ? 'semua kelas' : `kelas ${filterKelas}`;
-        showNotification(`✅ ${students.length} santri (${label}) berhasil diekspor ke Excel!`);
+        showNotification(`ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ·ط¢آ¥ط£آ¢أ¢â€ڑآ¬ط¥â€œط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¦ ${students.length} santri (${label}) berhasil diekspor ke Excel!`);
         setShowExportDropdown(false);
     };
 
@@ -2806,7 +2806,7 @@ const MasterData = ({ activeTab }) => {
                         await new Promise(r => setTimeout(r, 10));
                     }
                 } else {
-                    // NIS belum ada — tambah sebagai data baru
+                    // NIS belum ada ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ tambah sebagai data baru
                     item.id = Date.now().toString() + i;
                     setBulkProgressText(`Menambah baru: ${item.nama || `Data ke-${i+1}`}`);
                     setBulkProgressCurrent(i + 1);
@@ -2817,10 +2817,10 @@ const MasterData = ({ activeTab }) => {
             }
             setBulkProgressText('Selesai!');
             const parts = [];
-            if (countAdded > 0) parts.push(`✅ ${countAdded} ditambah`);
-            if (countUpdated > 0) parts.push(`🔄 ${countUpdated} diperbarui`);
-            if (countSkipped > 0) parts.push(`⏭️ ${countSkipped} tidak berubah`);
-            showNotification(`Import selesai — ${parts.join(', ')}.`);
+            if (countAdded > 0) parts.push(`ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ·ط¢آ¥ط£آ¢أ¢â€ڑآ¬ط¥â€œط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¦ ${countAdded} ditambah`);
+            if (countUpdated > 0) parts.push(`ط·آ·ط¢آ¸ط£آ¢أ¢â€ڑآ¬ط¢آ¹ط·آ·ط¢آ¹ط·آ·أ¢â‚¬ط›ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¹â€  ${countUpdated} diperbarui`);
+            if (countSkipped > 0) parts.push(`ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ·ط¢آ¹ط·آ«أ¢â‚¬آ ط·آ·ط¢آ¢ط·آ¢ط¢آ­ط·آ·ط¢آ£ط·آ¢ط¢آ¯ط·آ·ط¢آ¢ط·آ¢ط¢آ¸ط·آ·ط¢آ¹ط·آ«أ¢â‚¬آ  ${countSkipped} tidak berubah`);
+            showNotification(`Import selesai ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ ${parts.join(', ')}.`);
         } catch (err) {
             console.error(err);
             showNotification('Gagal memproses file Excel. Pastikan format benar.', 'error');
@@ -2868,9 +2868,9 @@ const MasterData = ({ activeTab }) => {
       showNotification('Tidak ada data santri untuk dihapus.', 'error');
       return;
     }
-    const firstConfirm = confirm(`⚠️ PERINGATAN!\n\nAnda akan menghapus SEMUA ${total} data santri secara permanen.\n\nApakah Anda yakin ingin melanjutkan?`);
+    const firstConfirm = confirm(`ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ·ط¢آ¹ط£آ¢أ¢â€ڑآ¬ط¹آ©ط·آ·ط¢آ¢ط·آ¢ط¢آ ط·آ·ط¢آ£ط·آ¢ط¢آ¯ط·آ·ط¢آ¢ط·آ¢ط¢آ¸ط·آ·ط¢آ¹ط·آ«أ¢â‚¬آ  PERINGATAN!\n\nAnda akan menghapus SEMUA ${total} data santri secara permanen.\n\nApakah Anda yakin ingin melanjutkan?`);
     if (!firstConfirm) return;
-    const secondConfirm = confirm(`🚨 KONFIRMASI AKHIR\n\nTindakan ini TIDAK BISA dibatalkan. Seluruh ${total} data santri akan hilang selamanya.\n\nKetuk OK untuk menghapus semua data santri sekarang.`);
+    const secondConfirm = confirm(`ط·آ·ط¢آ¸ط£آ¢أ¢â€ڑآ¬ط¢آ¹ط·آ·ط¢آ¹ط·آ·أ¢â‚¬ط›ط·آ·ط¢آ¹ط£آ¢أ¢â€ڑآ¬ط¹آ©ط·آ·ط¢آ¢ط·آ¢ط¢آ¨ KONFIRMASI AKHIR\n\nTindakan ini TIDAK BISA dibatalkan. Seluruh ${total} data santri akan hilang selamanya.\n\nKetuk OK untuk menghapus semua data santri sekarang.`);
     if (!secondConfirm) return;
     setIsBulkProcessing(true);
     setBulkProgressTotal(total);
@@ -2966,7 +2966,7 @@ const MasterData = ({ activeTab }) => {
                   <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                       <h4 className="font-bold text-blue-800 mb-2">Panduan Penggunaan Variabel</h4>
                       <p className="text-sm text-blue-700">Gunakan kode variabel di bawah ini di dalam desain layout Anda. Variabel akan otomatis digantikan dengan data asli saat Anda mencetak raport.</p>
-                      <p className="text-sm text-blue-700 mt-1 font-semibold">💡 <b>Klik sekali pada kode variabel</b> untuk langsung menyalinnya ke clipboard!</p>
+                      <p className="text-sm text-blue-700 mt-1 font-semibold">ط·آ·ط¢آ¸ط£آ¢أ¢â€ڑآ¬ط¢آ¹ط·آ·ط¢آ¹ط·آ·أ¢â‚¬ط›ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â‚¬â€چط¢آ¢ط·آ·ط¢آ·ط·آ¥أ¢â‚¬â„¢ <b>Klik sekali pada kode variabel</b> untuk langsung menyalinnya ke clipboard!</p>
                   </div>
                   
                   <div>
@@ -3006,7 +3006,7 @@ const MasterData = ({ activeTab }) => {
                               >
                                   <span className="font-mono text-indigo-700 font-bold mb-1 text-[13px] group-hover:text-yellow-700">{`{{${v.code}}}`}</span>
                                   <span className="text-xs text-gray-600">{v.label}</span>
-                                  <span className="text-[10px] text-gray-400 mt-1 group-hover:text-yellow-500">🖱️ Klik untuk copy</span>
+                                  <span className="text-[10px] text-gray-400 mt-1 group-hover:text-yellow-500">ط·آ·ط¢آ¸ط£آ¢أ¢â€ڑآ¬ط¢آ¹ط·آ·ط¢آ¹ط·آ·أ¢â‚¬ط›ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€œط·آ·ط¢آ¢ط·آ¢ط¢آ±ط·آ·ط¢آ£ط·آ¢ط¢آ¯ط·آ·ط¢آ¢ط·آ¢ط¢آ¸ط·آ·ط¢آ¹ط·آ«أ¢â‚¬آ  Klik untuk copy</span>
                               </div>
                           ))}
                       </div>
@@ -3164,7 +3164,7 @@ const MasterData = ({ activeTab }) => {
                                           >
                                               <span className="font-mono text-emerald-700 font-bold mb-1 text-[13px] group-hover:text-yellow-700">{`{{${v.code}}}`}</span>
                                               <span className="text-xs text-gray-600">{v.label}</span>
-                                              <span className="text-[10px] text-gray-400 mt-1 group-hover:text-yellow-500">🖱️ Klik untuk copy</span>
+                                              <span className="text-[10px] text-gray-400 mt-1 group-hover:text-yellow-500">ط·آ·ط¢آ¸ط£آ¢أ¢â€ڑآ¬ط¢آ¹ط·آ·ط¢آ¹ط·آ·أ¢â‚¬ط›ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€œط·آ·ط¢آ¢ط·آ¢ط¢آ±ط·آ·ط¢آ£ط·آ¢ط¢آ¯ط·آ·ط¢آ¢ط·آ¢ط¢آ¸ط·آ·ط¢آ¹ط·آ«أ¢â‚¬آ  Klik untuk copy</span>
                                           </div>
                                       ))}
                                   </div>
@@ -3308,7 +3308,7 @@ const MasterData = ({ activeTab }) => {
             </div>
             {isIjazahOrderMode && (
               <div className="mb-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-sm text-emerald-800">
-                ⚙️ Mode urutan ijazah aktif. Isi angka urutan pada kolom <strong>"Urutan Ijazah"</strong> untuk pelajaran yang ditandai sebagai ijazah, lalu klik <strong>Simpan</strong>.
+                ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ·ط¢آ¹ط£آ¢أ¢â€ڑآ¬ط¹آ©ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬أ¢â‚¬ع†ط·آ¢ط¢آ¢ط·آ·ط¢آ£ط·آ¢ط¢آ¯ط·آ·ط¢آ¢ط·آ¢ط¢آ¸ط·آ·ط¢آ¹ط·آ«أ¢â‚¬آ  Mode urutan ijazah aktif. Isi angka urutan pada kolom <strong>"Urutan Ijazah"</strong> untuk pelajaran yang ditandai sebagai ijazah, lalu klik <strong>Simpan</strong>.
               </div>
             )}
             <table className="w-full text-left border-collapse">
@@ -3357,7 +3357,7 @@ const MasterData = ({ activeTab }) => {
                                     placeholder="-"
                                   />
                                 ) : (
-                                  <span className="text-gray-300 text-xs">—</span>
+                                  <span className="text-gray-300 text-xs">ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™</span>
                                 )}
                               </td>
                             )}
@@ -3485,7 +3485,7 @@ const MasterData = ({ activeTab }) => {
                           <td className="p-3 font-semibold">{sub.nameId}</td>
                           <td className="p-3 text-right font-arabic" dir="rtl">{sub.nameAr}</td>
                           <td className="p-3 text-center">
-                              <label className="inline-flex flex-col items-center gap-1 cursor-pointer group" title={sub.is_ijazah ? 'Tampil di Ijazah — klik untuk menonaktifkan' : 'Tidak tampil di Ijazah — klik untuk mengaktifkan'}>
+                              <label className="inline-flex flex-col items-center gap-1 cursor-pointer group" title={sub.is_ijazah ? 'Tampil di Ijazah ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ klik untuk menonaktifkan' : 'Tidak tampil di Ijazah ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ klik untuk mengaktifkan'}>
                                   <div className={`relative w-10 h-5 rounded-full transition-colors duration-200 ${sub.is_ijazah ? 'bg-emerald-500' : 'bg-gray-300'}`}>
                                       <input 
                                           type="checkbox" 
@@ -3594,7 +3594,7 @@ const MasterData = ({ activeTab }) => {
                                                 onClick={() => exportStudentsToExcel('__all__')}
                                                 className="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 hover:text-blue-700 transition flex items-center gap-2 font-medium"
                                             >
-                                                <span className="text-blue-500">📋</span> Semua Kelas ({data.students?.length || 0} santri)
+                                                <span className="text-blue-500">ط·آ·ط¢آ¸ط£آ¢أ¢â€ڑآ¬ط¢آ¹ط·آ·ط¢آ¹ط·آ·أ¢â‚¬ط›ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¥أ¢â‚¬إ“ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¹</span> Semua Kelas ({data.students?.length || 0} santri)
                                             </button>
                                             <div className="border-t my-1"/>
                                             {[...new Set((data.students || []).map(s => String(s.kelas ?? '').trim()).filter(Boolean))]
@@ -3837,7 +3837,7 @@ const MasterData = ({ activeTab }) => {
                         }}
                     />
                 </div>
-                <input className="w-full p-2 border rounded text-right font-arabic" placeholder="Tahun Arab (السنة) - Terisi Otomatis" dir="rtl" value={formData.tahun_arab || ''} onChange={e => setFormData({...formData, tahun_arab: e.target.value})} />
+                <input className="w-full p-2 border rounded text-right font-arabic" placeholder="Tahun Arab (ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¹â€ ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ³ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ©) - Terisi Otomatis" dir="rtl" value={formData.tahun_arab || ''} onChange={e => setFormData({...formData, tahun_arab: e.target.value})} />
                 
                 {/* Sembunyikan field semester jika sedang membuat Tahun Ajaran Baru */}
                 {(editingItem && editingItem.tahun) && (
@@ -3858,7 +3858,7 @@ const MasterData = ({ activeTab }) => {
                                 <option value="Genap">Genap</option>
                             </select>
                         </div>
-                        <input className="w-full p-2 border rounded text-right font-arabic" placeholder="Semester Arab (الفصل) - Terisi Otomatis" dir="rtl" value={formData.semester_arab || ''} onChange={e => setFormData({...formData, semester_arab: e.target.value})} />
+                        <input className="w-full p-2 border rounded text-right font-arabic" placeholder="Semester Arab (ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¹â€ ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¸ط·آ¢ط¢آ¾ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آµط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¹â€ ) - Terisi Otomatis" dir="rtl" value={formData.semester_arab || ''} onChange={e => setFormData({...formData, semester_arab: e.target.value})} />
                     </>
                 )}
                 <label className="flex items-center gap-2"><input type="checkbox" checked={formData.isActive || false} onChange={e => setFormData({...formData, isActive: e.target.checked})} /> Jadikan Aktif</label>
@@ -3900,7 +3900,7 @@ const MasterData = ({ activeTab }) => {
                                 </div>
                             ) : (
                                 <div className="text-sm text-amber-600 bg-amber-50 p-2 rounded-lg border border-amber-200">
-                                    ⚠️ Guru ini belum ditugaskan mengajar mapel apapun di tab Pelajaran.
+                                    ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ·ط¢آ¹ط£آ¢أ¢â€ڑآ¬ط¹آ©ط·آ·ط¢آ¢ط·آ¢ط¢آ ط·آ·ط¢آ£ط·آ¢ط¢آ¯ط·آ·ط¢آ¢ط·آ¢ط¢آ¸ط·آ·ط¢آ¹ط·آ«أ¢â‚¬آ  Guru ini belum ditugaskan mengajar mapel apapun di tab Pelajaran.
                                 </div>
                             )}
 
@@ -4067,7 +4067,7 @@ const MasterData = ({ activeTab }) => {
             <div className="space-y-4">
                 <input className="w-full p-2 border rounded" placeholder="NIS" value={formData.nis || ''} onChange={e => setFormData({...formData, nis: e.target.value})} />
                 <input className="w-full p-2 border rounded" placeholder="Nama Lengkap" value={formData.nama || ''} onChange={e => setFormData({...formData, nama: e.target.value})} />
-                <input className="w-full p-2 border rounded" placeholder="Nama Arab (النام)" value={formData.nama_arab || ''} onChange={e => setFormData({...formData, nama_arab: toArabicNumerals(e.target.value)})} />
+                <input className="w-full p-2 border rounded" placeholder="Nama Arab (ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¹â€ ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¦)" value={formData.nama_arab || ''} onChange={e => setFormData({...formData, nama_arab: toArabicNumerals(e.target.value)})} />
                 <select className="w-full p-2 border rounded" value={formData.kelas || ''} onChange={e => setFormData({...formData, kelas: e.target.value})}>
                     <option value="">Pilih Kelas</option>{data.classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
@@ -4134,7 +4134,7 @@ const MasterData = ({ activeTab }) => {
                         }
                     }}
                 />
-                <input className="w-full p-2 border rounded font-arabic text-right" dir="rtl" placeholder="Nama Kelas Arab (الفصل) - Terisi Otomatis" value={formData.name_arab || ''} onChange={e => setFormData({...formData, name_arab: toArabicNumerals(e.target.value)})} />
+                <input className="w-full p-2 border rounded font-arabic text-right" dir="rtl" placeholder="Nama Kelas Arab (ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¹â€ ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¸ط·آ¢ط¢آ¾ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آµط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¹â€ ) - Terisi Otomatis" value={formData.name_arab || ''} onChange={e => setFormData({...formData, name_arab: toArabicNumerals(e.target.value)})} />
                 
                 <input 
                     className="w-full p-2 border rounded" 
@@ -4213,7 +4213,7 @@ const MasterData = ({ activeTab }) => {
                     <span>{autoSaveEnabled ? 'Autosave: Aktif (5s)' : 'Autosave: Nonaktif'}</span>
                 </label>
                 <div>
-                    {isAutoSaving ? <span className="text-xs font-bold text-emerald-600 animate-pulse flex items-center gap-1"><Save size={14}/> Menyimpan otomatis...</span> : <span className="text-xs text-gray-500 font-medium">✅ Tersimpan aman di Cloud</span>}
+                    {isAutoSaving ? <span className="text-xs font-bold text-emerald-600 animate-pulse flex items-center gap-1"><Save size={14}/> Menyimpan otomatis...</span> : <span className="text-xs text-gray-500 font-medium">ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ·ط¢آ¥ط£آ¢أ¢â€ڑآ¬ط¥â€œط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¦ Tersimpan aman di Cloud</span>}
                 </div>
             </div>
             <div className="flex items-center gap-3">
@@ -4252,7 +4252,7 @@ const splitArabicAndLatin = (text) => {
         const latinParts = [];
         const arabicParts = [];
         words.forEach(w => {
-            if (arabicRegex.test(w) || w === 'ج.' || w === 'ب.') {
+            if (arabicRegex.test(w) || w === 'ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¬.' || w === 'ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¨.') {
                 arabicParts.push(w);
             } else {
                 latinParts.push(w);
@@ -4456,7 +4456,7 @@ const renderCustomTable = (el, replaceVars = s => s, options = {}) => {
                                         } else if (cell.isArabicDigits || el.isArabicDigits) {
                                             html = html.split(/(<[^>]*>)/).map(part => {
                                                 if (part.startsWith('<') && part.endsWith('>')) return part;
-                                                return part.replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[d]);
+                                                return part.replace(/\d/g, d => 'ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ·ط·آ¥أ¢â‚¬â„¢ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ¢ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ£ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ¤ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ¥ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ¦ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ¨ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ©'[d]);
                                             }).join('');
                                         }
                                         return html;
@@ -4528,7 +4528,7 @@ const defaultFontOptions = [
 ];
 
 const pageDimensions = { 'A4': { width: 794, height: 1123 }, 'F4': { width: 816, height: 1248 } };
-// A4 at 96 DPI: 794px = 21cm, so 1cm = 794/21 ≈ 37.8px
+// A4 at 96 DPI: 794px = 21cm, so 1cm = 794/21 ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ°ط·آ·ط¢آ«ط£آ¢أ¢â€ڑآ¬ط¢آ  37.8px
 const PX_PER_CM = 794 / 21;
 
 const VariablesHelp = ({ onInsert, allSubjects = [] }) => {
@@ -4551,12 +4551,12 @@ const VariablesHelp = ({ onInsert, allSubjects = [] }) => {
                     <option value="{{kelas_ar}}">Kelas (Arab)</option>
                 </optgroup>
                 <optgroup label="Statistik Raport & Kelas">
-                    <option value="{{total_raport}}">Total Raport (مجموع النتائج)</option>
-                    <option value="{{total_raport_ar}}">Total Raport Arab (مجموع النتائج)</option>
-                    <option value="{{rata_rata_raport}}">Rata-rata Raport (معدل النتائج)</option>
-                    <option value="{{rata_rata_raport_ar}}">Rata-rata Raport Arab (معدل النتائج)</option>
-                    <option value="{{jumlah_santri}}">Jumlah Santri di Kelas (عدد الطلاب)</option>
-                    <option value="{{jumlah_santri_ar}}">Jumlah Santri Arab (عدد الطلاب)</option>
+                    <option value="{{total_raport}}">Total Raport (ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¦ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¬ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¦ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ«ط£آ¢أ¢â€ڑآ¬ط¢آ ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¹ ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¹â€ ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¹ط·آ¢ط¢آ¾ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¦ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¬)</option>
+                    <option value="{{total_raport_ar}}">Total Raport Arab (ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¦ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¬ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¦ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ«ط£آ¢أ¢â€ڑآ¬ط¢آ ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¹ ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¹â€ ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¹ط·آ¢ط¢آ¾ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¦ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¬)</option>
+                    <option value="{{rata_rata_raport}}">Rata-rata Raport (ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¦ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¹ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¯ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¹â€  ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¹â€ ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¹ط·آ¢ط¢آ¾ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¦ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¬)</option>
+                    <option value="{{rata_rata_raport_ar}}">Rata-rata Raport Arab (ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¦ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¹ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¯ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¹â€  ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¹â€ ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¹ط·آ¢ط¢آ¾ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¦ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¬)</option>
+                    <option value="{{jumlah_santri}}">Jumlah Santri di Kelas (ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¹ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¯ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¯ ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¹â€ ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ·ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¹â€ ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¨)</option>
+                    <option value="{{jumlah_santri_ar}}">Jumlah Santri Arab (ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¹ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¯ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¯ ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¹â€ ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ·ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¹â€ ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¨)</option>
                 </optgroup>
                 <optgroup label="Pengaturan">
                     <option value="{{tahun_ajaran}}">Tahun Ajaran</option>
@@ -4727,7 +4727,7 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
         const rataRata = countVal > 0 ? String(Math.round(totalVal / countVal)) : '';
         const totalRaport = countVal > 0 ? totalVal : '';
         const jumlahSantri = previewStudentsInClass?.length || 0;
-        const toAr = (val) => String(val).replace(/[0-9]/g, w => ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'][w]);
+        const toAr = (val) => String(val).replace(/[0-9]/g, w => ['ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ ','ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ·ط·آ¥أ¢â‚¬â„¢','ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ¢','ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ£','ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ¤','ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ¥','ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ¦','ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ§','ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ¨','ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ©'][w]);
 
         return (str) => {
             if (typeof str !== 'string') return str;
@@ -4824,11 +4824,11 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
             const calculateIjazahPredicatePreview = (val) => {
                 const num = Number(val);
                 if (isNaN(num)) return { ar: '', id: '' };
-                if (num >= 90) return { ar: 'مُمْتَازٌ', id: 'Mumtaz (Istimewa)' };
-                if (num >= 80) return { ar: 'جَيِّدٌ جِدًّا', id: 'Jayyid Jiddan (Sangat Baik)' };
-                if (num >= 70) return { ar: 'جَيِّدٌ', id: 'Jayyid (Baik)' };
-                if (num >= 60) return { ar: 'مَقْبُوْلٌ', id: 'Maqbul (Cukup)' };
-                return { ar: 'رَاسِبٌ', id: 'Rasib (Kurang)' };
+                if (num >= 90) return { ar: 'ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¦ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¹ط·آ«أ¢â‚¬آ ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¦ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â‚¬â€چط¢آ¢ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¹ط·آ¢ط¢آ¾ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¹ط·آ¹ط¢آ©ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ²ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¥ط£آ¢أ¢â€ڑآ¬أ¢â€‍آ¢', id: 'Mumtaz (Istimewa)' };
+                if (num >= 80) return { ar: 'ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¬ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¹ط·آ¹ط¢آ©ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¸ط·آ¢ط¢آ¹ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¹ط¢آ©ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¹ط·آ¢ط¢آ¯ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¯ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¥ط£آ¢أ¢â€ڑآ¬أ¢â€‍آ¢ ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¬ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¹ط·آ¢ط¢آ¯ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¯ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¹ط¢آ©ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¹ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§', id: 'Jayyid Jiddan (Sangat Baik)' };
+                if (num >= 70) return { ar: 'ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¬ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¹ط·آ¹ط¢آ©ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¸ط·آ¢ط¢آ¹ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¹ط¢آ©ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¹ط·آ¢ط¢آ¯ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¯ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¥ط£آ¢أ¢â€ڑآ¬أ¢â€‍آ¢', id: 'Jayyid (Baik)' };
+                if (num >= 60) return { ar: 'ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¦ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¹ط·آ¹ط¢آ©ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¹أ¢â‚¬ع©ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â‚¬â€چط¢آ¢ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¨ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¹ط·آ«أ¢â‚¬آ ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ«ط£آ¢أ¢â€ڑآ¬ط¢آ ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â‚¬â€چط¢آ¢ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¹â€ ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¥ط£آ¢أ¢â€ڑآ¬أ¢â€‍آ¢', id: 'Maqbul (Cukup)' };
+                return { ar: 'ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ±ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¹ط·آ¹ط¢آ©ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ³ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¹ط·آ¢ط¢آ¯ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¨ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¥ط£آ¢أ¢â€ڑآ¬أ¢â€‍آ¢', id: 'Rasib (Kurang)' };
             };
             const predikat = ijazahRata !== '' ? calculateIjazahPredicatePreview(ijazahRata) : { ar: '', id: '' };
             
@@ -4926,7 +4926,7 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
                             const indKey = realId === 'ekskul1_nilai_ar' ? 'ekskul1_nilai' : 'ekskul2_nilai';
                             const indVal = sGrades[indKey];
                             if (!indVal) return '';
-                            const toArabic = (val) => String(val).replace(/[0-9]/g, w => ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'][w]);
+                            const toArabic = (val) => String(val).replace(/[0-9]/g, w => ['ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ ','ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ·ط·آ¥أ¢â‚¬â„¢','ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ¢','ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ£','ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ¤','ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ¥','ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ¦','ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ§','ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ¨','ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ©'][w]);
                             return toArabic(indVal);
                         }
                         return sGrades[realId] !== undefined ? String(sGrades[realId]) : '';
@@ -5239,7 +5239,7 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
                 return;
             }
 
-            // Escape → batalkan mode formula linking
+            // Escape ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â‚¬â€چط¢آ¢ batalkan mode formula linking
             if (e.key === 'Escape' && linkingCell) {
                 e.preventDefault();
                 updateElement(linkingCell.elId, (targetEl) => {
@@ -5282,7 +5282,7 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
                         e.preventDefault();
                         const cellsData = ctSelCells.map(ck => ({ key: ck, data: el.cells?.[ck] || {} }));
                         setClipboardCells({ cells: cellsData, isCut: false, srcElId: el.id });
-                        showNotification(`📋 ${cellsData.length} sel disalin`);
+                        showNotification(`ط·آ·ط¢آ¸ط£آ¢أ¢â€ڑآ¬ط¢آ¹ط·آ·ط¢آ¹ط·آ·أ¢â‚¬ط›ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¥أ¢â‚¬إ“ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¹ ${cellsData.length} sel disalin`);
                         return;
                     }
                 }
@@ -5294,34 +5294,34 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
                         e.preventDefault();
                         const cellsData = ctSelCells.map(ck => ({ key: ck, data: el.cells?.[ck] || {} }));
                         setClipboardCells({ cells: cellsData, isCut: true, srcElId: el.id });
-                        showNotification(`✂️ ${cellsData.length} sel dipotong — klik sel tujuan lalu Ctrl+V`);
+                        showNotification(`ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ·ط¢آ¥ط£آ¢أ¢â€ڑآ¬ط¥â€œط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¹أ¢â‚¬ع©ط·آ·ط¢آ£ط·آ¢ط¢آ¯ط·آ·ط¢آ¢ط·آ¢ط¢آ¸ط·آ·ط¢آ¹ط·آ«أ¢â‚¬آ  ${cellsData.length} sel dipotong ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ klik sel tujuan lalu Ctrl+V`);
                         return;
                     }
                 }
 
-                // Element Copy (Ctrl+C) — salin elemen ke clipboard
+                // Element Copy (Ctrl+C) ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ salin elemen ke clipboard
                 if (e.key.toLowerCase() === 'c' && selectedIds.length > 0) {
                     e.preventDefault();
                     const copied = elements
                         .filter(el => selectedIds.includes(el.id))
                         .map(el => JSON.parse(JSON.stringify(el)));
                     setElementClipboard({ items: copied, isCut: false });
-                    showNotification(`📋 ${copied.length} elemen disalin — tekan Ctrl+V untuk tempel`);
+                    showNotification(`ط·آ·ط¢آ¸ط£آ¢أ¢â€ڑآ¬ط¢آ¹ط·آ·ط¢آ¹ط·آ·أ¢â‚¬ط›ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¥أ¢â‚¬إ“ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¹ ${copied.length} elemen disalin ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ tekan Ctrl+V untuk tempel`);
                     return;
                 }
 
-                // Element Cut (Ctrl+X) — potong elemen
+                // Element Cut (Ctrl+X) ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ potong elemen
                 if (e.key.toLowerCase() === 'x' && selectedIds.length > 0) {
                     e.preventDefault();
                     const cut = elements
                         .filter(el => selectedIds.includes(el.id))
                         .map(el => JSON.parse(JSON.stringify(el)));
                     setElementClipboard({ items: cut, isCut: true });
-                    showNotification(`✂️ ${cut.length} elemen dipotong — pindah halaman lalu tekan Ctrl+V`);
+                    showNotification(`ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ·ط¢آ¥ط£آ¢أ¢â€ڑآ¬ط¥â€œط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¹أ¢â‚¬ع©ط·آ·ط¢آ£ط·آ¢ط¢آ¯ط·آ·ط¢آ¢ط·آ¢ط¢آ¸ط·آ·ط¢آ¹ط·آ«أ¢â‚¬آ  ${cut.length} elemen dipotong ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ pindah halaman lalu tekan Ctrl+V`);
                     return;
                 }
 
-                // Table Cell Paste (Ctrl+V) — tempel sel tabel
+                // Table Cell Paste (Ctrl+V) ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ tempel sel tabel
                 if (e.key.toLowerCase() === 'v' && selectedIds.length === 1 && clipboardCells) {
                     const el = elements.find(el => el.id === selectedIds[0]);
                     if (el && el.type === 'table_custom' && ctSelCells && ctSelCells.length > 0) {
@@ -5356,12 +5356,12 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
                         
                         setPast(p => [...p, elements]); setFuture([]);
                         setElements(prev => prev.map(e => e.id === el.id ? { ...e, cells: newCells } : e));
-                        showNotification(isCellCut ? `✂️ Sel dipindahkan` : `📋 Sel ditempel`);
+                        showNotification(isCellCut ? `ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ·ط¢آ¥ط£آ¢أ¢â€ڑآ¬ط¥â€œط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¹أ¢â‚¬ع©ط·آ·ط¢آ£ط·آ¢ط¢آ¯ط·آ·ط¢آ¢ط·آ¢ط¢آ¸ط·آ·ط¢آ¹ط·آ«أ¢â‚¬آ  Sel dipindahkan` : `ط·آ·ط¢آ¸ط£آ¢أ¢â€ڑآ¬ط¢آ¹ط·آ·ط¢آ¹ط·آ·أ¢â‚¬ط›ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¥أ¢â‚¬إ“ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¹ Sel ditempel`);
                         return;
                     }
                 }
 
-                // Element Paste (Ctrl+V) — tempel elemen ke halaman aktif
+                // Element Paste (Ctrl+V) ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ tempel elemen ke halaman aktif
                 if (e.key.toLowerCase() === 'v' && elementClipboard && elementClipboard.items?.length > 0) {
                     e.preventDefault();
                     const now = Date.now();
@@ -5386,7 +5386,7 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
                         setElements(prev => [...prev, ...newEls]);
                     }
                     setSelectedIds(newEls.map(el => el.id));
-                    showNotification(`✅ ${newEls.length} elemen ditempel ke Halaman ${currentPage + 1}`);
+                    showNotification(`ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ·ط¢آ¥ط£آ¢أ¢â€ڑآ¬ط¥â€œط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¦ ${newEls.length} elemen ditempel ke Halaman ${currentPage + 1}`);
                     return;
                 }
             }
@@ -5417,7 +5417,7 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
                         newCells[ck] = { ...(newCells[ck] || {}), content: '' };
                     });
                     updateElement(el.id, { cells: newCells });
-                    showNotification(`🗑️ ${ctSelCells.length} sel dikosongkan`);
+                    showNotification(`ط·آ·ط¢آ¸ط£آ¢أ¢â€ڑآ¬ط¢آ¹ط·آ·ط¢آ¹ط·آ·أ¢â‚¬ط›ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬أ¢â‚¬إ’ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¹ط¢آ©ط·آ·ط¢آ£ط·آ¢ط¢آ¯ط·آ·ط¢آ¢ط·آ¢ط¢آ¸ط·آ·ط¢آ¹ط·آ«أ¢â‚¬آ  ${ctSelCells.length} sel dikosongkan`);
                     return;
                 }
             }
@@ -5518,7 +5518,7 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
                 orientation,
                 guides,
                 margins,
-                type: mode  // ← gunakan mode prop langsung, BUKAN dari field di DB
+                type: mode  // ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ط·آ·ط¢آ¹ط·آ¢ط¢آ¯ gunakan mode prop langsung, BUKAN dari field di DB
             }, true); // silent save
             setAutoSaveStatus('saved');
             // Hilangkan indikator setelah 3 detik
@@ -5625,7 +5625,7 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
                 orientation, 
                 guides, 
                 margins,
-                type: mode   // ← gunakan mode prop langsung
+                type: mode   // ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ط·آ·ط¢آ¹ط·آ¢ط¢آ¯ gunakan mode prop langsung
             }, false, `Menyimpan desain layout ${activeLayout}`);
         } catch (err) {
             console.error('saveLayout error:', err);
@@ -5808,7 +5808,7 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
             return;
         }
 
-        // Jika klik pada elemen yang sudah ada di multi-seleksi → mulai multi-drag
+        // Jika klik pada elemen yang sudah ada di multi-seleksi ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â‚¬â€چط¢آ¢ mulai multi-drag
         if (selectedIds.includes(el.id) && selectedIds.length > 1 && !el.locked) {
             const canvasRect = canvasRef.current.getBoundingClientRect();
             const scaleX = canvasWidth / canvasRect.width;
@@ -5991,7 +5991,7 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
         setDraggingType(null); setDragIndex(null); setInitialRect(null);
     };
 
-    // Klik pada background kanvas atau area scroll sekitarnya → mulai rubber-band selection
+    // Klik pada background kanvas atau area scroll sekitarnya ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â‚¬â€چط¢آ¢ mulai rubber-band selection
     const handleCanvasMouseDown = (e) => {
         // Jika dalam mode linking formula, klik di luar sel membatalkan mode
         if (linkingCell) {
@@ -6073,7 +6073,7 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
             // Jika bucket belum ada, fallback ke base64 hanya untuk gambar kecil
             const MAX_BASE64_SIZE = 200 * 1024;
             if (file.size <= MAX_BASE64_SIZE) {
-                showNotification('Storage tidak tersedia. Menggunakan Base64 (hanya untuk gambar kecil ≤200KB). Buat bucket "layout-images" di Supabase Storage untuk menghindari ini.', 'warning');
+                showNotification('Storage tidak tersedia. Menggunakan Base64 (hanya untuk gambar kecil ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ°ط·آ·ط¢آ¢ط·آ¢ط¢آ¤200KB). Buat bucket "layout-images" di Supabase Storage untuk menghindari ini.', 'warning');
                 const reader = new FileReader();
                 reader.onload = (ev) => { if (selectedElementId) updateElement(selectedElementId, { content: ev.target.result }); };
                 reader.readAsDataURL(file);
@@ -6193,13 +6193,13 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
                                 <span className="text-xs font-bold uppercase tracking-wider text-amber-700">Peringatan Kinerja</span>
                             </div>
                             <p className="text-[10px] leading-relaxed">
-                                Terdeteksi gambar besar dalam format <strong>Base64</strong> — penyebab simpan lambat.
+                                Terdeteksi gambar besar dalam format <strong>Base64</strong> ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ penyebab simpan lambat.
                             </p>
                             <button
                                 onClick={() => { setShowImageManager(true); loadStorageImages(); }}
                                 className="w-full bg-amber-500 hover:bg-amber-600 text-white py-1.5 rounded text-xs font-bold flex items-center justify-center gap-2 transition"
                             >
-                                <ImageIcon size={14}/> Buka Manajer Gambar → Upload Ulang
+                                <ImageIcon size={14}/> Buka Manajer Gambar ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â‚¬â€چط¢آ¢ Upload Ulang
                             </button>
                         </div>
                     )}
@@ -6217,7 +6217,7 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
                         {showImageManager && (
                             <div className="p-3 space-y-3">
                                 <p className="text-[10px] text-gray-500 leading-relaxed">
-                                    Upload gambar ke <strong>Supabase Storage</strong>. Gambar akan disimpan sebagai URL web — <strong>tidak membebani database</strong>.
+                                    Upload gambar ke <strong>Supabase Storage</strong>. Gambar akan disimpan sebagai URL web ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ <strong>tidak membebani database</strong>.
                                     Klik gambar di bawah untuk langsung ditempelkan ke elemen yang dipilih di kanvas.
                                 </p>
 
@@ -6237,7 +6237,7 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
 
                                 {!selectedElementId && (
                                     <p className="text-[10px] text-orange-600 bg-orange-50 border border-orange-200 rounded p-2">
-                                        ⚠️ <strong>Pilih elemen gambar di kanvas terlebih dahulu</strong> agar gambar yang diklik dari galeri langsung terpasang.
+                                        ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ·ط¢آ¹ط£آ¢أ¢â€ڑآ¬ط¹آ©ط·آ·ط¢آ¢ط·آ¢ط¢آ ط·آ·ط¢آ£ط·آ¢ط¢آ¯ط·آ·ط¢آ¢ط·آ¢ط¢آ¸ط·آ·ط¢آ¹ط·آ«أ¢â‚¬آ  <strong>Pilih elemen gambar di kanvas terlebih dahulu</strong> agar gambar yang diklik dari galeri langsung terpasang.
                                     </p>
                                 )}
 
@@ -6610,7 +6610,7 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
                                     <div className="mt-1">
                                         <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 bg-gray-50 p-2 border rounded cursor-pointer">
                                             <input type="checkbox" checked={activeEl?.isArabicDigits || false} onChange={e => updateElement(selectedElementId, { isArabicDigits: e.target.checked })} />
-                                            Ubah Angka (0-9) ke Arab (٠-٩)
+                                            Ubah Angka (0-9) ke Arab (ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ -ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ©)
                                         </label>
                                     </div>
                                     <div className="mt-1">
@@ -6918,7 +6918,7 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
                                                         ctSelCells.forEach(ck => { newCells[ck] = {...(newCells[ck]||{}), isArabicDigits: e.target.checked}; });
                                                         updateElement(selectedElementId, { cells: newCells });
                                                     }}/>
-                                                    Ubah Angka (0-9) ke Arab (٠-٩)
+                                                    Ubah Angka (0-9) ke Arab (ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ -ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ©)
                                                 </label>
                                                 <label className="flex items-center gap-2 text-[11px] text-gray-700 bg-gray-50 p-2 rounded cursor-pointer border mt-1">
                                                     <input type="checkbox" checked={activeEl.cells?.[ctSelCells[0]]?.isTerbilangArab || false} onChange={e => {
@@ -6955,7 +6955,7 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
                                                         }}
                                                         className="w-full mt-1 py-1.5 px-2 rounded text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center gap-1 transition"
                                                     >
-                                                        ⊞ Gabungkan Sel Terpilih (Merge)
+                                                        ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ·ط¢آ¸ط·آ¢ط¢آ¹ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¹أ¢â‚¬آ  Gabungkan Sel Terpilih (Merge)
                                                     </button>
                                                 ) : ctSelCells.length === 1 && ((activeEl.cells?.[ctSelCells[0]]?.colspan > 1) || (activeEl.cells?.[ctSelCells[0]]?.rowspan > 1)) ? (
                                                     <button
@@ -6980,7 +6980,7 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
                                                         }}
                                                         className="w-full mt-1 py-1.5 px-2 rounded text-xs font-bold bg-red-500 hover:bg-red-600 text-white flex items-center justify-center gap-1 transition"
                                                     >
-                                                        ⊟ Pisahkan Sel (Unmerge)
+                                                        ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ·ط¢آ¸ط·آ¢ط¢آ¹ط·آ·ط¢آ¹ط·آ·أ¢â‚¬ط› Pisahkan Sel (Unmerge)
                                                     </button>
                                                 ) : null}
                                                 <div className="flex gap-2">
@@ -7043,7 +7043,7 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
                                                 {/* Per-Cell Border Settings */}
                                                 <div className="mt-2 border border-orange-200 rounded-lg overflow-hidden">
                                                     <div className="bg-orange-50 px-2 py-1 flex items-center justify-between">
-                                                        <span className="text-[10px] font-bold text-orange-700 uppercase tracking-wide">🖊 Border Sel Ini</span>
+                                                        <span className="text-[10px] font-bold text-orange-700 uppercase tracking-wide">ط·آ·ط¢آ¸ط£آ¢أ¢â€ڑآ¬ط¢آ¹ط·آ·ط¢آ¹ط·آ·أ¢â‚¬ط›ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€œط·آ·ط¢آ¸ط·آ¢ط¢آ¹ Border Sel Ini</span>
                                                         <button
                                                             onClick={() => {
                                                                 const newCells = {...activeEl.cells};
@@ -7061,7 +7061,7 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
                                                             }}
                                                             className={`text-[9px] px-2 py-0.5 rounded font-bold transition ${activeEl.cells?.[ctSelCells[0]]?.cellBorder ? 'bg-orange-500 text-white' : 'bg-white text-orange-600 border border-orange-300 hover:bg-orange-100'}`}
                                                         >
-                                                            {activeEl.cells?.[ctSelCells[0]]?.cellBorder ? '✓ Aktif (Klik Reset)' : 'Aktifkan Override'}
+                                                            {activeEl.cells?.[ctSelCells[0]]?.cellBorder ? 'ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ·ط¢آ¥ط£آ¢أ¢â€ڑآ¬ط¥â€œط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¥أ¢â‚¬إ“ Aktif (Klik Reset)' : 'Aktifkan Override'}
                                                         </button>
                                                     </div>
                                                     {activeEl.cells?.[ctSelCells[0]]?.cellBorder && (() => {
@@ -7088,10 +7088,10 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
                                                                     <span className="text-[10px] text-gray-500 font-bold">Sisi yang tampil:</span>
                                                                     <div className="grid grid-cols-2 gap-1">
                                                                         {[
-                                                                            { key: 'top',    label: '↑ Atas' },
-                                                                            { key: 'right',  label: '→ Kanan' },
-                                                                            { key: 'bottom', label: '↓ Bawah' },
-                                                                            { key: 'left',   label: '← Kiri' },
+                                                                            { key: 'top',    label: 'ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¹ط¢آ© Atas' },
+                                                                            { key: 'right',  label: 'ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â‚¬â€چط¢آ¢ Kanan' },
+                                                                            { key: 'bottom', label: 'ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¥أ¢â‚¬إ“ Bawah' },
+                                                                            { key: 'left',   label: 'ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ط·آ·ط¢آ¹ط·آ¢ط¢آ¯ Kiri' },
                                                                         ].map(side => {
                                                                             const isOn = cb[side.key] !== false;
                                                                             return (
@@ -7103,8 +7103,8 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
                                                                         })}
                                                                     </div>
                                                                     <div className="grid grid-cols-2 gap-1 mt-1">
-                                                                        <button onClick={() => updateCB({ top: true, right: true, bottom: true, left: true })} className="py-1 rounded text-[9px] font-bold bg-gray-100 hover:bg-gray-200 border border-gray-300 text-gray-600">⬜ Semua ON</button>
-                                                                        <button onClick={() => updateCB({ top: false, right: false, bottom: false, left: false })} className="py-1 rounded text-[9px] font-bold bg-gray-100 hover:bg-gray-200 border border-gray-300 text-gray-600">✕ Semua OFF</button>
+                                                                        <button onClick={() => updateCB({ top: true, right: true, bottom: true, left: true })} className="py-1 rounded text-[9px] font-bold bg-gray-100 hover:bg-gray-200 border border-gray-300 text-gray-600">ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ·ط¢آ¢ط·آ¢ط¢آ¬ط·آ·ط¢آ¥ط£آ¢أ¢â€ڑآ¬ط¥â€œ Semua ON</button>
+                                                                        <button onClick={() => updateCB({ top: false, right: false, bottom: false, left: false })} className="py-1 rounded text-[9px] font-bold bg-gray-100 hover:bg-gray-200 border border-gray-300 text-gray-600">ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ·ط¢آ¥ط£آ¢أ¢â€ڑآ¬ط¥â€œط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¢ Semua OFF</button>
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -7115,7 +7115,7 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
                                                 {/* Insert / Delete Row & Column */}
                                                 <div className="mt-2 border border-emerald-200 rounded-lg overflow-hidden">
                                                     <div className="bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-800 uppercase tracking-wide flex items-center gap-1">
-                                                        ✦ Sisipkan / Hapus Baris &amp; Kolom
+                                                        ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ·ط¢آ¥ط£آ¢أ¢â€ڑآ¬ط¥â€œط·آ·ط¢آ¢ط·آ¢ط¢آ¦ Sisipkan / Hapus Baris &amp; Kolom
                                                     </div>
                                                     <div className="p-2 space-y-1.5">
                                                         {/* Row actions */}
@@ -7125,14 +7125,14 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
                                                                 title="Sisipkan baris kosong di ATAS baris sel yang dipilih"
                                                                 className="flex-1 py-1 px-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold rounded flex items-center justify-center gap-0.5 transition"
                                                             >
-                                                                ↑ Baris Atas
+                                                                ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¹ط¢آ© Baris Atas
                                                             </button>
                                                             <button
                                                                 onClick={() => insertRowAt(true)}
                                                                 title="Sisipkan baris kosong di BAWAH baris sel yang dipilih"
                                                                 className="flex-1 py-1 px-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold rounded flex items-center justify-center gap-0.5 transition"
                                                             >
-                                                                ↓ Baris Bawah
+                                                                ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¥أ¢â‚¬إ“ Baris Bawah
                                                             </button>
                                                             <button
                                                                 onClick={() => deleteRowAt()}
@@ -7140,7 +7140,7 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
                                                                 disabled={(activeEl.tableRows || 3) <= 1}
                                                                 className="flex-1 py-1 px-1 bg-red-500 hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-[10px] font-bold rounded flex items-center justify-center gap-0.5 transition"
                                                             >
-                                                                ✕ Baris
+                                                                ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ·ط¢آ¥ط£آ¢أ¢â€ڑآ¬ط¥â€œط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¢ Baris
                                                             </button>
                                                         </div>
                                                         {/* Column actions */}
@@ -7150,14 +7150,14 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
                                                                 title="Sisipkan kolom kosong di KIRI kolom sel yang dipilih"
                                                                 className="flex-1 py-1 px-1 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold rounded flex items-center justify-center gap-0.5 transition"
                                                             >
-                                                                ← Kol Kiri
+                                                                ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ط·آ·ط¢آ¹ط·آ¢ط¢آ¯ Kol Kiri
                                                             </button>
                                                             <button
                                                                 onClick={() => insertColAt(true)}
                                                                 title="Sisipkan kolom kosong di KANAN kolom sel yang dipilih"
                                                                 className="flex-1 py-1 px-1 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold rounded flex items-center justify-center gap-0.5 transition"
                                                             >
-                                                                → Kol Kanan
+                                                                ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â‚¬â€چط¢آ¢ Kol Kanan
                                                             </button>
                                                             <button
                                                                 onClick={() => deleteColAt()}
@@ -7165,7 +7165,7 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
                                                                 disabled={(activeEl.tableCols || 3) <= 1}
                                                                 className="flex-1 py-1 px-1 bg-red-500 hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-[10px] font-bold rounded flex items-center justify-center gap-0.5 transition"
                                                             >
-                                                                ✕ Kolom
+                                                                ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ·ط¢آ¥ط£آ¢أ¢â€ڑآ¬ط¥â€œط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¢ Kolom
                                                             </button>
                                                         </div>
                                                         <p className="text-[9px] text-gray-400 leading-tight">Baris/kolom disisipkan berdasarkan sel yang dipilih. Data sel yang ada digeser otomatis.</p>
@@ -7186,7 +7186,7 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
                                 <button onClick={() => {
                                     const cut = elements.filter(el => el.id === selectedElementId).map(el => JSON.parse(JSON.stringify(el)));
                                     setElementClipboard({ items: cut, isCut: true });
-                                    showNotification(`✂️ ${cut.length} elemen dipotong — pindah halaman lalu tekan Ctrl+V atau klik tombol Tempel`);
+                                    showNotification(`ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ·ط¢آ¥ط£آ¢أ¢â€ڑآ¬ط¥â€œط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¹أ¢â‚¬ع©ط·آ·ط¢آ£ط·آ¢ط¢آ¯ط·آ·ط¢آ¢ط·آ¢ط¢آ¸ط·آ·ط¢آ¹ط·آ«أ¢â‚¬آ  ${cut.length} elemen dipotong ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ pindah halaman lalu tekan Ctrl+V atau klik tombol Tempel`);
                                 }} className="flex-1 min-w-[30%] bg-orange-50 hover:bg-orange-100 text-orange-600 py-2 rounded text-[11px] font-bold flex justify-center items-center gap-1 transition" title="Potong elemen ke clipboard">
                                     <Scissors size={14}/> Potong
                                 </button>
@@ -7286,7 +7286,7 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
                 {previewMode && (
                     <div className="bg-indigo-50 border-2 border-indigo-500 px-4 py-2 rounded-xl shadow-lg flex flex-wrap items-center gap-3 mb-4 shrink-0 sticky top-0 z-50 animate-fade-in-down w-full max-w-4xl">
                         <div className="flex items-center gap-2 text-indigo-700 font-bold whitespace-nowrap">
-                            <span className="text-xl">👁️</span> Preview Data Asli
+                            <span className="text-xl">ط·آ·ط¢آ¸ط£آ¢أ¢â€ڑآ¬ط¢آ¹ط·آ·ط¢آ¹ط·آ·أ¢â‚¬ط›ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¹ط¢آ©ط·آ·ط¢آ¸ط·آ¢ط¢آ¾ط·آ·ط¢آ£ط·آ¢ط¢آ¯ط·آ·ط¢آ¢ط·آ¢ط¢آ¸ط·آ·ط¢آ¹ط·آ«أ¢â‚¬آ </span> Preview Data Asli
                         </div>
                         <div className="w-px h-6 bg-indigo-200 hidden sm:block"></div>
                         <select
@@ -7353,7 +7353,7 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
                             <>
                                 <div className="w-px h-4 bg-gray-300"></div>
                                 <div className="flex items-center gap-2 bg-indigo-600 text-white rounded-full px-3 py-1 shadow-md animate-pulse">
-                                    <span className="text-xs font-bold">🔗 MODE FORMULA: Klik sel tujuan!</span>
+                                    <span className="text-xs font-bold">ط·آ·ط¢آ¸ط£آ¢أ¢â€ڑآ¬ط¢آ¹ط·آ·ط¢آ¹ط·آ·أ¢â‚¬ط›ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬أ¢â‚¬إ’ MODE FORMULA: Klik sel tujuan!</span>
                                     <button
                                         onClick={() => {
                                             updateElement(linkingCell.elId, (targetEl) => {
@@ -7374,7 +7374,7 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
                             <>
                                 <div className="w-px h-4 bg-gray-300"></div>
                                 <div className="flex items-center gap-1 bg-amber-50 border border-amber-300 rounded-full px-2 py-0.5">
-                                    <span className="text-amber-600 text-xs">{elementClipboard.isCut ? '✂️' : '📋'}</span>
+                                    <span className="text-amber-600 text-xs">{elementClipboard.isCut ? 'ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ·ط¢آ¥ط£آ¢أ¢â€ڑآ¬ط¥â€œط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¹أ¢â‚¬ع©ط·آ·ط¢آ£ط·آ¢ط¢آ¯ط·آ·ط¢آ¢ط·آ¢ط¢آ¸ط·آ·ط¢آ¹ط·آ«أ¢â‚¬آ ' : 'ط·آ·ط¢آ¸ط£آ¢أ¢â€ڑآ¬ط¢آ¹ط·آ·ط¢آ¹ط·آ·أ¢â‚¬ط›ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¥أ¢â‚¬إ“ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¹'}</span>
                                     <span className="text-amber-800 text-[11px] font-bold">{elementClipboard.items.length} el</span>
                                     <button
                                         onClick={() => {
@@ -7397,14 +7397,14 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
                                                 setElements(prev => [...prev, ...newEls]);
                                             }
                                             setSelectedIds(newEls.map(el => el.id));
-                                            showNotification(`✅ ${newEls.length} elemen ditempel ke Halaman ${currentPage + 1}`);
+                                            showNotification(`ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ·ط¢آ¥ط£آ¢أ¢â€ڑآ¬ط¥â€œط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¦ ${newEls.length} elemen ditempel ke Halaman ${currentPage + 1}`);
                                         }}
                                         className="text-[11px] font-bold text-emerald-700 bg-emerald-100 hover:bg-emerald-200 px-1.5 py-0.5 rounded-full transition"
                                         title={`Tempel ke Halaman ${currentPage + 1} (atau tekan Ctrl+V)`}
                                     >
                                         Tempel
                                     </button>
-                                    <button onClick={() => setElementClipboard(null)} className="text-gray-400 hover:text-red-500 ml-0.5 text-xs leading-none" title="Bersihkan clipboard">✕</button>
+                                    <button onClick={() => setElementClipboard(null)} className="text-gray-400 hover:text-red-500 ml-0.5 text-xs leading-none" title="Bersihkan clipboard">ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ·ط¢آ¥ط£آ¢أ¢â€ڑآ¬ط¥â€œط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¢</button>
                                 </div>
                             </>
                         )}
@@ -7496,7 +7496,7 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
                     {showRuler && <div style={{ position: 'absolute', left: 0, top: 0, width: 40, height: 28, background: '#1e293b' }}/>}
                     {/* Canvas wrapper */}
                     <div className="print-wrapper" style={{ position: 'absolute', left: showRuler ? 40 : 0, top: showRuler ? 28 : 0, width: canvasWidth * zoom, height: canvasHeight * zoom }}>
-                        {/* drag bars — only show when ruler is hidden to avoid overlap */}
+                        {/* drag bars ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ only show when ruler is hidden to avoid overlap */}
                         {showGuideBars && !showRuler && (
                             <div onMouseDown={createHGuide} title="Tarik ke bawah untuk buat garis bantu horizontal" className="absolute top-[-22px] left-0 right-0 h-[22px] bg-slate-700 text-slate-300 text-xs flex justify-center items-center cursor-row-resize hover:bg-slate-600 transition select-none rounded-t"><Ruler size={12} className="mr-1"/> Tarik Garis Horizontal</div>
                         )}
@@ -7670,6 +7670,15 @@ const exportGradesToExcel = (grades, studentsInClass, subjectsInClass, className
             cols.push({ type: 'sikap', traitId: trait.id });
         });
 
+        // Presensi Santri
+        (data.presences || []).forEach(p => {
+            headers1.push(p.name);
+            headers2.push('');
+            merges.push({ s: { r: 0, c: currentCol }, e: { r: 1, c: currentCol } });
+            currentCol += 1;
+            cols.push({ type: 'presensi', presenceId: p.id });
+        });
+
         // Ekskul
         const ekskulSlots = [
             { label: 'Ekskul 1 Nama', key: 'ekskul1_nama' },
@@ -7740,6 +7749,8 @@ const exportGradesToExcel = (grades, studentsInClass, subjectsInClass, className
                     }
                 } else if (col.type === 'sikap') {
                     row.push(safeVal(grades[st.id]?.[col.traitId]));
+                } else if (col.type === 'presensi') {
+                    row.push(safeVal(grades[st.id]?.[col.presenceId]));
                 } else if (col.type === 'ekskul' || col.type === 'catatan') {
                     row.push(safeVal(grades[st.id]?.[col.key]));
                 }
@@ -7881,6 +7892,13 @@ const importGradesFromExcel = async (file, studentsInClass, subjectsInClass, act
                             continue;
                         }
 
+                        // 2b. Presensi Santri
+                        const matchedPresence = (data.presences || []).find(p => cell0Lower.includes(p.name.toLowerCase()));
+                        if (matchedPresence) {
+                            colMap[i] = { type: 'presensi', presenceId: matchedPresence.id };
+                            continue;
+                        }
+
                         // 3. Ekskul
                         const normalizeHeader = (cell) => String(cell).toLowerCase().replace(/[\s\-_]+/g, ' ').trim();
                         const v = normalizeHeader(cell0);
@@ -7921,11 +7939,11 @@ const importGradesFromExcel = async (file, studentsInClass, subjectsInClass, act
                         });
                     });
                 } else if (activeInputTab === 'ekskul') {
-                    // Helper: normalise cell text — strip spaces/dashes, lowercase
+                    // Helper: normalise cell text ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ strip spaces/dashes, lowercase
                     const normalizeHeader = (cell) =>
                         String(cell).toLowerCase().replace(/[\s\-_]+/g, ' ').trim();
 
-                    // Flexible matcher — returns ekskul slot key or null
+                    // Flexible matcher ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ returns ekskul slot key or null
                     const matchEkskulHeader = (raw) => {
                         const v = normalizeHeader(raw);
                         // accept variations: "ekskul 1 nama", "ekskul1nama", "nama ekskul 1", etc.
@@ -8022,6 +8040,8 @@ const importGradesFromExcel = async (file, studentsInClass, subjectsInClass, act
                                     importedGrades[student.id][mapData.subId][mapData.field] = convertArabicToLatin(val);
                                 } else if (mapData.type === 'sikap') {
                                     importedGrades[student.id][mapData.traitId] = val;
+                                } else if (mapData.type === 'presensi') {
+                                    importedGrades[student.id][mapData.presenceId] = convertArabicToLatin(val);
                                 } else if (mapData.type === 'ekskul' || mapData.type === 'catatan') {
                                     importedGrades[student.id][mapData.key] = val;
                                 }
@@ -8238,6 +8258,10 @@ const InputNilai = ({ activeInputTab }) => {
             (data.characterTraits || []).forEach(trait => {
                 columns.push({ type: 'sikap', traitId: trait.id });
             });
+            // Presensi
+            (data.presences || []).forEach(p => {
+                columns.push({ type: 'presensi', presenceId: p.id });
+            });
             // Ekskul
             const ekskulSlots = [
                 { namaKey: 'ekskul1_nama', namaArKey: 'ekskul1_nama_ar', nilaiKey: 'ekskul1_nilai' },
@@ -8317,7 +8341,7 @@ const InputNilai = ({ activeInputTab }) => {
                     let isDisabled = false;
                     if (col.type === 'pelajaran') {
                         isDisabled = currentUser?.role === 'guru' && !currentUser?.assignedSubjectIds?.includes(col.subId);
-                    } else if (['sikap', 'ekskul', 'catatan'].includes(col.type)) {
+                    } else if (['sikap', 'ekskul', 'catatan', 'presensi'].includes(col.type)) {
                         isDisabled = currentUser?.role === 'guru' && !isWaliKelas;
                     }
                     if (isDisabled) return;
@@ -8335,6 +8359,8 @@ const InputNilai = ({ activeInputTab }) => {
                         copy[st.id][col.subId] = existing;
                     } else if (col.type === 'sikap') {
                         copy[st.id][col.traitId] = latinVal;
+                    } else if (col.type === 'presensi') {
+                        copy[st.id][col.presenceId] = latinVal;
                     } else if (col.type === 'ekskul' || col.type === 'catatan') {
                         copy[st.id][col.key] = latinVal;
                     }
@@ -8379,7 +8405,7 @@ const InputNilai = ({ activeInputTab }) => {
                     let isDisabled = false;
                     if (col.type === 'pelajaran') {
                         isDisabled = currentUser?.role === 'guru' && !currentUser?.assignedSubjectIds?.includes(col.subId);
-                    } else if (['sikap', 'ekskul', 'catatan'].includes(col.type)) {
+                    } else if (['sikap', 'ekskul', 'catatan', 'presensi'].includes(col.type)) {
                         isDisabled = currentUser?.role === 'guru' && !isWaliKelas;
                     }
                     if (isDisabled) continue;
@@ -8394,8 +8420,10 @@ const InputNilai = ({ activeInputTab }) => {
                         copy[st.id][col.subId] = existing;
                     } else if (col.type === 'sikap') {
                         copy[st.id][col.traitId] = '';
+                    } else if (col.type === 'presensi') {
+                        copy[st.id][col.presenceId] = '';
                     } else if (col.type === 'ekskul' || col.type === 'catatan') {
-                        copy[st.id][col.key] = '';
+                        copy[st.id][col.key] = ''
                     }
                 }
             }
@@ -8484,6 +8512,8 @@ const InputNilai = ({ activeInputTab }) => {
                         }
                     } else if (col.type === 'sikap') {
                         val = localGrades[st.id]?.[col.traitId] || '';
+                    } else if (col.type === 'presensi') {
+                        val = localGrades[st.id]?.[col.presenceId] || '';
                     } else if (col.type === 'ekskul' || col.type === 'catatan') {
                         val = localGrades[st.id]?.[col.key] || '';
                     }
@@ -8547,7 +8577,7 @@ const InputNilai = ({ activeInputTab }) => {
                         let isDisabled = false;
                         if (col.type === 'pelajaran') {
                             isDisabled = currentUser?.role === 'guru' && !currentUser?.assignedSubjectIds?.includes(col.subId);
-                        } else if (['sikap', 'ekskul', 'catatan'].includes(col.type)) {
+                        } else if (['sikap', 'ekskul', 'catatan', 'presensi'].includes(col.type)) {
                             isDisabled = currentUser?.role === 'guru' && !isWaliKelas;
                         }
                         if (isDisabled) return;
@@ -8565,6 +8595,8 @@ const InputNilai = ({ activeInputTab }) => {
                             copy[st.id][col.subId] = existing;
                         } else if (col.type === 'sikap') {
                             copy[st.id][col.traitId] = latinVal;
+                        } else if (col.type === 'presensi') {
+                            copy[st.id][col.presenceId] = latinVal;
                         } else if (col.type === 'ekskul' || col.type === 'catatan') {
                             copy[st.id][col.key] = latinVal;
                         }
@@ -8691,7 +8723,7 @@ const InputNilai = ({ activeInputTab }) => {
                 return merged;
             });
             
-            showNotification(`✓ ${Object.keys(importedGrades).length} siswa berhasil diimpor!`);
+            showNotification(`ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ·ط¢آ¥ط£آ¢أ¢â€ڑآ¬ط¥â€œط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¥أ¢â‚¬إ“ ${Object.keys(importedGrades).length} siswa berhasil diimpor!`);
             // Reset file input
             e.target.value = '';
         } catch (err) {
@@ -8744,10 +8776,10 @@ const InputNilai = ({ activeInputTab }) => {
         setZoomLevel(100);
     };
 
-    // ──────────────────────────────────────────
+    // ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬
     // Hapus data: menentukan field apa saja yang
     // perlu di-clear berdasarkan tab aktif.
-    // ──────────────────────────────────────────
+    // ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬
     const getFieldsForTab = (studentId) => {
         if (activeInputTab === 'terpadu') {
             const fields = [];
@@ -9123,7 +9155,7 @@ const InputNilai = ({ activeInputTab }) => {
                         });
                     });
                 });
-                showNotification(`✓ ${updatedCount} data nilai berhasil ditempelkan dari Excel`, 'success');
+                showNotification(`ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ·ط¢آ¥ط£آ¢أ¢â€ڑآ¬ط¥â€œط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¥أ¢â‚¬إ“ ${updatedCount} data nilai berhasil ditempelkan dari Excel`, 'success');
             } else {
                 showNotification('Tidak ada data yang cocok ditemukan. Pastikan nama/NIS siswa sesuai.', 'warning');
             }
@@ -9221,7 +9253,7 @@ const InputNilai = ({ activeInputTab }) => {
                 });
                 return merged;
             });
-            showNotification(`✓ ${updatedCount} data nilai berhasil ditempelkan dari Excel`, 'success');
+            showNotification(`ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ·ط¢آ¥ط£آ¢أ¢â€ڑآ¬ط¥â€œط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¥أ¢â‚¬إ“ ${updatedCount} data nilai berhasil ditempelkan dari Excel`, 'success');
         }
     };
 
@@ -9243,6 +9275,7 @@ const InputNilai = ({ activeInputTab }) => {
         }
         if (activeInputTab === 'terpadu') {
             const characterTraits = data.characterTraits || [];
+            const presensiFields = data.presences || [];
             const ekskulSlots = [
                 { namaKey: 'ekskul1_nama', namaArKey: 'ekskul1_nama_ar', nilaiKey: 'ekskul1_nilai', label: 'Ekskul 1' },
                 { namaKey: 'ekskul2_nama', namaArKey: 'ekskul2_nama_ar', nilaiKey: 'ekskul2_nilai', label: 'Ekskul 2' },
@@ -9263,7 +9296,12 @@ const InputNilai = ({ activeInputTab }) => {
                             )}
                             {characterTraits.length > 0 && (
                                 <th colSpan={characterTraits.length} className="p-2 border-b border-r border-blue-600 text-center bg-blue-800">
-                                    SIKAP & KESANTRIAN
+                                    SIKAP &amp; KESANTRIAN
+                                </th>
+                            )}
+                            {presensiFields.length > 0 && (
+                                <th colSpan={presensiFields.length} className="p-2 border-b border-r border-teal-600 text-center bg-teal-800">
+                                    PRESENSI SANTRI
                                 </th>
                             )}
                             <th colSpan={ekskulSlots.length * 3} className="p-2 border-b border-r border-orange-600 text-center bg-orange-800">
@@ -9286,6 +9324,11 @@ const InputNilai = ({ activeInputTab }) => {
                                 <th key={trait.id} rowSpan={2} className="p-2 border-b border-r border-blue-500 text-center bg-blue-600 min-w-[95px]">
                                     <div className="font-bold text-[11px]">{trait.name}</div>
                                     <div className="text-[9px] text-blue-200 mt-0.5">{`{{${idToShortKey[trait.id] || trait.id}}}`}</div>
+                                </th>
+                            ))}
+                            {presensiFields.map(p => (
+                                <th key={p.id} rowSpan={2} className="p-2 border-b border-r border-teal-500 text-center bg-teal-600 min-w-[70px]">
+                                    <div className="font-bold text-[11px]">{p.name}</div>
                                 </th>
                             ))}
                             {ekskulSlots.map(slot => (
@@ -9318,7 +9361,8 @@ const InputNilai = ({ activeInputTab }) => {
                         {studentsInClass.map((st, idx) => {
                             const lessonsStart = 0;
                             const sikapStart = subjectsInClass.length * 3;
-                            const ekskulStart = sikapStart + characterTraits.length;
+                            const presensiStart = sikapStart + characterTraits.length;
+                            const ekskulStart = presensiStart + presensiFields.length;
                             const catatanColIdx = ekskulStart + ekskulSlots.length * 3;
 
                             const catatanVal = localGrades[st.id]?.catatan_wali || '';
@@ -9406,6 +9450,28 @@ const InputNilai = ({ activeInputTab }) => {
                                                     onMouseEnter={() => handleMouseEnter(idx, traitColIdx)}
                                                     onKeyDown={handleKeyDown}
                                                     data-cell-type="grade-input" data-student-id={st.id} data-trait-id={trait.id} data-field-type="sikap"
+                                                />
+                                            </td>
+                                        );
+                                    })}
+
+                                    {/* Kolom Presensi Santri */}
+                                    {presensiFields.map((p, pIdx) => {
+                                        const val = localGrades[st.id]?.[p.id] || '';
+                                        const pColIdx = presensiStart + pIdx;
+                                        const isPColSelected = isCellSelected(idx, pColIdx);
+                                        return (
+                                            <td key={p.id} className={`p-1 border-r text-center ${isPColSelected ? 'bg-blue-100' : 'bg-white hover:bg-teal-50/50'}`}>
+                                                <input
+                                                    type="text" dir="auto" placeholder="0"
+                                                    className={`w-full text-center font-bold text-xs p-1.5 border rounded outline-none ${isPColSelected ? 'border-blue-500 ring-2 ring-blue-200 bg-blue-50' : 'bg-white focus:border-teal-500 text-teal-900'}`}
+                                                    value={val}
+                                                    onChange={e => handleGradeChange(st.id, p.id, e.target.value)}
+                                                    onPaste={e => handlePasteGrades(e, idx, pColIdx)}
+                                                    onMouseDown={() => handleMouseDown(idx, pColIdx)}
+                                                    onMouseEnter={() => handleMouseEnter(idx, pColIdx)}
+                                                    onKeyDown={handleKeyDown}
+                                                    data-cell-type="grade-input" data-student-id={st.id} data-field-type="presensi"
                                                 />
                                             </td>
                                         );
@@ -9645,7 +9711,7 @@ const InputNilai = ({ activeInputTab }) => {
                                 <td className="p-3 font-semibold sticky left-12 bg-white border-r shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] z-10">{st.nama}</td>
                                 {data.presences.map(p => (
                                     <td key={p.id} className="p-2 border-r bg-white hover:bg-indigo-50">
-                                        <input type="text" dir="auto" title="Ketik angka Arab atau Latin (٠-٩ atau 0-9)" className="w-full p-2 border rounded text-center font-bold outline-none focus:border-indigo-500 text-indigo-900"
+                                        <input type="text" dir="auto" title="Ketik angka Arab atau Latin (ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ -ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ© atau 0-9)" className="w-full p-2 border rounded text-center font-bold outline-none focus:border-indigo-500 text-indigo-900"
                                             value={localGrades[st.id]?.[p.id] || ''} onChange={e => handleGradeChange(st.id, p.id, e.target.value)} placeholder="-"
                                             data-cell-type="grade-input" data-student-id={st.id} data-presence-id={p.id} data-field-type="presensi" />
                                     </td>
@@ -9763,7 +9829,7 @@ const InputNilai = ({ activeInputTab }) => {
                                                     className="w-full p-2 border rounded text-sm outline-none focus:border-orange-500 bg-white text-gray-800 font-arabic text-right"
                                                     value={localGrades[st.id]?.[slot.namaArKey] || ''}
                                                     onChange={e => handleGradeChange(st.id, slot.namaArKey, e.target.value)}
-                                                    placeholder="الرماية"
+                                                    placeholder="ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¹â€ ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ±ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¦ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¸ط·آ¢ط¢آ¹ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ©"
                                                 />
                                                 <button
                                                     onClick={async () => {
@@ -9788,7 +9854,7 @@ const InputNilai = ({ activeInputTab }) => {
                                                     className="p-2 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 transition"
                                                     title="Auto Translate dari Bahasa Indonesia ke Arab"
                                                 >
-                                                    🌐
+                                                    ط·آ·ط¢آ¸ط£آ¢أ¢â€ڑآ¬ط¢آ¹ط·آ·ط¢آ¹ط·آ·أ¢â‚¬ط›ط·آ·ط¢آ¥ط£آ¢أ¢â€ڑآ¬أ¢â€‍آ¢ط·آ·ط¢آ¹ط·آ¢ط¢آ¯
                                                 </button>
                                             </div>
                                         </td>
@@ -9859,7 +9925,7 @@ const InputNilai = ({ activeInputTab }) => {
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex flex-wrap gap-2">
                         <button onClick={() => handleZoom('in')} className="bg-slate-600 hover:bg-slate-700 text-white px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition"><ZoomIn size={16}/>+</button>
-                        <button onClick={() => handleZoom('out')} className="bg-slate-600 hover:bg-slate-700 text-white px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition"><ZoomOut size={16}/>−</button>
+                        <button onClick={() => handleZoom('out')} className="bg-slate-600 hover:bg-slate-700 text-white px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition"><ZoomOut size={16}/>ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ·ط¢آ«ط£آ¢أ¢â€ڑآ¬ط¢آ ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â‚¬â€چط¢آ¢</button>
                         <button onClick={handleResetZoom} className="bg-slate-600 hover:bg-slate-700 text-white px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition"><Maximize size={16}/>100%</button>
                         <button onClick={toggleHeaderHidden} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition">{isHeaderHidden ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}{isHeaderHidden ? 'Tampilkan Header' : 'Sembunyikan Header'}</button>
                         <button onClick={toggleFullscreen} className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition">{isFullscreen ? <Minimize size={16}/> : <Maximize size={16}/>} {isFullscreen ? 'Keluar Fullscreen' : 'Fullscreen'}</button>
@@ -9938,7 +10004,7 @@ const InputNilai = ({ activeInputTab }) => {
                                 <Trash2 size={16}/> Reset Tab Ini
                             </button>
                         )}
-                        {!selectedClass && <p className="text-xs text-gray-600 ml-auto">💡 Unduh template, isi nilainya, lalu impor kembali untuk update massal</p>}
+                        {!selectedClass && <p className="text-xs text-gray-600 ml-auto">ط·آ·ط¢آ¸ط£آ¢أ¢â€ڑآ¬ط¢آ¹ط·آ·ط¢آ¹ط·آ·أ¢â‚¬ط›ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â‚¬â€چط¢آ¢ط·آ·ط¢آ·ط·آ¥أ¢â‚¬â„¢ Unduh template, isi nilainya, lalu impor kembali untuk update massal</p>}
                     </div>
                 )}
             </div>
@@ -9960,10 +10026,35 @@ const PresensiSantri = () => {
     const [activeTab, setActiveTab] = useState('harian'); // 'harian' | 'rekap'
     const [selectedClass, setSelectedClass] = useState('');
     const [selectedSubject, setSelectedSubject] = useState('general');
-    const [selectedDate, setSelectedDate] = useState(() => {
-        const tzoffset = (new Date()).getTimezoneOffset() * 60000;
-        return (new Date(Date.now() - tzoffset)).toISOString().slice(0, 10);
+    const [selectedDateTime, setSelectedDateTime] = useState(() => {
+        // Format: YYYY-MM-DDTHH:mm (untuk datetime-local input)
+        const now = new Date();
+        const tzoffset = now.getTimezoneOffset() * 60000;
+        const local = new Date(now.getTime() - tzoffset);
+        return local.toISOString().slice(0, 16);
     });
+    // Ambil tanggal saja (YYYY-MM-DD) dari selectedDateTime untuk digunakan sebagai docId
+    const selectedDate = selectedDateTime.slice(0, 10);
+
+    // Helper: format tampilan tanggal lengkap (hari, tanggal, bulan, tahun, jam)
+    const formatDateTimeFull = (dtStr) => {
+        if (!dtStr) return '-';
+        const d = new Date(dtStr);
+        if (isNaN(d)) return dtStr;
+        const HARI = ['Ahad', 'Senin', 'Selasa', 'Rabu', 'Kamis', "Jum'at", 'Sabtu'];
+        const BULAN = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+        // Koreksi timezone lokal
+        const tzoffset = d.getTimezoneOffset() * 60000;
+        const local = new Date(d.getTime() + 0); // datetime-local sudah lokal
+        const hariStr = HARI[d.getDay()];
+        const tgl = d.getDate();
+        const bulan = BULAN[d.getMonth()];
+        const tahun = d.getFullYear();
+        const jam = String(d.getHours()).padStart(2, '0');
+        const menit = String(d.getMinutes()).padStart(2, '0');
+        return `${hariStr}, ${tgl} ${bulan} ${tahun} ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¥أ¢â‚¬إ“ ${jam}:${menit}`;
+    };
+
     const [dailyPresence, setDailyPresence] = useState({});
     const [rekapData, setRekapData] = useState({});
     const [isSaving, setIsSaving] = useState(false);
@@ -9994,6 +10085,15 @@ const PresensiSantri = () => {
         }
         return subs;
     }, [selectedClass, data.subjects, classesData, currentUser]);
+
+    // Auto-set mapel ke mapel pertama guru saat kelas berubah
+    useEffect(() => {
+        if (currentUser?.role === 'guru' && subjectsInClass.length > 0) {
+            setSelectedSubject(subjectsInClass[0].id);
+        } else {
+            setSelectedSubject('general');
+        }
+    }, [selectedClass, subjectsInClass.length, currentUser?.role]);
 
     const activeStudents = getStudentsForYear(data.studentSnapshots || [], activeSetting, data.students || []);
     const studentsInClass = useMemo(() => {
@@ -10057,6 +10157,7 @@ const PresensiSantri = () => {
             class: selectedClass,
             subject: selectedSubject,
             date: selectedDate,
+            dateTime: selectedDateTime,
             data: dailyPresence,
             tahun: activeSetting.tahun,
             semester: activeSetting.semester
@@ -10221,14 +10322,19 @@ const PresensiSantri = () => {
 
                             {/* Date Selector */}
                             <div>
-                                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Tanggal Mengajar</label>
+                                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Hari / Tanggal & Jam</label>
                                 <input
-                                    type="date"
+                                    type="datetime-local"
                                     className="w-full p-2.5 border rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition"
-                                    value={selectedDate}
-                                    onChange={e => setSelectedDate(e.target.value)}
+                                    value={selectedDateTime}
+                                    onChange={e => setSelectedDateTime(e.target.value)}
                                     disabled={!selectedClass}
                                 />
+                                {selectedDateTime && (
+                                    <p className="text-xs text-emerald-700 font-semibold mt-1.5 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-100">
+                                        ط·آ·ط¢آ¸ط£آ¢أ¢â€ڑآ¬ط¢آ¹ط·آ·ط¢آ¹ط·آ·أ¢â‚¬ط›ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¥أ¢â‚¬إ“ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¦ {formatDateTimeFull(selectedDateTime)}
+                                    </p>
+                                )}
                             </div>
                         </>
                     )}
@@ -10245,7 +10351,7 @@ const PresensiSantri = () => {
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
                     <div className="p-6 border-b border-gray-100 flex flex-wrap justify-between items-center gap-4 bg-gray-50/50">
                         <div className="font-semibold text-gray-800">
-                            Daftar Kehadiran: <span className="text-emerald-700 font-bold">{selectedClassObj?.name}</span> ({selectedDate})
+                            Daftar Kehadiran: <span className="text-emerald-700 font-bold">{selectedClassObj?.name}</span> &mdash; <span className="text-blue-700 font-normal text-sm">{formatDateTimeFull(selectedDateTime)}</span>
                         </div>
                         <div className="flex gap-2">
                             <button
@@ -10422,12 +10528,12 @@ const PresensiSantri = () => {
 const calculateIjazahPredicate = (average) => {
     const val = parseFloat(average);
     if (isNaN(val) || val === 0) return { ar: '', id: '' };
-    if (val >= 90) return { ar: 'ممتاز', id: 'Mumtaz (Istimewa)' };
-    if (val >= 80) return { ar: 'جيد جدا', id: 'Jayyid Jiddan (Sangat Baik)' };
-    if (val >= 70) return { ar: 'جيد', id: 'Jayyid (Baik)' };
-    if (val >= 60) return { ar: 'مقبول', id: 'Maqbul (Cukup)' };
-    if (val >= 50) return { ar: 'ضعيف', id: "Dha'if (Kurang)" };
-    return { ar: 'راسب', id: 'Rasib (Gagal)' };
+    if (val >= 90) return { ar: 'ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¦ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¦ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¹ط·آ¢ط¢آ¾ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ²', id: 'Mumtaz (Istimewa)' };
+    if (val >= 80) return { ar: 'ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¬ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¸ط·آ¢ط¢آ¹ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¯ ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¬ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¯ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§', id: 'Jayyid Jiddan (Sangat Baik)' };
+    if (val >= 70) return { ar: 'ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¬ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¸ط·آ¢ط¢آ¹ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¯', id: 'Jayyid (Baik)' };
+    if (val >= 60) return { ar: 'ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¦ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¹أ¢â‚¬ع©ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¨ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ«ط£آ¢أ¢â€ڑآ¬ط¢آ ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¹â€ ', id: 'Maqbul (Cukup)' };
+    if (val >= 50) return { ar: 'ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¶ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¹ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¸ط·آ¢ط¢آ¹ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¸ط·آ¢ط¢آ¾', id: "Dha'if (Kurang)" };
+    return { ar: 'ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ±ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ³ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¨', id: 'Rasib (Gagal)' };
 };
 
 const InputIjazah = () => {
@@ -10493,7 +10599,7 @@ const InputIjazah = () => {
 
     // Untuk Kelola Nilai Ijazah, kita butuh santri dari SEMUA semester dalam satu tahun ajaran
     // (bukan hanya semester aktif), karena ijazah mencakup Ganjil + Genap sekaligus.
-    // Jika ada snapshot → gunakan snapshot. Jika tidak → ambil dari allData.students (filter by tahun saja).
+    // Jika ada snapshot ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â‚¬â€چط¢آ¢ gunakan snapshot. Jika tidak ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â‚¬â€چط¢آ¢ ambil dari allData.students (filter by tahun saja).
     const allYearStudents = useMemo(() => {
         if (!activeSetting?.tahun) return data.students;
         // Deduplicate by student id - prioritaskan yang tahun cocok
@@ -10901,14 +11007,14 @@ const InputIjazah = () => {
                                 {/* Row 2 - Sub-headers */}
                                 <tr className="bg-emerald-700 text-white text-xs text-center">
                                     <th className="p-2 border-b border-r border-emerald-600 w-16">Total</th>
-                                    <th className="p-2 border-b border-r border-emerald-600 w-16">Rata²</th>
+                                    <th className="p-2 border-b border-r border-emerald-600 w-16">Rataط·آ·ط¢آ·ط·آ¢ط¢آ¢ط·آ·ط¢آ¢ط·آ¢ط¢آ²</th>
                                     <th className="p-2 border-b border-r border-emerald-600 min-w-[200px]">Predikat</th>
                                     {ijazahSubjects.map(sub => (
                                         <React.Fragment key={`${sub.id}_h`}>
                                             <th className="p-2 border-b border-r border-emerald-600 w-16">Sem 1</th>
                                             <th className="p-2 border-b border-r border-emerald-600 w-16">Sem 2</th>
                                             <th className="p-2 border-b border-r border-emerald-600 w-16">Total</th>
-                                            <th className="p-2 border-b border-r border-emerald-600 w-16">Rata²</th>
+                                            <th className="p-2 border-b border-r border-emerald-600 w-16">Rataط·آ·ط¢آ·ط·آ¢ط¢آ¢ط·آ·ط¢آ¢ط·آ¢ط¢آ²</th>
                                         </React.Fragment>
                                     ))}
                                 </tr>
@@ -10989,12 +11095,12 @@ const InputIjazah = () => {
                         <p className="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">Tabel Predikat:</p>
                         <div className="flex flex-wrap gap-2 text-xs">
                             {[
-                                { range: '90 – 100', ar: 'ممتاز', id: 'Mumtaz (Istimewa)', color: 'bg-emerald-100 text-emerald-800' },
-                                { range: '80 – 89', ar: 'جيد جدا', id: 'Jayyid Jiddan (Sangat Baik)', color: 'bg-blue-100 text-blue-800' },
-                                { range: '70 – 79', ar: 'جيد', id: 'Jayyid (Baik)', color: 'bg-sky-100 text-sky-800' },
-                                { range: '60 – 69', ar: 'مقبول', id: 'Maqbul (Cukup)', color: 'bg-yellow-100 text-yellow-800' },
-                                { range: '50 – 59', ar: 'ضعيف', id: "Dha'if (Kurang)", color: 'bg-orange-100 text-orange-800' },
-                                { range: '1 – 49', ar: 'راسب', id: 'Rasib (Gagal)', color: 'bg-red-100 text-red-800' },
+                                { range: '90 ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¥أ¢â‚¬إ“ 100', ar: 'ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¦ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¦ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¹ط·آ¢ط¢آ¾ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ²', id: 'Mumtaz (Istimewa)', color: 'bg-emerald-100 text-emerald-800' },
+                                { range: '80 ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¥أ¢â‚¬إ“ 89', ar: 'ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¬ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¸ط·آ¢ط¢آ¹ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¯ ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¬ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¯ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§', id: 'Jayyid Jiddan (Sangat Baik)', color: 'bg-blue-100 text-blue-800' },
+                                { range: '70 ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¥أ¢â‚¬إ“ 79', ar: 'ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¬ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¸ط·آ¢ط¢آ¹ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¯', id: 'Jayyid (Baik)', color: 'bg-sky-100 text-sky-800' },
+                                { range: '60 ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¥أ¢â‚¬إ“ 69', ar: 'ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¦ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¹أ¢â‚¬ع©ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¨ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ«ط£آ¢أ¢â€ڑآ¬ط¢آ ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¹â€ ', id: 'Maqbul (Cukup)', color: 'bg-yellow-100 text-yellow-800' },
+                                { range: '50 ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¥أ¢â‚¬إ“ 59', ar: 'ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¶ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¹ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¸ط·آ¢ط¢آ¹ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¸ط·آ¢ط¢آ¾', id: "Dha'if (Kurang)", color: 'bg-orange-100 text-orange-800' },
+                                { range: '1 ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¥أ¢â‚¬إ“ 49', ar: 'ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ±ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ³ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¨', id: 'Rasib (Gagal)', color: 'bg-red-100 text-red-800' },
                             ].map(p => (
                                 <span key={p.range} className={`px-2 py-1 rounded-full font-semibold ${p.color}`}>
                                     {p.range}: <span className="font-arabic">{p.ar}</span> ({p.id})
@@ -11197,7 +11303,7 @@ const KirimRaport = () => {
                 }
 
                 const publicLink = `https://rapijaz-isb.vercel.app/?public_raport=true&santri_id=${sid}`;
-                const text = `🎓 *Laporan Nilai Raport*\nPonpes Imam Syafi'i Brebes\n\nالسلام عليكم ورحمة الله وبركاته\n\nDengan hormat, berikut adalah informasi nilai ananda:\n\nNama: *${student.nama}*\nKelas: *${className}*\nTA: *${tahun} | Semester ${semester}*\n\n📚 *Nilai Mata Pelajaran:*\n${gradeLines}\n\n📊 Rata-Rata: *${avgVal}*${presenceText}${traitText}${ekskulText}${cwText}\n\n📱 *Lihat Rapor Lengkap Online:*\n ${publicLink} \n\nSemoga nilai ini menjadi motivasi untuk terus belajar.\n\nوالسلام عليكم ورحمة الله وبركاته`;
+                const text = `ط·آ·ط¢آ¸ط£آ¢أ¢â€ڑآ¬ط¢آ¹ط·آ·ط¢آ¹ط·آ·أ¢â‚¬ط›ط·آ·ط¢آ¹ط·آ¹ط¢آ©ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¥أ¢â‚¬إ“ *Laporan Nilai Raport*\nPonpes Imam Syafi'i Brebes\n\nط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¹â€ ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ³ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¹â€ ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¦ ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¹ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¹â€ ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¸ط·آ¢ط¢آ¹ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¦ط£آ¢أ¢â€ڑآ¬أ¢â€‍آ¢ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¦ ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ«ط£آ¢أ¢â€ڑآ¬ط¢آ ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ±ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ­ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¦ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ© ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¹â€ ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¹â€ ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ·ط¥â€™ ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ«ط£آ¢أ¢â€ڑآ¬ط¢آ ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¨ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ±ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¦ط£آ¢أ¢â€ڑآ¬أ¢â€‍آ¢ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¹ط·آ¢ط¢آ¾ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ·ط¥â€™\n\nDengan hormat, berikut adalah informasi nilai ananda:\n\nNama: *${student.nama}*\nKelas: *${className}*\nTA: *${tahun} | Semester ${semester}*\n\nط·آ·ط¢آ¸ط£آ¢أ¢â€ڑآ¬ط¢آ¹ط·آ·ط¢آ¹ط·آ·أ¢â‚¬ط›ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¥أ¢â‚¬إ“ط·آ·ط¢آ¹ط£آ¢أ¢â€ڑآ¬ط¹آ© *Nilai Mata Pelajaran:*\n${gradeLines}\n\nط·آ·ط¢آ¸ط£آ¢أ¢â€ڑآ¬ط¢آ¹ط·آ·ط¢آ¹ط·آ·أ¢â‚¬ط›ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¥أ¢â‚¬إ“ط·آ·ط¢آ¸ط·آ¢ط¢آ¹ Rata-Rata: *${avgVal}*${presenceText}${traitText}${ekskulText}${cwText}\n\nط·آ·ط¢آ¸ط£آ¢أ¢â€ڑآ¬ط¢آ¹ط·آ·ط¢آ¹ط·آ·أ¢â‚¬ط›ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¥أ¢â‚¬إ“ط·آ·ط¢آ¢ط·آ¢ط¢آ± *Lihat Rapor Lengkap Online:*\n ${publicLink} \n\nSemoga nilai ini menjadi motivasi untuk terus belajar.\n\nط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ«ط£آ¢أ¢â€ڑآ¬ط¢آ ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¹â€ ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ³ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¹â€ ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¦ ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¹ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¹â€ ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¸ط·آ¢ط¢آ¹ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¦ط£آ¢أ¢â€ڑآ¬أ¢â€‍آ¢ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¦ ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ«ط£آ¢أ¢â€ڑآ¬ط¢آ ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ±ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ­ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¦ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ© ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¹â€ ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¹â€ ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ·ط¥â€™ ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ«ط£آ¢أ¢â€ڑآ¬ط¢آ ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¨ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ±ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¦ط£آ¢أ¢â€ڑآ¬أ¢â€‍آ¢ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¹ط·آ¢ط¢آ¾ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ·ط¥â€™`;
 
                 const res = await fetch("https://api.fonnte.com/send", {
                     method: "POST",
@@ -12000,7 +12106,7 @@ const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = 
         }
 
         const publicLink = `https://rapijaz-isb.vercel.app/?public_raport=true&santri_id=${selectedStudent}`;
-        const text = `🎓 *Laporan Nilai ${mode === 'raport' ? 'Raport' : 'Ijazah'}*\nPonpes Imam Syafi'i Brebes\n\nAssalamu'alaikum Wr. Wb.\n\nDengan hormat, berikut adalah informasi nilai ananda:\n\nNama: *${studentData.nama}*\nKelas: *${className}*\nTA: *${tahun} | Semester ${semester}*\n\n📚 *Nilai Mata Pelajaran:*\n${gradeLines}\n\n📊 Rata-Rata: *${avgVal}*${presenceText}${traitText}${ekskulText}${cwText}\n\n📱 *Lihat Rapor Online:*\n${publicLink}\n\nSemoga nilai ini menjadi motivasi untuk terus belajar.\n\nWassalamu'alaikum Wr. Wb. 🤲`;
+        const text = `ط·آ·ط¢آ¸ط£آ¢أ¢â€ڑآ¬ط¢آ¹ط·آ·ط¢آ¹ط·آ·أ¢â‚¬ط›ط·آ·ط¢آ¹ط·آ¹ط¢آ©ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¥أ¢â‚¬إ“ *Laporan Nilai ${mode === 'raport' ? 'Raport' : 'Ijazah'}*\nPonpes Imam Syafi'i Brebes\n\nAssalamu'alaikum Wr. Wb.\n\nDengan hormat, berikut adalah informasi nilai ananda:\n\nNama: *${studentData.nama}*\nKelas: *${className}*\nTA: *${tahun} | Semester ${semester}*\n\nط·آ·ط¢آ¸ط£آ¢أ¢â€ڑآ¬ط¢آ¹ط·آ·ط¢آ¹ط·آ·أ¢â‚¬ط›ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¥أ¢â‚¬إ“ط·آ·ط¢آ¹ط£آ¢أ¢â€ڑآ¬ط¹آ© *Nilai Mata Pelajaran:*\n${gradeLines}\n\nط·آ·ط¢آ¸ط£آ¢أ¢â€ڑآ¬ط¢آ¹ط·آ·ط¢آ¹ط·آ·أ¢â‚¬ط›ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¥أ¢â‚¬إ“ط·آ·ط¢آ¸ط·آ¢ط¢آ¹ Rata-Rata: *${avgVal}*${presenceText}${traitText}${ekskulText}${cwText}\n\nط·آ·ط¢آ¸ط£آ¢أ¢â€ڑآ¬ط¢آ¹ط·آ·ط¢آ¹ط·آ·أ¢â‚¬ط›ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¥أ¢â‚¬إ“ط·آ·ط¢آ¢ط·آ¢ط¢آ± *Lihat Rapor Online:*\n${publicLink}\n\nSemoga nilai ini menjadi motivasi untuk terus belajar.\n\nWassalamu'alaikum Wr. Wb. ط·آ·ط¢آ¸ط£آ¢أ¢â€ڑآ¬ط¢آ¹ط·آ·ط¢آ¹ط·آ·أ¢â‚¬ط›ط·آ·ط¢آ¢ط·آ¢ط¢آ¤ط·آ·ط¢آ¢ط·آ¢ط¢آ²`;
         
         const fonnteToken = localStorage.getItem('fonnteToken') || 'oPhcncGcZC3H2kXbQLo3';
         const targetWA = window.prompt(`Masukkan Nomor WA Tujuan untuk ${studentData.nama} (contoh: 0812...):`, studentData.no_tlp || "");
@@ -12029,7 +12135,7 @@ const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = 
         const publicLink = `https://rapijaz-isb.vercel.app/?public_raport=true&santri_id=${selectedStudent}`;
         const tahun = activeSetting.tahun || '-';
         const semester = activeSetting.semester || '-';
-        const text = `🎓 *Rapor Online - Ponpes Imam Syafi'i Brebes*\n\nAssalamu'alaikum Wr. Wb.,\n\nYth. Orang Tua/Wali Santri *${studentData.nama}*\n\nBerikut link untuk melihat rapor ananda secara online:\n\n${publicLink}\n\nTA: *${tahun} | Semester ${semester}*\n\nLink ini dapat dibuka langsung dari HP tanpa perlu login.\n\nWassalamu'alaikum Wr. Wb. 🤲`;
+        const text = `ط·آ·ط¢آ¸ط£آ¢أ¢â€ڑآ¬ط¢آ¹ط·آ·ط¢آ¹ط·آ·أ¢â‚¬ط›ط·آ·ط¢آ¹ط·آ¹ط¢آ©ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¥أ¢â‚¬إ“ *Rapor Online - Ponpes Imam Syafi'i Brebes*\n\nAssalamu'alaikum Wr. Wb.,\n\nYth. Orang Tua/Wali Santri *${studentData.nama}*\n\nBerikut link untuk melihat rapor ananda secara online:\n\n${publicLink}\n\nTA: *${tahun} | Semester ${semester}*\n\nLink ini dapat dibuka langsung dari HP tanpa perlu login.\n\nWassalamu'alaikum Wr. Wb. ط·آ·ط¢آ¸ط£آ¢أ¢â€ڑآ¬ط¢آ¹ط·آ·ط¢آ¹ط·آ·أ¢â‚¬ط›ط·آ·ط¢آ¢ط·آ¢ط¢آ¤ط·آ·ط¢آ¢ط·آ¢ط¢آ²`;
         
         const fonnteToken = localStorage.getItem('fonnteToken') || 'oPhcncGcZC3H2kXbQLo3';
         const targetWA = window.prompt(`Masukkan Nomor WA Tujuan untuk ${studentData.nama} (contoh: 0812...):`, studentData.no_tlp || "");
@@ -12152,7 +12258,7 @@ const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = 
             const rataRata = countVal > 0 ? String(Math.round(totalVal / countVal)) : '';
             const totalRaport = countVal > 0 ? totalVal : '';
             const jumlahSantri = studentsInClass?.length || 0;
-            const toArabicNumbers = (val) => String(val).replace(/[0-9]/g, w => ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'][w]);
+            const toArabicNumbers = (val) => String(val).replace(/[0-9]/g, w => ['ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ ', 'ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ·ط·آ¥أ¢â‚¬â„¢', 'ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ¢', 'ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ£', 'ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ¤', 'ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ¥', 'ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ¦', 'ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ§', 'ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ¨', 'ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ©'][w]);
 
             const totalRaportAr = totalRaport !== '' ? toArabicNumbers(totalRaport) : '';
             const rataRataAr = rataRata !== '' ? toArabicNumbers(rataRata) : '';
@@ -12376,7 +12482,7 @@ const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = 
                              const indKey = realId === 'ekskul1_nilai_ar' ? 'ekskul1_nilai' : 'ekskul2_nilai';
                              const indVal = sGrades[indKey];
                              if (!indVal) return '';
-                             const toArabic = (val) => String(val).replace(/[0-9]/g, w => ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'][w]);
+                             const toArabic = (val) => String(val).replace(/[0-9]/g, w => ['ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ ','ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ·ط·آ¥أ¢â‚¬â„¢','ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ¢','ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ£','ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ¤','ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ¥','ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ¦','ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ§','ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ¨','ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¢ط·آ¢ط¢آ©'][w]);
                              return toArabic(indVal);
                          }
                          return sGrades[realId] !== undefined ? sGrades[realId] : '';
@@ -12523,7 +12629,7 @@ const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = 
                         <select className="w-full p-2 border rounded-lg bg-white text-sm font-semibold text-emerald-800" value={selectedLayout} onChange={e => setSelectedLayout(e.target.value)}>
                             {availableLayouts.map(l => <option key={l.id} value={l.id}>{l.name || l.id}</option>)}
                         </select>
-                        {activeLayout.length === 0 && <p className="text-xs text-red-500 mt-1">⚠ Layout yang dipilih belum memiliki elemen. Silakan desain di Layout Builder terlebih dahulu.</p>}
+                        {activeLayout.length === 0 && <p className="text-xs text-red-500 mt-1">ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ·ط¢آ¹ط£آ¢أ¢â€ڑآ¬ط¹آ©ط·آ·ط¢آ¢ط·آ¢ط¢آ  Layout yang dipilih belum memiliki elemen. Silakan desain di Layout Builder terlebih dahulu.</p>}
                     </div>
                     <div className="pt-4 border-t"><label className="flex items-center gap-2 bg-yellow-50 p-3 rounded-lg border border-yellow-200 cursor-pointer"><input type="checkbox" className="w-5 h-5 text-yellow-600" checked={useKatrol} onChange={e => setUseKatrol(e.target.checked)} /><div><p className="font-bold text-yellow-800 text-sm">Gunakan Nilai Katrol</p><p className="text-xs text-yellow-700">Nilai merah otomatis menjadi KKM</p></div></label></div>
                     <div className="pt-4 border-t">
@@ -12573,21 +12679,21 @@ const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = 
                 <div className="print:hidden sticky top-0 z-20 bg-emerald-800/80 backdrop-blur border-b border-emerald-700/50 px-4 py-2 flex items-center gap-3 shrink-0 rounded-t-xl">
                     {studentData && (
                         <div className="flex-1 min-w-0">
-                            <p className="text-white text-sm font-bold truncate">📋 Rapor: {studentData.nama}</p>
+                            <p className="text-white text-sm font-bold truncate">ط·آ·ط¢آ¸ط£آ¢أ¢â€ڑآ¬ط¢آ¹ط·آ·ط¢آ¹ط·آ·أ¢â‚¬ط›ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¥أ¢â‚¬إ“ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¹ Rapor: {studentData.nama}</p>
                         </div>
                     )}
                     <div className="flex items-center gap-2 shrink-0">
                         <span className="text-xs text-emerald-200">Ukuran:</span>
-                        <button onClick={() => setPreviewZoom(z => Math.max(0.2, +(z - 0.1).toFixed(1)))} className="bg-white/20 hover:bg-white/30 text-white rounded px-2 py-1 text-sm font-bold">−</button>
+                        <button onClick={() => setPreviewZoom(z => Math.max(0.2, +(z - 0.1).toFixed(1)))} className="bg-white/20 hover:bg-white/30 text-white rounded px-2 py-1 text-sm font-bold">ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ·ط¢آ«ط£آ¢أ¢â€ڑآ¬ط¢آ ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â‚¬â€چط¢آ¢</button>
                         <span className="text-xs font-mono text-white w-9 text-center">{Math.round(previewZoom * 100)}%</span>
                         <button onClick={() => setPreviewZoom(z => Math.min(1.5, +(z + 0.1).toFixed(1)))} className="bg-white/20 hover:bg-white/30 text-white rounded px-2 py-1 text-sm font-bold">+</button>
-                        <button onClick={handleSavePDF} disabled={!selectedStudent} className="bg-white text-emerald-800 text-xs font-bold px-3 py-1.5 rounded-full hover:bg-emerald-50 transition ml-1 disabled:opacity-40">⬇ PDF</button>
+                        <button onClick={handleSavePDF} disabled={!selectedStudent} className="bg-white text-emerald-800 text-xs font-bold px-3 py-1.5 rounded-full hover:bg-emerald-50 transition ml-1 disabled:opacity-40">ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ·ط¢آ¢ط·آ¢ط¢آ¬ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ·ط¥â€™ PDF</button>
                     </div>
                 </div>
                 ) : (
                 <div className="print:hidden sticky top-0 z-20 bg-white/90 backdrop-blur border-b border-gray-200 px-4 py-2 flex items-center gap-3 shrink-0">
                     <span className="text-xs font-bold text-gray-600">Zoom Preview:</span>
-                    <button onClick={() => setPreviewZoom(z => Math.max(0.3, +(z - 0.1).toFixed(1)))} className="bg-gray-100 hover:bg-gray-200 rounded px-2 py-1 text-sm font-bold">−</button>
+                    <button onClick={() => setPreviewZoom(z => Math.max(0.3, +(z - 0.1).toFixed(1)))} className="bg-gray-100 hover:bg-gray-200 rounded px-2 py-1 text-sm font-bold">ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ·ط¢آ«ط£آ¢أ¢â€ڑآ¬ط¢آ ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â‚¬â€چط¢آ¢</button>
                     <span className="text-xs font-mono w-10 text-center">{Math.round(previewZoom * 100)}%</span>
                     <button onClick={() => setPreviewZoom(z => Math.min(1.5, +(z + 0.1).toFixed(1)))} className="bg-gray-100 hover:bg-gray-200 rounded px-2 py-1 text-sm font-bold">+</button>
                     <button onClick={() => setPreviewZoom(0.7)} className="text-xs text-blue-600 hover:underline ml-1">Reset</button>
@@ -12669,7 +12775,40 @@ const LeggerKelas = () => {
     
     const gradeDocId = getGradeDocId(selectedClass, classesData, activeSetting, data.grades);
 
-    const grades = data.grades.find(g => g.id === gradeDocId)?.data || {};
+    const rawClassGradesDoc = data.grades.find(g => g.id === gradeDocId)?.data || {};
+
+    const [useKatrol, setUseKatrol] = useState(false);
+
+    const grades = useMemo(() => {
+        if (!useKatrol) return rawClassGradesDoc;
+        const result = {};
+        Object.keys(rawClassGradesDoc).forEach(stdId => {
+            const sGrades = { ...rawClassGradesDoc[stdId] };
+            Object.keys(sGrades).forEach(k => {
+                const subObj = subjects.find(s => s.id === k);
+                if (subObj && subObj.kkm) {
+                    const kkm = Number(subObj.kkm);
+                    const v = sGrades[k];
+                    let finalScore;
+                    if (v && typeof v === 'object') {
+                        const r = computeRaportScore(v.uts, v.uas);
+                        finalScore = r !== '' ? Number(r) : null;
+                    } else if (v !== undefined && v !== '' && !isNaN(v)) {
+                        finalScore = Number(v);
+                    }
+                    if (finalScore !== null && finalScore !== undefined && !isNaN(finalScore) && finalScore < kkm) {
+                        if (v && typeof v === 'object') {
+                            sGrades[k] = { ...v, raport: String(kkm) };
+                        } else {
+                            sGrades[k] = String(kkm);
+                        }
+                    }
+                }
+            });
+            result[stdId] = sGrades;
+        });
+        return result;
+    }, [rawClassGradesDoc, useKatrol, subjects]);
 
     const [sortConfig, setSortConfig] = useState({ key: 'avg', direction: 'desc' });
 
@@ -12950,7 +13089,7 @@ Tuliskan analisis Anda dengan gaya bahasa yang profesional, santun, bernada bimb
         }).join('\n\n');
 
         const rankMessage = `ranking ke *${idx + 1}* dari jumlah santri *${leggerData.length}*`;
-        const text = `\uD83C\uDF93 *Laporan Nilai Akhir Santri (UTS&UAS)*\nPonpes Imam Syafi'i Brebes\n\nNama: *${row.nama}*\nKelas: *${className}*\nTA: *${tahun} Sem ${semester}*\n\n\uD83D\uDCDA *Pencapaian Nilai:*\n${gradeLines}\n\n\uD83D\uDCCA Rata-Rata: *${row.avg}* | Predikat: *${row.predikat}* | ${rankMessage}\n\nالحمد لله,\nsemoga ilmu yang dipelajari bermanfaat dan semoga Allah mudahkan untuk bisa lebih baik lagi di masa yang akan datang,\nاللهم بارك \uD83E\uDD32`;
+        const text = `\uD83C\uDF93 *Laporan Nilai Akhir Santri (UTS&UAS)*\nPonpes Imam Syafi'i Brebes\n\nNama: *${row.nama}*\nKelas: *${className}*\nTA: *${tahun} Sem ${semester}*\n\n\uD83D\uDCDA *Pencapaian Nilai:*\n${gradeLines}\n\n\uD83D\uDCCA Rata-Rata: *${row.avg}* | Predikat: *${row.predikat}* | ${rankMessage}\n\nط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¹â€ ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ­ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¦ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¯ ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¹â€ ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¹â€ ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ·ط¥â€™,\nsemoga ilmu yang dipelajari bermanfaat dan semoga Allah mudahkan untuk bisa lebih baik lagi di masa yang akan datang,\nط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¹â€ ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¹â€ ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ·ط¥â€™ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¦ ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ¨ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ§ط·آ·ط¢آ·ط·آ¢ط¢آ·ط·آ·ط¢آ¢ط·آ¢ط¢آ±ط·آ·ط¢آ·ط·آ¢ط¢آ¸ط·آ·ط¢آ¦ط£آ¢أ¢â€ڑآ¬أ¢â€‍آ¢ \uD83E\uDD32`;
         addLog(`Kirim info nilai ${row.nama} via WA`);
         const fonnteToken = localStorage.getItem('fonnteToken') || 'oPhcncGcZC3H2kXbQLo3';
         const targetWA = window.prompt(`Masukkan Nomor WA Tujuan untuk ${row.nama} (contoh: 0812...):`, row.no_tlp || "");
@@ -13085,6 +13224,12 @@ Tuliskan analisis Anda dengan gaya bahasa yang profesional, santun, bernada bimb
                 <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2"><BookOpen /> Legger Kelas</h2>
                 <div className="flex flex-wrap gap-3 items-center">
                     <select className="p-2 border rounded-lg min-w-[150px]" value={selectedClass} onChange={e => setSelectedClass(e.target.value)}><option value="">-- Pilih Kelas --</option>{data.classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+                    {selectedClass && (
+                        <label className="flex items-center gap-2 bg-yellow-50 px-3 py-2 rounded-lg border border-yellow-200 cursor-pointer hover:bg-yellow-100 transition">
+                            <input type="checkbox" className="w-4 h-4 text-yellow-600" checked={useKatrol} onChange={e => setUseKatrol(e.target.checked)} />
+                            <span className="font-bold text-yellow-800 text-sm">Katrol KKM</span>
+                        </label>
+                    )}
                     <button onClick={exportExcel} disabled={!selectedClass} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 disabled:opacity-50 transition"><Download size={18}/> Ekspor Excel</button>
                     <button onClick={() => setIsAiModalOpen(true)} disabled={!selectedClass} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 disabled:opacity-50 transition"><Brain size={18}/> Analisis AI Gemini</button>
                 </div>
@@ -13102,7 +13247,7 @@ Tuliskan analisis Anda dengan gaya bahasa yang profesional, santun, bernada bimb
                                     <div className="flex flex-col items-center gap-0.5 justify-center">
                                         <span>Rank</span>
                                         <span className="text-[10px] text-purple-300">
-                                            {sortConfig.key === 'avg' ? (sortConfig.direction === 'desc' ? '▼' : '▲') : '↕'}
+                                            {sortConfig.key === 'avg' ? (sortConfig.direction === 'desc' ? 'ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€œط·آ·ط¢آ¢ط·آ¢ط¢آ¼' : 'ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€œط·آ·ط¢آ¢ط·آ¢ط¢آ²') : 'ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¢'}
                                         </span>
                                     </div>
                                 </th>
@@ -13114,7 +13259,7 @@ Tuliskan analisis Anda dengan gaya bahasa yang profesional, santun, bernada bimb
                                     <div className="flex items-center justify-between gap-1">
                                         <span>Nama Santri</span>
                                         <span className="text-[10px] text-purple-300">
-                                            {sortConfig.key === 'nama' ? (sortConfig.direction === 'desc' ? '▼' : '▲') : '↕'}
+                                            {sortConfig.key === 'nama' ? (sortConfig.direction === 'desc' ? 'ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€œط·آ·ط¢آ¢ط·آ¢ط¢آ¼' : 'ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€œط·آ·ط¢آ¢ط·آ¢ط¢آ²') : 'ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¢'}
                                         </span>
                                     </div>
                                 </th>
@@ -13127,7 +13272,7 @@ Tuliskan analisis Anda dengan gaya bahasa yang profesional, santun, bernada bimb
                                     <div className="flex items-center justify-center gap-1">
                                         <span>Total</span>
                                         <span className="text-[10px] text-purple-300">
-                                            {sortConfig.key === 'total' ? (sortConfig.direction === 'desc' ? '▼' : '▲') : '↕'}
+                                            {sortConfig.key === 'total' ? (sortConfig.direction === 'desc' ? 'ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€œط·آ·ط¢آ¢ط·آ¢ط¢آ¼' : 'ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€œط·آ·ط¢آ¢ط·آ¢ط¢آ²') : 'ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¢'}
                                         </span>
                                     </div>
                                 </th>
@@ -13139,7 +13284,7 @@ Tuliskan analisis Anda dengan gaya bahasa yang profesional, santun, bernada bimb
                                     <div className="flex items-center justify-center gap-1">
                                         <span>Rata-rata</span>
                                         <span className="text-[10px] text-purple-300">
-                                            {sortConfig.key === 'avg' ? (sortConfig.direction === 'desc' ? '▼' : '▲') : '↕'}
+                                            {sortConfig.key === 'avg' ? (sortConfig.direction === 'desc' ? 'ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€œط·آ·ط¢آ¢ط·آ¢ط¢آ¼' : 'ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€œط·آ·ط¢آ¢ط·آ¢ط¢آ²') : 'ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¢'}
                                         </span>
                                     </div>
                                 </th>
@@ -13151,7 +13296,7 @@ Tuliskan analisis Anda dengan gaya bahasa yang profesional, santun, bernada bimb
                                     <div className="flex items-center justify-center gap-1">
                                         <span>Predikat</span>
                                         <span className="text-[10px] text-purple-300">
-                                            {sortConfig.key === 'predikat' ? (sortConfig.direction === 'desc' ? '▼' : '▲') : '↕'}
+                                            {sortConfig.key === 'predikat' ? (sortConfig.direction === 'desc' ? 'ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€œط·آ·ط¢آ¢ط·آ¢ط¢آ¼' : 'ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€œط·آ·ط¢آ¢ط·آ¢ط¢آ²') : 'ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¢'}
                                         </span>
                                     </div>
                                 </th>
@@ -13182,7 +13327,7 @@ Tuliskan analisis Anda dengan gaya bahasa yang profesional, santun, bernada bimb
                                         <div className="flex items-center justify-center gap-0.5">
                                             <span>UTS</span>
                                             <span className="text-[8px] text-purple-300">
-                                                {sortConfig.key === `subject_uts_${s.id}` ? (sortConfig.direction === 'desc' ? '▼' : '▲') : '↕'}
+                                                {sortConfig.key === `subject_uts_${s.id}` ? (sortConfig.direction === 'desc' ? 'ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€œط·آ·ط¢آ¢ط·آ¢ط¢آ¼' : 'ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€œط·آ·ط¢آ¢ط·آ¢ط¢آ²') : 'ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¢'}
                                             </span>
                                         </div>
                                     </th>,
@@ -13190,7 +13335,7 @@ Tuliskan analisis Anda dengan gaya bahasa yang profesional, santun, bernada bimb
                                         <div className="flex items-center justify-center gap-0.5">
                                             <span>UAS</span>
                                             <span className="text-[8px] text-purple-300">
-                                                {sortConfig.key === `subject_uas_${s.id}` ? (sortConfig.direction === 'desc' ? '▼' : '▲') : '↕'}
+                                                {sortConfig.key === `subject_uas_${s.id}` ? (sortConfig.direction === 'desc' ? 'ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€œط·آ·ط¢آ¢ط·آ¢ط¢آ¼' : 'ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€œط·آ·ط¢آ¢ط·آ¢ط¢آ²') : 'ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¢'}
                                             </span>
                                         </div>
                                     </th>,
@@ -13198,7 +13343,7 @@ Tuliskan analisis Anda dengan gaya bahasa yang profesional, santun, bernada bimb
                                         <div className="flex items-center justify-center gap-0.5">
                                             <span>Rpt</span>
                                             <span className="text-[8px] text-purple-300">
-                                                {sortConfig.key === `subject_raport_${s.id}` ? (sortConfig.direction === 'desc' ? '▼' : '▲') : '↕'}
+                                                {sortConfig.key === `subject_raport_${s.id}` ? (sortConfig.direction === 'desc' ? 'ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€œط·آ·ط¢آ¢ط·آ¢ط¢آ¼' : 'ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€œط·آ·ط¢آ¢ط·آ¢ط¢آ²') : 'ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¢'}
                                             </span>
                                         </div>
                                     </th>,
@@ -13356,7 +13501,7 @@ Tuliskan analisis Anda dengan gaya bahasa yang profesional, santun, bernada bimb
                                 <div className="pl-8 pt-2">
                                     <div className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-4">
                                         <h5 className="font-bold text-emerald-800 text-xs uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                                            📄 Pratinjau Arsip Aktif
+                                            ط·آ·ط¢آ¸ط£آ¢أ¢â€ڑآ¬ط¢آ¹ط·آ·ط¢آ¹ط·آ·أ¢â‚¬ط›ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¥أ¢â‚¬إ“ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¹â€  Pratinjau Arsip Aktif
                                         </h5>
                                         <div className="text-gray-700 text-xs leading-relaxed whitespace-pre-wrap max-h-48 overflow-y-auto custom-scrollbar p-2 bg-white rounded-lg border border-emerald-100/50">
                                             {aiAnalysisText}
@@ -13559,9 +13704,9 @@ const Dashboard = () => {
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
   // Sidebar dynamic resizer states
-  const [sidebarWidth, setSidebarWidth] = useState(() => Number(localStorage.getItem('sidebar_width') || '320'));
+  const [sidebarWidth, setSidebarWidth] = useState(() => Number(localStorage.getItem('sidebar_width') || '260'));
   // Sidebar custom themes states
-  const [sidebarTheme, setSidebarTheme] = useState(() => localStorage.getItem('sidebar_theme') || 'light_emerald');
+  const [sidebarTheme, setSidebarTheme] = useState(() => localStorage.getItem('sidebar_theme') || 'dark_emerald');
 
   const handleResizeStart = (e) => {
     e.preventDefault();
@@ -13660,7 +13805,7 @@ const Dashboard = () => {
           seen.add(name);
           items.push({ 
             id: `pelajaran_${encodeURIComponent(name)}`, 
-            label: `↳ ${name}` 
+            label: `ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ط·آ·ط¢آ¢ط·آ¢ط¢آ³ ${name}` 
           });
         }
       });
@@ -13670,6 +13815,7 @@ const Dashboard = () => {
       items.push({ id: 'catatan', label: 'Catatan Wali Kelas' });
     }
     if (currentUser?.role === 'admin') {
+      items.push({ id: 'presensi_harian', label: 'Presensi Santri' });
       items.push({ id: 'ekskul', label: 'Ekstrakurikuler' });
     }
     return items;
@@ -13685,7 +13831,7 @@ const Dashboard = () => {
       { id: 'master_data', label: 'Master Data', icon: Users, roles: ['admin'], subItems: masterDataSubItems },
       { id: 'layout_builder', label: 'Desain Layout', icon: LayoutTemplate, roles: ['admin'], subItems: layoutBuilderSubItems },
       { id: 'input_nilai', label: 'Input Nilai', icon: CheckSquare, roles: ['admin', 'guru', 'user'], subItems: inputNilaiSubItems },
-      { id: 'presensi_harian', label: 'Presensi Santri', icon: Calendar, roles: ['admin', 'guru', 'user'] },
+      { id: 'presensi_harian', label: 'Presensi Santri', icon: Calendar, roles: ['guru', 'user'] },
       { id: 'input_ijazah', label: 'Kelola Nilai Ijazah', icon: FileSignature, roles: ['admin', 'user'] },
       { id: 'legger', label: 'Legger Kelas', icon: BookOpen, roles: ['admin', 'user'] },
       { id: 'cetak_raport', label: 'Cetak Raport', icon: Printer, roles: ['admin', 'user'] },
@@ -13730,7 +13876,7 @@ const Dashboard = () => {
           if (m.id === activeMenu) return m.label;
           if (m.subItems) {
               let sub = m.subItems.find(s => s.id === activeMenu);
-              if (sub) return `${m.label} / ${sub.label.replace('↳ ', '')}`;
+              if (sub) return `${m.label} / ${sub.label.replace('ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ ط·آ·ط¢آ¢ط·آ¢ط¢آ³ ', '')}`;
           }
       }
       return 'Menu';
@@ -13930,7 +14076,7 @@ const PublicRaportPage = ({ santriId }) => {
                     </div>
                     <div className="ml-auto">
                         <span className="bg-emerald-500/30 text-emerald-100 text-xs font-semibold px-3 py-1 rounded-full border border-emerald-400/40">
-                            📋 Rapor Digital
+                            ط·آ·ط¢آ¸ط£آ¢أ¢â€ڑآ¬ط¢آ¹ط·آ·ط¢آ¹ط·آ·أ¢â‚¬ط›ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¥أ¢â‚¬إ“ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¢ط¢آ¹ Rapor Digital
                         </span>
                     </div>
                 </div>
@@ -13940,7 +14086,7 @@ const PublicRaportPage = ({ santriId }) => {
             {!santriId && (
                 <div className="max-w-5xl mx-auto w-full px-4 pt-6 print:hidden">
                     <div className="bg-white/10 backdrop-blur border border-white/20 rounded-2xl p-5 text-white text-center">
-                        <div className="text-4xl mb-3">📚</div>
+                        <div className="text-4xl mb-3">ط·آ·ط¢آ¸ط£آ¢أ¢â€ڑآ¬ط¢آ¹ط·آ·ط¢آ¹ط·آ·أ¢â‚¬ط›ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط·آ¥أ¢â‚¬إ“ط·آ·ط¢آ¹ط£آ¢أ¢â€ڑآ¬ط¹آ©</div>
                         <h2 className="text-lg font-bold mb-1">Selamat Datang di Portal Rapor Santri</h2>
                         <p className="text-emerald-200 text-sm">Pilih kelas dan nama santri untuk melihat rapor.</p>
                     </div>
@@ -13960,7 +14106,7 @@ const PublicRaportPage = ({ santriId }) => {
 
             {/* Footer */}
             <footer className="bg-black/20 border-t border-white/10 py-4 text-center print:hidden">
-                <p className="text-emerald-300 text-xs">© {new Date().getFullYear()} Ponpes Imam Syafi'i Brebes — Portal Rapor Digital</p>
+                <p className="text-emerald-300 text-xs">ط·آ·ط¢آ·ط·آ¢ط¢آ¢ط·آ·ط¢آ¢ط·آ¢ط¢آ© {new Date().getFullYear()} Ponpes Imam Syafi'i Brebes ط·آ·ط¢آ£ط·آ¢ط¢آ¢ط·آ£ط¢آ¢ط£آ¢أ¢â€ڑآ¬ط¹â€کط·آ¢ط¢آ¬ط·آ£ط¢آ¢ط£آ¢أ¢â‚¬ع‘ط¢آ¬ط£آ¢أ¢â€ڑآ¬ط¥â€™ Portal Rapor Digital</p>
             </footer>
         </div>
     );
@@ -13977,3 +14123,16 @@ export default function App() {
 
     return <AppProvider><AppContext.Consumer>{({ currentUser }) => currentUser ? <Dashboard /> : <Login />}</AppContext.Consumer></AppProvider>;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
