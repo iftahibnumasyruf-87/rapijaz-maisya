@@ -13686,7 +13686,7 @@ const Dashboard = () => {
     }
     if (currentUser?.role === 'admin') {
       items.push({ id: 'ekskul', label: 'Ekstrakurikuler' });
-      items.push({ id: 'presensi_harian', label: 'Presensi Santri' });
+      items.push({ id: 'presensi', label: 'Presensi Santri' });
     }
     return items;
   }, [currentUser, isWaliKelasAny, data?.subjects]);
