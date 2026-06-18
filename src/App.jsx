@@ -7915,6 +7915,37 @@ const InputNilai = ({ activeInputTab }) => {
     const [selectionStart, setSelectionStart] = useState(null);
     const [selectionEnd, setSelectionEnd] = useState(null);
     const [isSelecting, setIsSelecting] = useState(false);
+
+    // History States for Undo/Redo
+    const [pastHistory, setPastHistory] = useState([]);
+    const [futureHistory, setFutureHistory] = useState([]);
+
+    const pushToHistory = (currentState) => {
+        setPastHistory(prev => {
+            const next = [...prev, JSON.parse(JSON.stringify(currentState))];
+            if (next.length > 50) next.shift(); // Limit to 50 edits
+            return next;
+        });
+        setFutureHistory([]);
+    };
+
+    const handleUndo = () => {
+        if (pastHistory.length === 0) return;
+        const previousState = pastHistory[pastHistory.length - 1];
+        setPastHistory(prev => prev.slice(0, -1));
+        setFutureHistory(prev => [...prev, JSON.parse(JSON.stringify(localGrades))]);
+        setLocalGrades(previousState);
+        showNotification('Tindakan dibatalkan (Undo).', 'info');
+    };
+
+    const handleRedo = () => {
+        if (futureHistory.length === 0) return;
+        const nextState = futureHistory[futureHistory.length - 1];
+        setFutureHistory(prev => prev.slice(0, -1));
+        setPastHistory(prev => [...prev, JSON.parse(JSON.stringify(localGrades))]);
+        setLocalGrades(nextState);
+        showNotification('Tindakan diulang (Redo).', 'info');
+    };
     
     // Gunakan useRef untuk melacak status terakhir yang disave ke database (Debouncing Check)
     const lastSavedGradesRef = useRef(null);
@@ -8014,6 +8045,8 @@ const InputNilai = ({ activeInputTab }) => {
         });
         
         setLocalGrades(initialGrades);
+        setPastHistory([]);
+        setFutureHistory([]);
         // Tandai initialGrades ini sebagai acuan versi data yang terakhir 'disimpan'
         lastSavedGradesRef.current = JSON.stringify(initialGrades);
         setIsInitialized(true);
@@ -8022,6 +8055,7 @@ const InputNilai = ({ activeInputTab }) => {
 
     const handleGradeChange = (studentId, fieldId, val, category = null) => {
         // Konversi angka Arab ke Latin terjadi di global event listener
+        pushToHistory(localGrades);
         setLocalGrades(prev => {
             const studentGrades = prev[studentId] || {};
             if (category === 'uts' || category === 'uas') {
@@ -8167,6 +8201,7 @@ const InputNilai = ({ activeInputTab }) => {
 
     const clearSelectedCells = () => {
         if (!selectionStart || !selectionEnd) return;
+        pushToHistory(localGrades);
         const minRow = Math.min(selectionStart.rowIdx, selectionEnd.rowIdx);
         const maxRow = Math.max(selectionStart.rowIdx, selectionEnd.rowIdx);
         const minCol = Math.min(selectionStart.colIdx, selectionEnd.colIdx);
@@ -8250,9 +8285,169 @@ const InputNilai = ({ activeInputTab }) => {
         document.addEventListener('mousedown', handleGlobalClick);
         return () => {
             window.removeEventListener('mouseup', handleGlobalMouseUp);
-            document.removeEventListener('mousedown', handleGlobalClick);
+            window.removeEventListener('mousedown', handleGlobalClick);
         };
     }, [isSelecting]);
+
+    // Global Copy / Cut shortcuts listener
+    useEffect(() => {
+        const handleCopyCut = (e) => {
+            if (!selectionStart || !selectionEnd) return;
+
+            const activeEl = document.activeElement;
+            if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
+                if (activeEl.dataset.cellType !== 'grade-input') return;
+            }
+
+            const minRow = Math.min(selectionStart.rowIdx, selectionEnd.rowIdx);
+            const maxRow = Math.max(selectionStart.rowIdx, selectionEnd.rowIdx);
+            const minCol = Math.min(selectionStart.colIdx, selectionEnd.colIdx);
+            const maxCol = Math.max(selectionStart.colIdx, selectionEnd.colIdx);
+
+            const isCut = e.type === 'cut';
+            const columns = getActiveColumns();
+
+            const tsvRows = [];
+            for (let r = minRow; r <= maxRow; r++) {
+                if (r >= studentsInClass.length) continue;
+                const st = studentsInClass[r];
+                const rowCells = [];
+
+                for (let c = minCol; c <= maxCol; c++) {
+                    if (c >= columns.length) continue;
+                    const col = columns[c];
+
+                    let val = '';
+                    if (col.type === 'pelajaran') {
+                        if (col.field === 'raport') {
+                            const uts = localGrades[st.id]?.[col.subId]?.uts || '';
+                            const uas = localGrades[st.id]?.[col.subId]?.uas || '';
+                            val = computeRaportScore(uts, uas);
+                        } else {
+                            val = localGrades[st.id]?.[col.subId]?.[col.field] || '';
+                        }
+                    } else if (col.type === 'sikap') {
+                        val = localGrades[st.id]?.[col.traitId] || '';
+                    } else if (col.type === 'ekskul' || col.type === 'catatan') {
+                        val = localGrades[st.id]?.[col.key] || '';
+                    }
+                    rowCells.push(val);
+                }
+                tsvRows.push(rowCells.join('\t'));
+            }
+
+            const tsvText = tsvRows.join('\n');
+            e.clipboardData.setData('text/plain', tsvText);
+            e.preventDefault();
+
+            if (isCut) {
+                clearSelectedCells();
+                showNotification('Berhasil memotong data (Cut).', 'info');
+            } else {
+                showNotification('Berhasil menyalin data (Copy).', 'success');
+            }
+        };
+
+        window.addEventListener('copy', handleCopyCut);
+        window.addEventListener('cut', handleCopyCut);
+        return () => {
+            window.removeEventListener('copy', handleCopyCut);
+            window.removeEventListener('cut', handleCopyCut);
+        };
+    }, [selectionStart, selectionEnd, localGrades, studentsInClass, activeInputTab]);
+
+    // Global Paste shortcut listener
+    useEffect(() => {
+        const handleGlobalPaste = (e) => {
+            if (!selectionStart || !selectionEnd) return;
+
+            const pastedText = e.clipboardData.getData('text/plain');
+            if (!pastedText) return;
+
+            e.preventDefault();
+            pushToHistory(localGrades);
+
+            const minRow = Math.min(selectionStart.rowIdx, selectionEnd.rowIdx);
+            const minCol = Math.min(selectionStart.colIdx, selectionEnd.colIdx);
+
+            const rows = pastedText.split(/\r?\n/).map(row => row.split('\t'));
+            const columns = getActiveColumns();
+
+            setLocalGrades(prev => {
+                const copy = { ...prev };
+                rows.forEach((rowCells, r) => {
+                    if (rowCells.length === 1 && rowCells[0] === '' && r === rows.length - 1) return;
+
+                    const studentIdx = minRow + r;
+                    if (studentIdx >= studentsInClass.length) return;
+                    const st = studentsInClass[studentIdx];
+
+                    rowCells.forEach((cellVal, c) => {
+                        const colIdx = minCol + c;
+                        if (colIdx >= columns.length) return;
+                        const col = columns[colIdx];
+                        if (col.isReadOnly) return;
+
+                        let isDisabled = false;
+                        if (col.type === 'pelajaran') {
+                            isDisabled = currentUser?.role === 'guru' && !currentUser?.assignedSubjectIds?.includes(col.subId);
+                        } else if (['sikap', 'ekskul', 'catatan'].includes(col.type)) {
+                            isDisabled = currentUser?.role === 'guru' && !isWaliKelas;
+                        }
+                        if (isDisabled) return;
+
+                        const trimmedVal = cellVal.trim();
+                        const latinVal = convertArabicToLatin(trimmedVal);
+
+                        if (!copy[st.id]) copy[st.id] = {};
+
+                        if (col.type === 'pelajaran') {
+                            const existing = copy[st.id][col.subId] && typeof copy[st.id][col.subId] === 'object'
+                                ? { ...copy[st.id][col.subId] }
+                                : { uts: '', uas: '' };
+                            existing[col.field] = latinVal;
+                            copy[st.id][col.subId] = existing;
+                        } else if (col.type === 'sikap') {
+                            copy[st.id][col.traitId] = latinVal;
+                        } else if (col.type === 'ekskul' || col.type === 'catatan') {
+                            copy[st.id][col.key] = latinVal;
+                        }
+                    });
+                });
+                return copy;
+            });
+            showNotification('Berhasil menempel data dari Excel.', 'success');
+        };
+
+        window.addEventListener('paste', handleGlobalPaste);
+        return () => {
+            window.removeEventListener('paste', handleGlobalPaste);
+        };
+    }, [selectionStart, selectionEnd, localGrades, studentsInClass, activeInputTab]);
+
+    // Global Undo / Redo keyboard listener
+    useEffect(() => {
+        const handleUndoRedoShortcuts = (e) => {
+            if (e.ctrlKey || e.metaKey) {
+                if (e.key.toLowerCase() === 'z') {
+                    e.preventDefault();
+                    if (e.shiftKey) {
+                        handleRedo();
+                    } else {
+                        handleUndo();
+                    }
+                } else if (e.key.toLowerCase() === 'y') {
+                    e.preventDefault();
+                    handleRedo();
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleUndoRedoShortcuts);
+        return () => {
+            window.removeEventListener('keydown', handleUndoRedoShortcuts);
+        };
+    }, [pastHistory, futureHistory, localGrades]);
 
     useEffect(() => {
         if (!isInitialized || !gradeDocId) return;
@@ -8331,6 +8526,7 @@ const InputNilai = ({ activeInputTab }) => {
             }
 
             // Merge dengan grades yang sudah ada
+            pushToHistory(localGrades);
             setLocalGrades(prev => {
                 const merged = { ...prev };
                 Object.entries(importedGrades).forEach(([studentId, subjectGrades]) => {
@@ -8352,7 +8548,7 @@ const InputNilai = ({ activeInputTab }) => {
 
     const handleRekapPresensi = () => {
         if (!window.confirm('Yakin ingin merekap kehadiran dari semua mata pelajaran? Ini akan menimpa isian Anda di tab Presensi.')) return;
-        
+        pushToHistory(localGrades);
         const newGrades = { ...localGrades };
         const pSakit = data.presences.find(p => p.name.toLowerCase().includes('sakit'));
         const pIzin = data.presences.find(p => p.name.toLowerCase().includes('izin'));
@@ -8427,6 +8623,7 @@ const InputNilai = ({ activeInputTab }) => {
 
     const handleClearStudentData = (studentId, studentName) => {
         if (!window.confirm(`Hapus semua data "${studentName}" di tab ini?`)) return;
+        pushToHistory(localGrades);
         setLocalGrades(prev => {
             const newGrades = { ...prev };
             const fields = getFieldsForTab(studentId);
@@ -8442,6 +8639,7 @@ const InputNilai = ({ activeInputTab }) => {
     const handleClearTabData = () => {
         const tabLabel = activeInputTab.startsWith('pelajaran') ? 'Pelajaran' : activeInputTab.charAt(0).toUpperCase() + activeInputTab.slice(1);
         if (!window.confirm(`Hapus SEMUA data tab "${tabLabel}" untuk seluruh santri di kelas ini?\n\nTindakan ini tidak dapat dibatalkan!`)) return;
+        pushToHistory(localGrades);
         setLocalGrades(prev => {
             const newGrades = { ...prev };
             studentsInClass.forEach(st => {
@@ -9509,6 +9707,23 @@ const InputNilai = ({ activeInputTab }) => {
                         <button onClick={handleResetZoom} className="bg-slate-600 hover:bg-slate-700 text-white px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition"><Maximize size={16}/>100%</button>
                         <button onClick={toggleHeaderHidden} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition">{isHeaderHidden ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}{isHeaderHidden ? 'Tampilkan Header' : 'Sembunyikan Header'}</button>
                         <button onClick={toggleFullscreen} className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition">{isFullscreen ? <Minimize size={16}/> : <Maximize size={16}/>} {isFullscreen ? 'Keluar Fullscreen' : 'Fullscreen'}</button>
+                        <div className="h-8 w-[1px] bg-gray-200 mx-1 self-center"></div>
+                        <button 
+                            onClick={handleUndo} 
+                            disabled={pastHistory.length === 0} 
+                            className="bg-white hover:bg-emerald-50 text-emerald-700 disabled:opacity-40 border border-emerald-200 px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-1.5 transition"
+                            title="Undo (Ctrl+Z)"
+                        >
+                            <Undo size={16}/> Undo
+                        </button>
+                        <button 
+                            onClick={handleRedo} 
+                            disabled={futureHistory.length === 0} 
+                            className="bg-white hover:bg-emerald-50 text-emerald-700 disabled:opacity-40 border border-emerald-200 px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-1.5 transition"
+                            title="Redo (Ctrl+Y)"
+                        >
+                            <Redo size={16}/> Redo
+                        </button>
                     </div>
                     <div className="text-xs text-gray-500">Zoom: {zoomLevel}% | Header: {isHeaderHidden ? 'Tersembunyi' : 'Tampil'}</div>
                 </div>
