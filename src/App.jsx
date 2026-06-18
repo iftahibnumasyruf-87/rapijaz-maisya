@@ -7879,7 +7879,7 @@ const importGradesFromExcel = async (file, studentsInClass, subjectsInClass, act
 // INPUT NILAI 
 // ==========================================
 const InputNilai = ({ activeInputTab }) => {
-    const { data, allData, saveToDb, showNotification } = useContext(AppContext);
+    const { data, allData, saveToDb, showNotification, currentUser } = useContext(AppContext);
     const [selectedClass, setSelectedClass] = useState('');
     const [localGrades, setLocalGrades] = useState({});
     const [isSaving, setIsSaving] = useState(false);
@@ -7901,7 +7901,6 @@ const InputNilai = ({ activeInputTab }) => {
     const activeSubjectName = activeInputTab.startsWith('pelajaran_') ? decodeURIComponent(activeInputTab.substring(10)) : null;
 
     // Filter classes if user is guru
-    const { currentUser } = useContext(AppContext);
     const availableClasses = useMemo(() => {
         if (currentUser?.role === 'guru' && currentUser?.assignedClassIds) {
             let filteredClasses = rawClassesData.filter(c => {
@@ -8009,6 +8008,70 @@ const InputNilai = ({ activeInputTab }) => {
             }
             return { ...prev, [studentId]: { ...studentGrades, [fieldId]: val } };
         });
+    };
+
+    const handlePasteGrades = (e, startStudentId, startSubjectId, startFieldType) => {
+        const pastedText = e.clipboardData.getData('text/plain');
+        if (!pastedText) return;
+
+        // Parse row/column structure from Excel
+        const rows = pastedText.split(/\r?\n/).map(row => row.split('\t'));
+        // If it's a single value without tabs or newlines, let default browser paste handle it
+        if (rows.length === 0 || (rows.length === 1 && rows[0].length === 1)) {
+            return;
+        }
+
+        e.preventDefault();
+
+        // Build columns mapping (UTS & UAS for each subject)
+        const columns = [];
+        subjectsInClass.forEach(sub => {
+            columns.push({ subId: sub.id, field: 'uts' });
+            columns.push({ subId: sub.id, field: 'uas' });
+        });
+
+        const startStudentIdx = studentsInClass.findIndex(st => st.id === startStudentId);
+        const startColIdx = columns.findIndex(col => col.subId === startSubjectId && col.field === startFieldType);
+
+        if (startStudentIdx === -1 || startColIdx === -1) return;
+
+        setLocalGrades(prev => {
+            const copy = { ...prev };
+            rows.forEach((rowCells, r) => {
+                // If it's the trailing empty row from Excel (newline at end of copied content), ignore it
+                if (rowCells.length === 1 && rowCells[0] === '' && r === rows.length - 1) return;
+
+                const studentIdx = startStudentIdx + r;
+                if (studentIdx >= studentsInClass.length) return;
+                const st = studentsInClass[studentIdx];
+
+                rowCells.forEach((cellVal, c) => {
+                    const colIdx = startColIdx + c;
+                    if (colIdx >= columns.length) return;
+                    const col = columns[colIdx];
+
+                    // Subject permissions check for Guru role
+                    const isDisabled = currentUser?.role === 'guru' && !currentUser?.assignedSubjectIds?.includes(col.subId);
+                    if (isDisabled) return;
+
+                    const trimmedVal = cellVal.trim();
+                    const latinVal = convertArabicToLatin(trimmedVal);
+
+                    if (!copy[st.id]) copy[st.id] = {};
+                    const studentGrades = copy[st.id];
+
+                    const existing = studentGrades[col.subId] && typeof studentGrades[col.subId] === 'object'
+                        ? { ...studentGrades[col.subId] }
+                        : { uts: '', uas: '' };
+                    
+                    existing[col.field] = latinVal;
+                    copy[st.id] = { ...studentGrades, [col.subId]: existing };
+                });
+            });
+            return copy;
+        });
+
+        showNotification('Berhasil menempel data dari Excel.', 'success');
     };
 
     useEffect(() => {
@@ -8699,6 +8762,7 @@ const InputNilai = ({ activeInputTab }) => {
                                                         className="w-full min-w-[48px] p-1.5 border rounded text-center text-sm font-bold outline-none text-gray-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-300 disabled:bg-gray-100 disabled:text-gray-400" 
                                                         value={uts} onChange={e => handleGradeChange(st.id, sub.id, e.target.value, 'uts')} 
                                                         disabled={currentUser?.role === 'guru' && !currentUser?.assignedSubjectIds?.includes(sub.id)}
+                                                        onPaste={e => handlePasteGrades(e, st.id, sub.id, 'uts')}
                                                         data-cell-type="grade-input" data-student-id={st.id} data-subject-id={sub.id} data-field-type="uts"
                                                     />
                                                     <input 
@@ -8706,6 +8770,7 @@ const InputNilai = ({ activeInputTab }) => {
                                                         className="w-full min-w-[48px] p-1.5 border rounded text-center text-sm font-bold outline-none text-gray-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-300 disabled:bg-gray-100 disabled:text-gray-400" 
                                                         value={uas} onChange={e => handleGradeChange(st.id, sub.id, e.target.value, 'uas')} 
                                                         disabled={currentUser?.role === 'guru' && !currentUser?.assignedSubjectIds?.includes(sub.id)}
+                                                        onPaste={e => handlePasteGrades(e, st.id, sub.id, 'uas')}
                                                         data-cell-type="grade-input" data-student-id={st.id} data-subject-id={sub.id} data-field-type="uas"
                                                     />
                                                     <div className={`rounded border p-1.5 text-sm font-bold text-center min-w-[48px] ${isRed ? 'text-red-700 bg-white border-red-300 shadow-sm font-extrabold' : 'text-gray-800 bg-gray-50 border-gray-200'}`}>
