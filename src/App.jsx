@@ -13720,6 +13720,9 @@ const Dashboard = () => {
     if (masterDataSubItems.some(sub => sub.id === activeMenu)) {
         return <MasterData activeTab={activeMenu} />;
     }
+    if (activeMenu === 'presensi_harian') {
+        return <PresensiSantri />;
+    }
     if (inputNilaiSubItems.some(sub => sub.id === activeMenu)) {
         return <InputNilai activeInputTab={activeMenu} />;
     }
