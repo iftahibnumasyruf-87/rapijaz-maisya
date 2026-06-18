@@ -7637,21 +7637,82 @@ const exportGradesToExcel = (grades, studentsInClass, subjectsInClass, className
             headers1.push('', ''); // span 3
             merges.push({ s: { r: 0, c: currentCol }, e: { r: 0, c: currentCol + 2 } });
             currentCol += 3;
-            cols.push(sub.id);
+            cols.push({ type: 'pelajaran', subId: sub.id, field: 'uts' });
+            cols.push({ type: 'pelajaran', subId: sub.id, field: 'uas' });
+            cols.push({ type: 'pelajaran', subId: sub.id, field: 'raport' });
         });
+    } else if (activeInputTab === 'terpadu') {
+        let currentCol = 3;
+        merges.push({ s: { r: 0, c: 0 }, e: { r: 1, c: 0 } });
+        merges.push({ s: { r: 0, c: 1 }, e: { r: 1, c: 1 } });
+        merges.push({ s: { r: 0, c: 2 }, e: { r: 1, c: 2 } });
+
+        // Pelajaran
+        subjectsInClass.forEach(sub => {
+            headers1.push(sub.nameId || sub.name);
+            headers2.push('UTS');
+            headers2.push('UAS');
+            headers2.push('Raport');
+            headers1.push('', ''); // span 3
+            merges.push({ s: { r: 0, c: currentCol }, e: { r: 0, c: currentCol + 2 } });
+            currentCol += 3;
+            cols.push({ type: 'pelajaran', subId: sub.id, field: 'uts' });
+            cols.push({ type: 'pelajaran', subId: sub.id, field: 'uas' });
+            cols.push({ type: 'pelajaran', subId: sub.id, field: 'raport' });
+        });
+
+        // Sikap
+        (data.characterTraits || []).forEach(trait => {
+            headers1.push(trait.name);
+            headers2.push('');
+            merges.push({ s: { r: 0, c: currentCol }, e: { r: 1, c: currentCol } });
+            currentCol += 1;
+            cols.push({ type: 'sikap', traitId: trait.id });
+        });
+
+        // Ekskul
+        const ekskulSlots = [
+            { label: 'Ekskul 1 Nama', key: 'ekskul1_nama' },
+            { label: 'Ekskul 1 Nama (Arab)', key: 'ekskul1_nama_ar' },
+            { label: 'Ekskul 1 Nilai', key: 'ekskul1_nilai' },
+            { label: 'Ekskul 2 Nama', key: 'ekskul2_nama' },
+            { label: 'Ekskul 2 Nama (Arab)', key: 'ekskul2_nama_ar' },
+            { label: 'Ekskul 2 Nilai', key: 'ekskul2_nilai' }
+        ];
+        ekskulSlots.forEach(slot => {
+            headers1.push(slot.label);
+            headers2.push('');
+            merges.push({ s: { r: 0, c: currentCol }, e: { r: 1, c: currentCol } });
+            currentCol += 1;
+            cols.push({ type: 'ekskul', key: slot.key });
+        });
+
+        // Catatan
+        headers1.push('Catatan Wali Kelas');
+        headers2.push('');
+        merges.push({ s: { r: 0, c: currentCol }, e: { r: 1, c: currentCol } });
+        currentCol += 1;
+        cols.push({ type: 'catatan', key: 'catatan_wali' });
     } else if (activeInputTab === 'presensi') {
-        data.presences.forEach(p => { headers1.push(p.name); cols.push(p.id); });
+        data.presences.forEach(p => { headers1.push(p.name); cols.push({ type: 'simple', id: p.id }); });
     } else if (activeInputTab === 'sikap') {
-        data.characterTraits.forEach(p => { headers1.push(p.name); cols.push(p.id); });
+        data.characterTraits.forEach(p => { headers1.push(p.name); cols.push({ type: 'simple', id: p.id }); });
     } else if (activeInputTab === 'ekskul') {
         headers1.push('Ekskul 1 Nama', 'Ekskul 1 Nama (Arab)', 'Ekskul 1 Nilai', 'Ekskul 2 Nama', 'Ekskul 2 Nama (Arab)', 'Ekskul 2 Nilai');
-        cols.push('ekskul1_nama', 'ekskul1_nama_ar', 'ekskul1_nilai', 'ekskul2_nama', 'ekskul2_nama_ar', 'ekskul2_nilai');
+        cols.push(
+            { type: 'simple', id: 'ekskul1_nama' },
+            { type: 'simple', id: 'ekskul1_nama_ar' },
+            { type: 'simple', id: 'ekskul1_nilai' },
+            { type: 'simple', id: 'ekskul2_nama' },
+            { type: 'simple', id: 'ekskul2_nama_ar' },
+            { type: 'simple', id: 'ekskul2_nilai' }
+        );
     } else if (activeInputTab === 'catatan' || activeInputTab === 'catatan_wali') {
         headers1.push('Catatan Wali Kelas');
-        cols.push('catatan_wali');
+        cols.push({ type: 'simple', id: 'catatan_wali' });
     }
 
-    const rows = activeInputTab.startsWith('pelajaran') ? [headers1, headers2] : [headers1];
+    const rows = (activeInputTab.startsWith('pelajaran') || activeInputTab === 'terpadu') ? [headers1, headers2] : [headers1];
     
     studentsInClass.forEach((st, idx) => {
         const row = [idx + 1, st.nis || '', st.nama];
@@ -7665,31 +7726,56 @@ const exportGradesToExcel = (grades, studentsInClass, subjectsInClass, className
                 row.push(uas);
                 row.push(raport !== '' ? raport : '');
             });
-        } else if (['presensi', 'sikap', 'ekskul'].includes(activeInputTab)) {
-            cols.forEach(colId => {
-                row.push(safeVal(grades[st.id]?.[colId]));
+        } else if (activeInputTab === 'terpadu') {
+            cols.forEach(col => {
+                if (col.type === 'pelajaran') {
+                    const g = grades[st.id]?.[col.subId];
+                    if (col.field === 'raport') {
+                        const uts = g && typeof g === 'object' ? safeVal(g.uts) : '';
+                        const uas = g && typeof g === 'object' ? safeVal(g.uas) : '';
+                        const raport = computeRaportScore(uts, uas);
+                        row.push(raport !== '' ? raport : '');
+                    } else {
+                        row.push(g && typeof g === 'object' ? safeVal(g[col.field]) : '');
+                    }
+                } else if (col.type === 'sikap') {
+                    row.push(safeVal(grades[st.id]?.[col.traitId]));
+                } else if (col.type === 'ekskul' || col.type === 'catatan') {
+                    row.push(safeVal(grades[st.id]?.[col.key]));
+                }
             });
-        } else if (activeInputTab === 'catatan' || activeInputTab === 'catatan_wali') {
-            row.push(safeVal(grades[st.id]?.['catatan_wali']));
+        } else {
+            cols.forEach(col => {
+                row.push(safeVal(grades[st.id]?.[col.id]));
+            });
         }
         rows.push(row);
     });
     
     const ws = XLSX.utils.aoa_to_sheet(rows);
-    if (activeInputTab.startsWith('pelajaran') && merges.length > 0) {
+    if ((activeInputTab.startsWith('pelajaran') || activeInputTab === 'terpadu') && merges.length > 0) {
         ws['!merges'] = merges;
     }
     
     const colWidths = [8, 15, 25];
-    cols.forEach(() => {
-        if (activeInputTab.startsWith('pelajaran')) { 
+    if (activeInputTab.startsWith('pelajaran')) { 
+        cols.forEach(() => {
             colWidths.push(10, 10, 10); // UTS, UAS, Raport
-        }
-        else if (activeInputTab === 'catatan' || activeInputTab === 'catatan_wali') { colWidths.push(50); }
-        else { colWidths.push(15); }
-    });
+        });
+    } else if (activeInputTab === 'terpadu') {
+        cols.forEach(col => {
+            if (col.type === 'pelajaran') { colWidths.push(10); }
+            else if (col.type === 'catatan') { colWidths.push(50); }
+            else { colWidths.push(18); }
+        });
+    } else {
+        cols.forEach(col => {
+            if (col.id === 'catatan_wali') { colWidths.push(50); }
+            else { colWidths.push(15); }
+        });
+    }
     ws['!cols'] = colWidths.map(w => ({ wch: w }));
-    ws['!freeze'] = { xSplit: 3, ySplit: activeInputTab.startsWith('pelajaran') ? 2 : 1 };
+    ws['!freeze'] = { xSplit: 3, ySplit: (activeInputTab.startsWith('pelajaran') || activeInputTab === 'terpadu') ? 2 : 1 };
     
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, `Data_${activeInputTab}`);
@@ -7725,7 +7811,7 @@ const importGradesFromExcel = async (file, studentsInClass, subjectsInClass, act
                 const headerRow1 = rows[1] || [];
                 
                 let isNewFormat = false;
-                if (activeInputTab.startsWith('pelajaran') && headerRow1.some(cell => ['UTS', 'UAS'].includes(String(cell).toUpperCase().trim()))) {
+                if ((activeInputTab.startsWith('pelajaran') || activeInputTab === 'terpadu') && headerRow1.some(cell => ['UTS', 'UAS'].includes(String(cell).toUpperCase().trim()))) {
                     isNewFormat = true;
                 }
                 
@@ -7764,6 +7850,61 @@ const importGradesFromExcel = async (file, studentsInClass, subjectsInClass, act
                                 }
                             });
                         });
+                    }
+                } else if (activeInputTab === 'terpadu') {
+                    let currentSubId = null;
+                    for (let i = 0; i < Math.max(headerRow0.length, headerRow1.length); i++) {
+                        const cell0 = headerRow0[i] ? String(headerRow0[i]).trim() : '';
+                        const cell0Lower = cell0.toLowerCase();
+                        const cell1 = headerRow1[i] ? String(headerRow1[i]).trim() : '';
+                        const cell1Upper = cell1.toUpperCase();
+
+                        // 1. Pelajaran
+                        if (cell0) {
+                            const sub = subjectsInClass.find(s => (s.nameId || s.name).trim().toLowerCase() === cell0Lower) || [...subjectsInClass].sort((a,b) => (b.nameId || b.name).trim().length - (a.nameId || a.name).trim().length).find(s => cell0Lower.includes((s.nameId || s.name).trim().toLowerCase()));
+                            if (sub) {
+                                currentSubId = sub.id;
+                            } else if (!cell0Lower.includes('no') && !cell0Lower.includes('nis') && !cell0Lower.includes('nama') && !cell0Lower.includes('ekskul') && !cell0Lower.includes('catatan') && !data.characterTraits.some(t => cell0Lower.includes(t.name.toLowerCase()))) {
+                                currentSubId = null;
+                            }
+                        }
+
+                        if (currentSubId && ['UTS', 'UAS'].includes(cell1Upper)) {
+                            colMap[i] = { type: 'pelajaran', subId: currentSubId, field: cell1Upper.toLowerCase() };
+                            continue;
+                        }
+
+                        // 2. Sikap
+                        const matchedTrait = data.characterTraits.find(t => cell0Lower.includes(t.name.toLowerCase()));
+                        if (matchedTrait) {
+                            colMap[i] = { type: 'sikap', traitId: matchedTrait.id };
+                            continue;
+                        }
+
+                        // 3. Ekskul
+                        const normalizeHeader = (cell) => String(cell).toLowerCase().replace(/[\s\-_]+/g, ' ').trim();
+                        const v = normalizeHeader(cell0);
+                        const hasNum = (n) => new RegExp(`\\b${n}\\b`).test(v.replace(/\s/g,'')) || v.includes(String(n));
+                        const isEkskul = v.includes('ekskul');
+                        const isNama  = v.includes('nama') || v.includes('name');
+                        const isArab  = v.includes('arab') || v.includes('ar');
+                        const isNilai = v.includes('nilai') || v.includes('value') || v.includes('score') || v.includes('predikat');
+                        
+                        if (isEkskul) {
+                            if (isNama && isArab && hasNum(1)) colMap[i] = { type: 'ekskul', key: 'ekskul1_nama_ar' };
+                            else if (isNama && isArab && hasNum(2)) colMap[i] = { type: 'ekskul', key: 'ekskul2_nama_ar' };
+                            else if (isNama  && hasNum(1)) colMap[i] = { type: 'ekskul', key: 'ekskul1_nama' };
+                            else if (isNilai && hasNum(1)) colMap[i] = { type: 'ekskul', key: 'ekskul1_nilai' };
+                            else if (isNama  && hasNum(2)) colMap[i] = { type: 'ekskul', key: 'ekskul2_nama' };
+                            else if (isNilai && hasNum(2)) colMap[i] = { type: 'ekskul', key: 'ekskul2_nilai' };
+                            continue;
+                        }
+
+                        // 4. Catatan
+                        if (cell0Lower.includes('catatan') || cell0Lower.includes('pesan') || cell0Lower.includes('wali')) {
+                            colMap[i] = { type: 'catatan', key: 'catatan_wali' };
+                            continue;
+                        }
                     }
                 } else if (activeInputTab === 'presensi') {
                     headerRow0.forEach((cell, i) => {
@@ -7869,6 +8010,21 @@ const importGradesFromExcel = async (file, studentsInClass, subjectsInClass, act
                             if (val) {
                                 if (!importedGrades[student.id][mapData.subId]) importedGrades[student.id][mapData.subId] = {};
                                 importedGrades[student.id][mapData.subId][mapData.type] = convertArabicToLatin(val);
+                            }
+                        });
+                    } else if (activeInputTab === 'terpadu') {
+                        Object.entries(colMap).forEach(([colIdxStr, mapData]) => {
+                            const colIdx = Number(colIdxStr);
+                            const val = String(row[colIdx] || '').trim();
+                            if (val) {
+                                if (mapData.type === 'pelajaran') {
+                                    if (!importedGrades[student.id][mapData.subId]) importedGrades[student.id][mapData.subId] = {};
+                                    importedGrades[student.id][mapData.subId][mapData.field] = convertArabicToLatin(val);
+                                } else if (mapData.type === 'sikap') {
+                                    importedGrades[student.id][mapData.traitId] = val;
+                                } else if (mapData.type === 'ekskul' || mapData.type === 'catatan') {
+                                    importedGrades[student.id][mapData.key] = val;
+                                }
                             }
                         });
                     } else if (['presensi', 'sikap', 'ekskul'].includes(activeInputTab)) {
@@ -9747,27 +9903,23 @@ const InputNilai = ({ activeInputTab }) => {
                 {/* Excel Import/Export Buttons */}
                 {selectedClass && (
                     <div className="flex flex-wrap gap-3 items-center bg-blue-50 p-3 rounded-xl border border-blue-200">
-                        {activeInputTab !== 'terpadu' && (
-                            <>
-                                <button 
-                                    onClick={handleExportGrades}
-                                    disabled={!selectedClass || (activeInputTab.startsWith('pelajaran') && subjectsInClass.length === 0)}
-                                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 disabled:opacity-50 transition"
-                                >
-                                    <Download size={16}/> Unduh Template Excel
-                                </button>
-                                <label className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 cursor-pointer disabled:opacity-50 transition">
-                                    <Upload size={16}/> {isImporting ? 'Mengimpor...' : 'Impor dari Excel'}
-                                    <input 
-                                        type="file" 
-                                        accept=".xlsx,.xls" 
-                                        className="hidden" 
-                                        onChange={handleImportGrades}
-                                        disabled={!selectedClass || (activeInputTab.startsWith('pelajaran') && subjectsInClass.length === 0) || isImporting}
-                                    />
-                                </label>
-                            </>
-                        )}
+                        <button 
+                            onClick={handleExportGrades}
+                            disabled={!selectedClass || (activeInputTab.startsWith('pelajaran') && subjectsInClass.length === 0)}
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 disabled:opacity-50 transition"
+                        >
+                            <Download size={16}/> Unduh Template Excel
+                        </button>
+                        <label className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 cursor-pointer disabled:opacity-50 transition">
+                            <Upload size={16}/> {isImporting ? 'Mengimpor...' : 'Impor dari Excel'}
+                            <input 
+                                type="file" 
+                                accept=".xlsx,.xls" 
+                                className="hidden" 
+                                onChange={handleImportGrades}
+                                disabled={!selectedClass || (activeInputTab.startsWith('pelajaran') && subjectsInClass.length === 0) || isImporting}
+                            />
+                        </label>
                         {activeInputTab === 'presensi' && (
                             <button 
                                 onClick={handleRekapPresensi}
