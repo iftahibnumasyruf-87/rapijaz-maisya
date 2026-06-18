@@ -291,6 +291,10 @@ const getStudentsInClass = (students, classes, selectedClass) => {
       normalizedStudentClassName === normalizedSelected ||
       normalizedStudentClassName === normalizedClassName
     );
+  }).sort((a, b) => {
+    const compareNis = (a.nis || '').localeCompare(b.nis || '', undefined, { numeric: true, sensitivity: 'base' });
+    if (compareNis !== 0) return compareNis;
+    return (a.nama || '').localeCompare(b.nama || '');
   });
 };
 
