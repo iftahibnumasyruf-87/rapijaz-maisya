@@ -11783,7 +11783,15 @@ const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = 
     const baseWidth = pageDimensions[layoutPageSize].width;
     const baseHeight = pageDimensions[layoutPageSize].height;
     const canvasWidth = layoutOrientation === 'landscape' ? baseHeight : baseWidth;
-    const canvasHeight = layoutOrientation === 'landscape' ? baseWidth : baseHeight;
+    let canvasHeight = layoutOrientation === 'landscape' ? baseWidth : baseHeight;
+
+    // If in public view, dynamically extend paper height to prevent elements spilling out of white background
+    if (isPublicView && activeLayout.length > 0) {
+        const maxBottom = activeLayout.reduce((max, el) => Math.max(max, (el.y || 0) + (el.height || 60)), canvasHeight);
+        if (maxBottom > canvasHeight) {
+            canvasHeight = maxBottom + 60; // add padding
+        }
+    }
 
     useEffect(() => {
         setPrintMargins(layoutSettings.margins || { top: 0, bottom: 0, left: 0, right: 0 });
