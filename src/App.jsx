@@ -11739,27 +11739,35 @@ const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = 
     const studentsInClass = getStudentsInClass(activeStudents, classesData, selectedClass);
     const studentData = activeStudents.find(s => s.id === selectedStudent);
     
-    const [selectedLayout, setSelectedLayout] = useState(() => {
-        // Filter layouts based on mode: ijazah gets 'ijazah' layouts, raport gets non-ijazah layouts
-        const available = data.layouts.filter(l =>
-            mode === 'ijazah'
-                ? (l.name || l.id).toLowerCase().includes('ijazah')
-                : !(l.name || l.id).toLowerCase().includes('ijazah')
-        );
-        if (mode === 'raport') {
-            // Prioritaskan layout dengan tanda tangan (TTD) — penting untuk public view
-            const ttdLayout = available.find(l => {
-                const nm = (l.name || '').toLowerCase();
-                const id = (l.id || '').toLowerCase();
-                return nm.includes('ttd') || nm.includes('tanda tangan') || nm.includes('tandatangan') ||
-                       nm.includes('signed') || nm.includes('signature') || nm.includes('dengan tanda') ||
-                       id.includes('ttd') || id.includes('tanda') || id.includes('signed');
-            });
-            if (ttdLayout) return ttdLayout.id;
+    const [selectedLayout, setSelectedLayout] = useState('');
+
+    // Update layout when data is loaded
+    useEffect(() => {
+        if (!selectedLayout && data.layouts && data.layouts.length > 0) {
+            const available = data.layouts.filter(l =>
+                mode === 'ijazah'
+                    ? (l.name || l.id).toLowerCase().includes('ijazah')
+                    : !(l.name || l.id).toLowerCase().includes('ijazah')
+            );
+            
+            let targetId = '';
+            if (mode === 'raport') {
+                const ttdLayout = available.find(l => {
+                    const nm = (l.name || '').toLowerCase();
+                    const id = (l.id || '').toLowerCase();
+                    return nm.includes('ttd') || nm.includes('tanda tangan') || nm.includes('tandatangan') ||
+                           nm.includes('signed') || nm.includes('signature') || nm.includes('dengan tanda') ||
+                           id.includes('ttd') || id.includes('tanda') || id.includes('signed');
+                });
+                if (ttdLayout) targetId = ttdLayout.id;
+            }
+            if (!targetId) {
+                const matched = available.find(l => l.id === mode);
+                targetId = matched ? matched.id : (available[0]?.id || data.layouts[0]?.id || '');
+            }
+            if (targetId) setSelectedLayout(targetId);
         }
-        const matched = available.find(l => l.id === mode);
-        return matched ? matched.id : (available[0]?.id || data.layouts[0]?.id || '');
-    });
+    }, [data.layouts, mode, selectedLayout]);
     
     // Available layouts filtered by mode
     const availableLayouts = data.layouts.filter(l =>
