@@ -12517,7 +12517,6 @@ const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = 
         if (el.type === 'image') {
             return (
                 <img
-                    className={isPublicView && el.y > 400 ? 'hide-on-screen' : ''}
                     src={el.content}
                     style={{
                         ...baseStyle,
@@ -12677,9 +12676,9 @@ const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = 
                     <button onClick={() => setPreviewZoom(1.0)} className="text-xs text-gray-500 hover:underline">100%</button>
                 </div>
                 )}
-                <div className="flex-1 overflow-scroll p-8 flex flex-col gap-8 print:p-0 print:gap-0 print:block">
+                <div className="flex-1 overflow-scroll p-4 md:p-8 flex flex-col print:p-0 print:block">
                 {studentsToRender.length > 0 ? (
-                    <div className={`print-wrapper flex flex-col print:block ${isExporting ? 'gap-0' : 'gap-8 print:gap-0'}`} style={{ transformOrigin: 'top left', transform: isExporting || isBatchMode ? 'none' : `scale(${previewZoom})`, marginBottom: (isExporting || isBatchMode) ? '0px' : `${(previewZoom - 1) * canvasHeight * visiblePages.length}px` }}>
+                    <div className={`print-wrapper flex flex-col print:block ${isExporting ? 'gap-0' : 'gap-8 print:gap-0'}`} style={{ transformOrigin: 'top center', transform: isExporting || isBatchMode ? 'none' : `scale(${previewZoom})`, marginBottom: (isExporting || isBatchMode) ? '0px' : `${(previewZoom - 1) * canvasHeight * visiblePages.length + 120}px` }}>
                         {studentsToRender.map((std, stdIndex) => (
                             <React.Fragment key={std.id}>
                                 {visiblePages.map((pageElements, index) => {
