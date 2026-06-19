@@ -11247,15 +11247,9 @@ const KirimRaport = () => {
                     cwText = `\n\n\uD83D\uDCDD *Catatan Wali Kelas:*\n_${cw}_`;
                 }
 
-                let analisaText = "";
-                const analisa = sGrades['analisa_santri'];
-                if (analisa) {
-                    analisaText = `\n\n📝 *Analisa Santri:*\n_${analisa}_`;
-                }
-
                 const publicLink = `https://rapijaz-isb.vercel.app/?public_raport=true&santri_id=${sid}`;
                 const publicAnalisaLink = `https://rapijaz-isb.vercel.app/?public_analisa=true&santri_id=${sid}`;
-                const text = `🎓 *Laporan Nilai Raport*\nPonpes Imam Syafi'i Brebes\n\nالسلام عليكم ورحمة الله وبركاته\n\nDengan hormat, berikut adalah informasi nilai ananda:\n\nNama: *${student.nama}*\nKelas: *${className}*\nTA: *${tahun} | Semester ${semester}*\n\n📚 *Nilai Mata Pelajaran:*\n${gradeLines}\n\n📊 Rata-Rata: *${avgVal}*${presenceText}${traitText}${ekskulText}${cwText}${analisaText}\n\n📱 *Lihat Rapor Lengkap Online:*\n ${publicLink} \n\n📱 *Lihat Analisa Raport:*\n ${publicAnalisaLink} \n\nSemoga nilai ini menjadi motivasi untuk terus belajar.\n\nوالسلام عليكم ورحمة الله وبركاته`;
+                const text = `🎓 *Laporan Nilai Raport*\nPonpes Imam Syafi'i Brebes\n\nالسلام عليكم ورحمة الله وبركاته\n\nDengan hormat, berikut adalah informasi nilai ananda:\n\nNama: *${student.nama}*\nKelas: *${className}*\nTA: *${tahun} | Semester ${semester}*\n\n📚 *Nilai Mata Pelajaran:*\n${gradeLines}\n\n📊 Rata-Rata: *${avgVal}*${presenceText}${traitText}${ekskulText}${cwText}\n\n📱 *Lihat Rapor Lengkap Online:*\n ${publicLink} \n\n📊 *Lihat Analisa Raport:*\n ${publicAnalisaLink} \n\nSemoga nilai ini menjadi motivasi untuk terus belajar.\n\nوالسلام عليكم ورحمة الله وبركاته`;
 
                 const res = await fetch("https://api.fonnte.com/send", {
                     method: "POST",
@@ -14133,11 +14127,17 @@ const PublicRaportPage = ({ santriId }) => {
 };
 
 const PublicAnalisaPageContent = ({ santriId }) => {
-    const { data, allData, activeSetting } = useContext(AppContext);
+    const { data, activeSetting } = useContext(AppContext);
     
     const activeStudents = getStudentsForYear(data.studentSnapshots, activeSetting, data.students);
     const student = activeStudents.find(s => s.id === santriId);
-    if (!student) return <div className="text-white p-8">Santri tidak ditemukan</div>;
+    if (!student) return (
+        <div className="flex flex-col items-center justify-center py-20 text-white">
+            <div className="text-6xl mb-4">🔍</div>
+            <h2 className="text-2xl font-bold mb-2">Santri Tidak Ditemukan</h2>
+            <p className="text-indigo-200 text-sm">Data santri tidak tersedia atau link tidak valid.</p>
+        </div>
+    );
     
     const classesData = data.classes || [];
     const cls = classesData.find(c => c.name === student.kelas || c.id === student.kelas);
@@ -14145,19 +14145,117 @@ const PublicAnalisaPageContent = ({ santriId }) => {
     const gradeDocId = getGradeDocId(selectedClass, classesData, activeSetting, data.grades);
     const sGrades = data.grades.find(g => g.id === gradeDocId)?.data?.[santriId] || {};
     
-    const analisa = sGrades['analisa_santri'] || 'Belum ada analisa untuk santri ini.';
+    const analisa = sGrades['analisa_santri'] || '';
+    const waliKelas = cls?.wali || '';
+    const className = cls ? cls.name : student.kelas;
+    const tahun = activeSetting?.tahun || '-';
+    const semester = activeSetting?.semester || '-';
+    
+    // Split analisa teks menjadi paragraf berdasarkan baris baru
+    const paragraphs = analisa ? analisa.split(/\n+/).filter(p => p.trim()) : [];
     
     return (
-        <div className="bg-white/10 backdrop-blur border border-white/20 rounded-2xl p-6 text-white max-w-3xl mx-auto mt-8 shadow-2xl">
-            <h2 className="text-2xl font-bold mb-4 border-b border-white/20 pb-3 flex items-center gap-2">
-                <Brain /> Analisa Perkembangan Santri
-            </h2>
-            <div className="mb-6 bg-black/20 p-4 rounded-xl">
-                <p className="text-lg"><strong>Nama:</strong> {student.nama}</p>
-                <p className="text-lg"><strong>Kelas:</strong> {cls ? cls.name : student.kelas}</p>
+        <div className="max-w-3xl mx-auto mt-6 mb-10 space-y-5">
+            {/* Bismillah Header Card */}
+            <div className="bg-white/10 backdrop-blur border border-white/20 rounded-2xl p-5 text-center shadow-xl">
+                <p className="text-2xl font-bold text-amber-300 tracking-wider mb-1">بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ</p>
+                <p className="text-indigo-200 text-sm mt-1">Portal Analisa Perkembangan Santri — Ponpes Imam Syafi'i Brebes</p>
             </div>
-            <div className="bg-white text-gray-800 p-6 rounded-xl whitespace-pre-wrap shadow-inner text-lg leading-relaxed">
-                {analisa}
+
+            {/* Info Santri Card */}
+            <div className="bg-white/10 backdrop-blur border border-white/20 rounded-2xl p-5 shadow-xl">
+                <h2 className="text-lg font-bold text-white flex items-center gap-2 mb-3 border-b border-white/20 pb-2">
+                    <span>👤</span> Identitas Santri
+                </h2>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="bg-black/20 rounded-xl p-3">
+                        <p className="text-indigo-300 text-xs mb-1">Nama Lengkap</p>
+                        <p className="text-white font-bold text-base">{student.nama}</p>
+                    </div>
+                    <div className="bg-black/20 rounded-xl p-3">
+                        <p className="text-indigo-300 text-xs mb-1">Kelas</p>
+                        <p className="text-white font-bold text-base">{className}</p>
+                    </div>
+                    <div className="bg-black/20 rounded-xl p-3">
+                        <p className="text-indigo-300 text-xs mb-1">Tahun Ajaran</p>
+                        <p className="text-white font-bold">{tahun}</p>
+                    </div>
+                    <div className="bg-black/20 rounded-xl p-3">
+                        <p className="text-indigo-300 text-xs mb-1">Semester</p>
+                        <p className="text-white font-bold">{semester}</p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Pesan Pembuka */}
+            <div className="bg-indigo-800/50 backdrop-blur border border-indigo-400/30 rounded-2xl p-5 shadow-xl">
+                <h3 className="text-white font-bold flex items-center gap-2 mb-2">
+                    <span>📖</span> Pesan Pembuka
+                </h3>
+                <p className="text-indigo-100 text-sm leading-relaxed">
+                    السلام عليكم ورحمة الله وبركاته
+                </p>
+                <p className="text-indigo-100 text-sm leading-relaxed mt-2">
+                    Dengan mengucap syukur ke hadirat Allah Subhanahu wa Ta'ala, berikut kami sampaikan hasil analisa perkembangan belajar ananda selama satu semester. Semoga analisa ini bermanfaat sebagai bahan evaluasi dan penyemangat bagi ananda dan orang tua dalam terus meningkatkan prestasi.
+                </p>
+            </div>
+
+            {/* Analisa Utama */}
+            <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
+                <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4 flex items-center gap-3">
+                    <span className="text-2xl">🧠</span>
+                    <div>
+                        <h2 className="text-white font-bold text-lg">Analisa Perkembangan Santri</h2>
+                        <p className="text-indigo-200 text-xs">Laporan lengkap dari Wali Kelas</p>
+                    </div>
+                </div>
+                <div className="p-6">
+                    {analisa ? (
+                        <div className="space-y-4">
+                            {paragraphs.map((para, idx) => (
+                                <p key={idx} className="text-gray-700 leading-relaxed text-[15px] text-justify">
+                                    {idx === 0 && <span className="text-3xl font-serif text-indigo-700 float-left mr-2 leading-none mt-1">{para.charAt(0)}</span>}
+                                    {idx === 0 ? para.slice(1) : para}
+                                </p>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="flex flex-col items-center justify-center py-10 text-gray-400">
+                            <span className="text-5xl mb-3">📋</span>
+                            <p className="font-medium">Analisa belum tersedia</p>
+                            <p className="text-sm mt-1">Wali kelas belum mengisi analisa untuk santri ini.</p>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Pesan Penutup & TTD Wali Kelas */}
+            <div className="bg-white/10 backdrop-blur border border-white/20 rounded-2xl p-5 shadow-xl">
+                <h3 className="text-white font-bold flex items-center gap-2 mb-3">
+                    <span>✉️</span> Pesan Penutup
+                </h3>
+                <p className="text-indigo-100 text-sm leading-relaxed">
+                    Demikian analisa perkembangan yang dapat kami sampaikan. Kami berharap orang tua dan ananda terus berkolaborasi dalam membangun semangat belajar yang istiqomah. Apabila ada pertanyaan atau hal yang ingin didiskusikan, jangan ragu untuk menghubungi wali kelas.
+                </p>
+                <p className="text-indigo-100 text-sm mt-2">وَالسَّلاَمُ عَلَيْكُمْ وَرَحْمَةُ اللهِ وَبَرَكَاتُهُ</p>
+                {waliKelas && (
+                    <div className="mt-5 pt-4 border-t border-white/20 flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-indigo-500/50 flex items-center justify-center text-white font-bold text-lg shrink-0">
+                            {waliKelas.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                            <p className="text-indigo-300 text-xs">Wali Kelas</p>
+                            <p className="text-white font-bold text-sm">{waliKelas}</p>
+                            <p className="text-indigo-300 text-xs">Kelas {className}</p>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Footer Note */}
+            <div className="text-center text-indigo-300 text-xs pb-4">
+                <p>📋 Dokumen ini diterbitkan secara digital oleh sistem Rapijaz-Maisya</p>
+                <p className="mt-1">Ponpes Imam Syafi'i Brebes — {tahun}</p>
             </div>
         </div>
     );
