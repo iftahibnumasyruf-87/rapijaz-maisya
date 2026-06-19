@@ -7709,6 +7709,12 @@ const exportGradesToExcel = (grades, studentsInClass, subjectsInClass, className
         merges.push({ s: { r: 0, c: currentCol }, e: { r: 1, c: currentCol } });
         currentCol += 1;
         cols.push({ type: 'catatan', key: 'catatan_wali' });
+
+        headers1.push('Analisa Santri');
+        headers2.push('');
+        merges.push({ s: { r: 0, c: currentCol }, e: { r: 1, c: currentCol } });
+        currentCol += 1;
+        cols.push({ type: 'catatan', key: 'analisa_santri' });
     } else if (activeInputTab === 'presensi') {
         data.presences.forEach(p => { headers1.push(p.name); cols.push({ type: 'simple', id: p.id }); });
     } else if (activeInputTab === 'sikap') {
@@ -7980,16 +7986,19 @@ const importGradesFromExcel = async (file, studentsInClass, subjectsInClass, act
                     headerRow0.forEach((cell, i) => {
                         const val = String(cell).toLowerCase();
                         if (val.includes('catatan') || val.includes('pesan') || val.includes('wali')) colMap[i] = 'catatan_wali';
+                        if (val.includes('analisa') || val.includes('analysis')) colMap[i] = 'analisa_santri';
                     });
                     // Cek headerRow1 (jangan timpa jika sudah ada)
                     headerRow1.forEach((cell, i) => {
                         if (colMap[i] !== undefined) return;
                         const val = String(cell).toLowerCase();
                         if (val.includes('catatan') || val.includes('pesan') || val.includes('wali')) colMap[i] = 'catatan_wali';
+                        if (val.includes('analisa') || val.includes('analysis')) colMap[i] = 'analisa_santri';
                     });
                     
                     if (Object.keys(colMap).length === 0) {
                         colMap[3] = 'catatan_wali'; // positional fallback
+                        colMap[4] = 'analisa_santri'; // positional fallback
                     }
                 }
 
@@ -8790,7 +8799,7 @@ const InputNilai = ({ activeInputTab }) => {
             return ['ekskul1_nama', 'ekskul1_nama_ar', 'ekskul1_nilai', 'ekskul2_nama', 'ekskul2_nama_ar', 'ekskul2_nilai'];
         }
         if (activeInputTab === 'catatan') {
-            return ['catatan_wali'];
+            return ['catatan_wali', 'analisa_santri'];
         }
         return [];
     };
