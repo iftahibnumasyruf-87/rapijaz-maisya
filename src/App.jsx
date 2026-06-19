@@ -552,6 +552,7 @@ const buildShortKeyMap = (subjects = [], presences = [], characterTraits = [], e
     map['ekskul2_nilai_ar']  = { realId: 'ekskul2_nilai_ar',  dataType: 'ekskul_fixed' };
     map['ekskul2_nilai_arab'] = { realId: 'ekskul2_nilai_ar',  dataType: 'ekskul_fixed' };
     map['cw'] = { realId: 'catatan_wali', dataType: 'catatan' };
+    map['as'] = { realId: 'analisa_santri', dataType: 'catatan' };
 
     subjects.forEach(sub => {
         // Legacy support (will fallback if presences took the key, e.g. Siroh -> s1)
@@ -6329,6 +6330,7 @@ const LayoutBuilder = ({ mode = 'raport' }) => {
                                 <button onClick={() => addElement('wali_kelas')} className="bg-purple-50 hover:bg-purple-100 text-purple-700 py-1.5 rounded text-xs flex justify-center gap-1"><User size={14}/> Wali Kelas</button>
                                 <button onClick={() => addElement('wali_kelas_ar')} className="bg-purple-50 hover:bg-purple-100 text-purple-700 py-1.5 rounded text-xs flex justify-center gap-1"><User size={14}/> Wali Kelas (Arab)</button>
                                 <button onClick={() => addElement('catatan_wali')} className="col-span-2 bg-pink-50 hover:bg-pink-100 text-pink-700 py-1.5 rounded text-xs flex justify-center gap-1"><FileSignature size={14}/> Catatan Wali Kelas</button>
+                                <button onClick={() => addElement('analisa_santri')} className="col-span-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 py-1.5 rounded text-xs flex justify-center gap-1"><Brain size={14}/> Analisa Santri</button>
                             </div>
                             <p className="text-xs font-semibold text-gray-400 uppercase mt-3 mb-1">Variabel Umum</p>
                             <div className="grid grid-cols-2 gap-1">
@@ -7722,8 +7724,9 @@ const exportGradesToExcel = (grades, studentsInClass, subjectsInClass, className
             { type: 'simple', id: 'ekskul2_nilai' }
         );
     } else if (activeInputTab === 'catatan' || activeInputTab === 'catatan_wali') {
-        headers1.push('Catatan Wali Kelas');
+        headers1.push('Catatan Wali Kelas', 'Analisa Santri');
         cols.push({ type: 'simple', id: 'catatan_wali' });
+        cols.push({ type: 'simple', id: 'analisa_santri' });
     }
 
     const rows = (activeInputTab.startsWith('pelajaran') || activeInputTab === 'terpadu') ? [headers1, headers2] : [headers1];
@@ -8264,6 +8267,7 @@ const InputNilai = ({ activeInputTab }) => {
             });
             // Catatan
             columns.push({ type: 'catatan', key: 'catatan_wali' });
+            columns.push({ type: 'catatan', key: 'analisa_santri' });
         } else if (activeInputTab === 'sikap') {
             (data.characterTraits || []).forEach(trait => {
                 columns.push({ type: 'sikap', traitId: trait.id });
@@ -9842,6 +9846,10 @@ const InputNilai = ({ activeInputTab }) => {
                                 <div className="font-bold">Isi Catatan Wali Kelas</div>
                                 <div className="text-[10px] text-pink-300 mt-1 hover:text-pink-100 cursor-pointer transition-colors inline-flex bg-pink-800/50 px-2 py-0.5 rounded-full" title="Klik untuk menyalin: {{cw}}" onClick={() => {navigator.clipboard.writeText(`{{cw}}`); showNotification('Disalin: {{cw}}');}}>{`{{cw}}`}</div>
                             </th>
+                            <th className="p-3 border-b border-r border-pink-600 text-center w-64">
+                                <div className="font-bold">Analisa Santri</div>
+                                <div className="text-[10px] text-pink-300 mt-1 hover:text-pink-100 cursor-pointer transition-colors inline-flex bg-pink-800/50 px-2 py-0.5 rounded-full" title="Klik untuk menyalin: {{as}}" onClick={() => {navigator.clipboard.writeText(`{{as}}`); showNotification('Disalin: {{as}}');}}>{`{{as}}`}</div>
+                            </th>
                             <th className="p-3 border-b border-pink-600 text-center w-14 bg-red-900">Hapus</th>
                         </tr>
                     </thead>
@@ -9855,6 +9863,11 @@ const InputNilai = ({ activeInputTab }) => {
                                     <textarea className="w-full p-2 border rounded font-medium outline-none focus:border-pink-500 text-pink-900 min-h-[60px]"
                                         value={localGrades[st.id]?.catatan_wali || ''} onChange={e => handleGradeChange(st.id, 'catatan_wali', e.target.value)} placeholder="Tulis pesan penyemangat..."
                                         data-cell-type="grade-input" data-student-id={st.id} data-field-type="catatan_wali" />
+                                </td>
+                                <td className="p-2 border-r bg-white">
+                                    <textarea className="w-full p-2 border rounded font-medium outline-none focus:border-pink-500 text-pink-900 min-h-[60px]"
+                                        value={localGrades[st.id]?.analisa_santri || ''} onChange={e => handleGradeChange(st.id, 'analisa_santri', e.target.value)} placeholder="Tulis analisa santri..."
+                                        data-cell-type="grade-input" data-student-id={st.id} data-field-type="analisa_santri" />
                                 </td>
                                 <td className="p-2 text-center bg-white">
                                     <button onClick={() => handleClearStudentData(st.id, st.nama)} className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title={`Hapus data ${st.nama}`}><Trash2 size={15}/></button>
@@ -11225,8 +11238,15 @@ const KirimRaport = () => {
                     cwText = `\n\n\uD83D\uDCDD *Catatan Wali Kelas:*\n_${cw}_`;
                 }
 
+                let analisaText = "";
+                const analisa = sGrades['analisa_santri'];
+                if (analisa) {
+                    analisaText = `\n\n📝 *Analisa Santri:*\n_${analisa}_`;
+                }
+
                 const publicLink = `https://rapijaz-isb.vercel.app/?public_raport=true&santri_id=${sid}`;
-                const text = `🎓 *Laporan Nilai Raport*\nPonpes Imam Syafi'i Brebes\n\nالسلام عليكم ورحمة الله وبركاته\n\nDengan hormat, berikut adalah informasi nilai ananda:\n\nNama: *${student.nama}*\nKelas: *${className}*\nTA: *${tahun} | Semester ${semester}*\n\n📚 *Nilai Mata Pelajaran:*\n${gradeLines}\n\n📊 Rata-Rata: *${avgVal}*${presenceText}${traitText}${ekskulText}${cwText}\n\n📱 *Lihat Rapor Lengkap Online:*\n ${publicLink} \n\nSemoga nilai ini menjadi motivasi untuk terus belajar.\n\nوالسلام عليكم ورحمة الله وبركاته`;
+                const publicAnalisaLink = `https://rapijaz-isb.vercel.app/?public_analisa=true&santri_id=${sid}`;
+                const text = `🎓 *Laporan Nilai Raport*\nPonpes Imam Syafi'i Brebes\n\nالسلام عليكم ورحمة الله وبركاته\n\nDengan hormat, berikut adalah informasi nilai ananda:\n\nNama: *${student.nama}*\nKelas: *${className}*\nTA: *${tahun} | Semester ${semester}*\n\n📚 *Nilai Mata Pelajaran:*\n${gradeLines}\n\n📊 Rata-Rata: *${avgVal}*${presenceText}${traitText}${ekskulText}${cwText}${analisaText}\n\n📱 *Lihat Rapor Lengkap Online:*\n ${publicLink} \n\n📱 *Lihat Analisa Raport:*\n ${publicAnalisaLink} \n\nSemoga nilai ini menjadi motivasi untuk terus belajar.\n\nوالسلام عليكم ورحمة الله وبركاته`;
 
                 const res = await fetch("https://api.fonnte.com/send", {
                     method: "POST",
@@ -11723,6 +11743,10 @@ const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = 
                 ? (l.name || l.id).toLowerCase().includes('ijazah')
                 : !(l.name || l.id).toLowerCase().includes('ijazah')
         );
+        if (mode === 'raport') {
+            const ttdLayout = available.find(l => (l.name || '').toLowerCase().includes('ttd') || (l.name || '').toLowerCase().includes('tanda tangan') || (l.id || '').toLowerCase().includes('ttd'));
+            if (ttdLayout) return ttdLayout.id;
+        }
         const matched = available.find(l => l.id === mode);
         return matched ? matched.id : (available[0]?.id || data.layouts[0]?.id || '');
     });
@@ -12434,6 +12458,9 @@ const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = 
                  if (key === 'catatan_wali') {
                      return sGrades ? sGrades['catatan_wali'] || '' : '';
                  }
+                 if (key === 'analisa_santri') {
+                     return sGrades ? sGrades['analisa_santri'] || '' : '';
+                 }
                  return match;
             });
         };
@@ -12705,11 +12732,30 @@ const LeggerKelas = () => {
     const students = useMemo(() => getStudentsInClass(activeStudents, classesData, selectedClass), [activeStudents, classesData, selectedClass]);
     const subjects = useMemo(() => sortSubjectsByCategory(filterSubjectsByClass(data.subjects, selectedClass, classesData), data.subjectCategories), [data.subjects, data.subjectCategories, selectedClass, classesData]);
     
+    const uniquePresences = useMemo(() => {
+        const seen = new Set();
+        return (allData?.presences || data.presences || []).filter(p => {
+            if (seen.has(p.id)) return false;
+            seen.add(p.id);
+            return true;
+        });
+    }, [allData?.presences, data.presences]);
+
+    const uniqueTraits = useMemo(() => {
+        const seen = new Set();
+        return (data.characterTraits || []).filter(t => {
+            if (seen.has(t.id)) return false;
+            seen.add(t.id);
+            return true;
+        });
+    }, [data.characterTraits]);
+
     const gradeDocId = getGradeDocId(selectedClass, classesData, activeSetting, data.grades);
 
     const grades = data.grades.find(g => g.id === gradeDocId)?.data || {};
 
     const [sortConfig, setSortConfig] = useState({ key: 'avg', direction: 'desc' });
+    const [waFormat, setWaFormat] = useState('asli');
 
     // AI Analysis Integration States
     const [isAiModalOpen, setIsAiModalOpen] = useState(false);
@@ -12967,28 +13013,43 @@ Tuliskan analisis Anda dengan gaya bahasa yang profesional, santun, bernada bimb
         const className = getClassNameFromValue(classesData, selectedClass);
         const tahun = activeSetting.tahun || '-';
         const semester = activeSetting.semester || '-';
+        let totalVal = 0;
+        let countVal = 0;
         const gradeLines = subjects.map((s, i) => {
             const grade = row.grades[s.id];
             let uts = '-';
             let uas = '-';
             let raport = '-';
+            const kkmNum = Number(s.kkm || 0);
             
             if (grade && typeof grade === 'object') {
                 uts = grade.uts ?? '-';
                 if (uts === '') uts = '-';
                 uas = grade.uas ?? '-';
                 if (uas === '') uas = '-';
-                const rVal = getSubjectGradeValue(grade);
+                let rVal = getSubjectGradeValue(grade);
+                if (waFormat === 'katrol' && rVal !== null && rVal < kkmNum) {
+                    rVal = kkmNum;
+                }
                 raport = rVal !== null ? String(rVal) : '-';
+                if (rVal !== null) { totalVal += rVal; countVal++; }
             } else if (grade !== undefined && grade !== '' && grade !== null) {
-                const rVal = parseGradeValue(grade);
+                let rVal = parseGradeValue(grade);
+                if (waFormat === 'katrol' && rVal !== null && rVal < kkmNum) {
+                    rVal = kkmNum;
+                }
                 raport = rVal !== null ? String(rVal) : '-';
+                if (rVal !== null) { totalVal += rVal; countVal++; }
             }
             return `*${i + 1}. ${s.nameId}*:\nUTS: *${uts}*,\nUAS: *${uas}*,\nRaport: *${raport}*`;
         }).join('\n\n');
 
+        const avgVal = waFormat === 'katrol' && countVal > 0 ? Math.round(totalVal / countVal) : row.avg;
+        let predikatVal = 'D'; if (avgVal >= 90) predikatVal = 'A'; else if (avgVal >= 80) predikatVal = 'B'; else if (avgVal >= 70) predikatVal = 'C';
+
         const rankMessage = `ranking ke *${idx + 1}* dari jumlah santri *${leggerData.length}*`;
-        const text = `\uD83C\uDF93 *Laporan Nilai Akhir Santri (UTS&UAS)*\nPonpes Imam Syafi'i Brebes\n\nNama: *${row.nama}*\nKelas: *${className}*\nTA: *${tahun} Sem ${semester}*\n\n\uD83D\uDCDA *Pencapaian Nilai:*\n${gradeLines}\n\n\uD83D\uDCCA Rata-Rata: *${row.avg}* | Predikat: *${row.predikat}* | ${rankMessage}\n\nالحمد لله,\nsemoga ilmu yang dipelajari bermanfaat dan semoga Allah mudahkan untuk bisa lebih baik lagi di masa yang akan datang,\nاللهم بارك \uD83E\uDD32`;
+        const titleWA = waFormat === 'asli' ? `🎓 *Laporan Nilai Akhir Santri (UTS& UAS-Nilai Asli)*` : `🎓 *Laporan Nilai Akhir Santri (UTS& UAS)*`;
+        const text = `${titleWA}\nPonpes Imam Syafi'i Brebes\n\nNama: *${row.nama}*\nKelas: *${className}*\nTA: *${tahun} Sem ${semester}*\n\n📚 *Pencapaian Nilai:*\n${gradeLines}\n\n📊 Rata-Rata: *${avgVal}* | Predikat: *${predikatVal}* | ${rankMessage}\n\nالحمد لله,\nsemoga ilmu yang dipelajari bermanfaat dan semoga Allah mudahkan untuk bisa lebih baik lagi di masa yang akan datang,\nاللهم بارك 🤲`;
         addLog(`Kirim info nilai ${row.nama} via WA`);
         const fonnteToken = localStorage.getItem('fonnteToken') || 'oPhcncGcZC3H2kXbQLo3';
         const targetWA = window.prompt(`Masukkan Nomor WA Tujuan untuk ${row.nama} (contoh: 0812...):`, row.no_tlp || "");
@@ -13062,6 +13123,29 @@ Tuliskan analisis Anda dengan gaya bahasa yang profesional, santun, bernada bimb
             { s: { r: 3, c: currentColIndex + 1 }, e: { r: 5, c: currentColIndex + 1 } },
             { s: { r: 3, c: currentColIndex + 2 }, e: { r: 5, c: currentColIndex + 2 } }
         );
+
+        let extraColIndex = currentColIndex + 3;
+
+        uniquePresences.forEach(p => {
+            row4.push(`Absen: ${p.name}`); row5.push(''); row6.push('');
+            merges.push({ s: { r: 3, c: extraColIndex }, e: { r: 5, c: extraColIndex } });
+            extraColIndex++;
+        });
+
+        uniqueTraits.forEach(t => {
+            row4.push(`Sikap: ${t.name}`); row5.push(''); row6.push('');
+            merges.push({ s: { r: 3, c: extraColIndex }, e: { r: 5, c: extraColIndex } });
+            extraColIndex++;
+        });
+
+        row4.push('Ekskul 1'); row5.push(''); row6.push('');
+        merges.push({ s: { r: 3, c: extraColIndex }, e: { r: 5, c: extraColIndex } }); extraColIndex++;
+        
+        row4.push('Ekskul 2'); row5.push(''); row6.push('');
+        merges.push({ s: { r: 3, c: extraColIndex }, e: { r: 5, c: extraColIndex } }); extraColIndex++;
+        
+        row4.push('Catatan Wali Kelas'); row5.push(''); row6.push('');
+        merges.push({ s: { r: 3, c: extraColIndex }, e: { r: 5, c: extraColIndex } }); extraColIndex++;
         
         const aoa = [
             [`DATA NILAI LEGGER KELAS ${className.toUpperCase()}`],
@@ -13083,6 +13167,19 @@ Tuliskan analisis Anda dengan gaya bahasa yang profesional, santun, bernada bimb
                 rowData.push(uts, uas, raport, rerata);
             });
             rowData.push(row.total, row.avg, row.predikat);
+            
+            uniquePresences.forEach(p => {
+                rowData.push(row.grades[p.id] || '0');
+            });
+
+            uniqueTraits.forEach(t => {
+                rowData.push(row.grades[t.id] || '-');
+            });
+
+            rowData.push(row.grades['ekskul1_nama'] ? `${row.grades['ekskul1_nama']} (${row.grades['ekskul1_nilai'] || '-'})` : '');
+            rowData.push(row.grades['ekskul2_nama'] ? `${row.grades['ekskul2_nama']} (${row.grades['ekskul2_nilai'] || '-'})` : '');
+            rowData.push(row.grades.catatan_wali || '');
+
             aoa.push(rowData);
         });
 
@@ -13123,6 +13220,10 @@ Tuliskan analisis Anda dengan gaya bahasa yang profesional, santun, bernada bimb
                 <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2"><BookOpen /> Legger Kelas</h2>
                 <div className="flex flex-wrap gap-3 items-center">
                     <select className="p-2 border rounded-lg min-w-[150px]" value={selectedClass} onChange={e => setSelectedClass(e.target.value)}><option value="">-- Pilih Kelas --</option>{data.classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+                    <select className="p-2 border rounded-lg bg-emerald-50 text-emerald-800" value={waFormat} onChange={e => setWaFormat(e.target.value)}>
+                        <option value="asli">Format WA: Nilai Asli</option>
+                        <option value="katrol">Format WA: Nilai Katrol</option>
+                    </select>
                     <button onClick={exportExcel} disabled={!selectedClass} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 disabled:opacity-50 transition"><Download size={18}/> Ekspor Excel</button>
                     <button onClick={() => setIsAiModalOpen(true)} disabled={!selectedClass} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 disabled:opacity-50 transition"><Brain size={18}/> Analisis AI Gemini</button>
                 </div>
@@ -13194,6 +13295,11 @@ Tuliskan analisis Anda dengan gaya bahasa yang profesional, santun, bernada bimb
                                     </div>
                                 </th>
                                 <th rowSpan={4} className="p-3 border border-purple-700 text-center bg-purple-800 print:hidden">WA</th>
+                                {uniquePresences.map(p => <th key={p.id} rowSpan={4} className="p-3 border border-purple-700 text-center bg-blue-900 cursor-pointer select-none">Absen: {p.name}</th>)}
+                                {uniqueTraits.map(t => <th key={t.id} rowSpan={4} className="p-3 border border-purple-700 text-center bg-green-900 cursor-pointer select-none">Sikap: {t.name}</th>)}
+                                <th rowSpan={4} className="p-3 border border-purple-700 text-center bg-indigo-900 cursor-pointer select-none">Ekskul 1</th>
+                                <th rowSpan={4} className="p-3 border border-purple-700 text-center bg-indigo-900 cursor-pointer select-none">Ekskul 2</th>
+                                <th rowSpan={4} className="p-3 border border-purple-700 text-center bg-pink-900 cursor-pointer select-none">Catatan Wali Kelas</th>
                             </tr>
                             <tr className="bg-purple-800 text-white text-sm">
                                 {Object.entries(groupBy(subjects, 'kategori')).map(([cat, subs]) => (
@@ -13288,6 +13394,15 @@ Tuliskan analisis Anda dengan gaya bahasa yang profesional, santun, bernada bimb
                                             <Share2 size={13}/> WA
                                         </button>
                                     </td>
+                                    {uniquePresences.map(p => (
+                                        <td key={p.id} className="p-3 text-center border border-gray-300 font-medium text-gray-700">{row.grades[p.id] || '0'}</td>
+                                    ))}
+                                    {uniqueTraits.map(t => (
+                                        <td key={t.id} className="p-3 text-center border border-gray-300 font-medium text-gray-700">{row.grades[t.id] || '-'}</td>
+                                    ))}
+                                    <td className="p-3 text-center border border-gray-300 font-medium text-gray-700">{row.grades['ekskul1_nama'] ? `${row.grades['ekskul1_nama']} (${row.grades['ekskul1_nilai'] || '-'})` : '-'}</td>
+                                    <td className="p-3 text-center border border-gray-300 font-medium text-gray-700">{row.grades['ekskul2_nama'] ? `${row.grades['ekskul2_nama']} (${row.grades['ekskul2_nilai'] || '-'})` : '-'}</td>
+                                    <td className="p-3 border border-gray-300 text-sm text-gray-700 max-w-[200px] truncate" title={row.grades.catatan_wali || ''}>{row.grades.catatan_wali || '-'}</td>
                                 </tr>
                             ))}
                             {/* Baris Rata-rata Kelas */}
@@ -14008,13 +14123,79 @@ const PublicRaportPage = ({ santriId }) => {
     );
 };
 
+const PublicAnalisaPageContent = ({ santriId }) => {
+    const { data, allData, activeSetting } = useContext(AppContext);
+    
+    const activeStudents = getStudentsForYear(data.studentSnapshots, activeSetting, data.students);
+    const student = activeStudents.find(s => s.id === santriId);
+    if (!student) return <div className="text-white p-8">Santri tidak ditemukan</div>;
+    
+    const classesData = data.classes || [];
+    const cls = classesData.find(c => c.name === student.kelas || c.id === student.kelas);
+    const selectedClass = cls ? cls.id : student.kelas;
+    const gradeDocId = getGradeDocId(selectedClass, classesData, activeSetting, data.grades);
+    const sGrades = data.grades.find(g => g.id === gradeDocId)?.data?.[santriId] || {};
+    
+    const analisa = sGrades['analisa_santri'] || 'Belum ada analisa untuk santri ini.';
+    
+    return (
+        <div className="bg-white/10 backdrop-blur border border-white/20 rounded-2xl p-6 text-white max-w-3xl mx-auto mt-8 shadow-2xl">
+            <h2 className="text-2xl font-bold mb-4 border-b border-white/20 pb-3 flex items-center gap-2">
+                <Brain /> Analisa Perkembangan Santri
+            </h2>
+            <div className="mb-6 bg-black/20 p-4 rounded-xl">
+                <p className="text-lg"><strong>Nama:</strong> {student.nama}</p>
+                <p className="text-lg"><strong>Kelas:</strong> {cls ? cls.name : student.kelas}</p>
+            </div>
+            <div className="bg-white text-gray-800 p-6 rounded-xl whitespace-pre-wrap shadow-inner text-lg leading-relaxed">
+                {analisa}
+            </div>
+        </div>
+    );
+}
+
+const PublicAnalisaPage = ({ santriId }) => {
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-800 to-indigo-900 flex flex-col">
+            <header className="bg-white/10 backdrop-blur-md border-b border-white/20 shadow-lg">
+                <div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-4">
+                    <div className="w-12 h-12 bg-white/20 flex items-center justify-center shrink-0 overflow-hidden">
+                        <img src="https://ikoqsyrvspfjyyjujfhc.supabase.co/storage/v1/object/public/layout-images/logo%20ppisb.png" alt="Logo" className="w-full h-full object-contain drop-shadow-md" />
+                    </div>
+                    <div>
+                        <h1 className="text-white font-bold text-base leading-tight">Ponpes Imam Syafi'i Brebes</h1>
+                        <p className="text-indigo-200 text-xs">Portal Analisa Santri</p>
+                    </div>
+                    <div className="ml-auto">
+                        <span className="bg-indigo-500/30 text-indigo-100 text-xs font-semibold px-3 py-1 rounded-full border border-indigo-400/40">
+                            📝 Analisa Digital
+                        </span>
+                    </div>
+                </div>
+            </header>
+            <main className="flex-1 max-w-5xl mx-auto w-full px-4 py-6">
+                <AppProvider>
+                    <PublicAnalisaPageContent santriId={santriId} />
+                </AppProvider>
+            </main>
+            <footer className="bg-black/20 border-t border-white/10 py-4 text-center">
+                <p className="text-indigo-300 text-xs">© {new Date().getFullYear()} Ponpes Imam Syafi'i Brebes — Portal Analisa Santri</p>
+            </footer>
+        </div>
+    );
+};
+
 export default function App() {
     const params = new URLSearchParams(window.location.search);
     const isPublicRaport = params.get('public_raport') === 'true';
+    const isPublicAnalisa = params.get('public_analisa') === 'true';
     const santriId = params.get('santri_id') || null;
 
     if (isPublicRaport) {
         return <PublicRaportPage santriId={santriId} />;
+    }
+    if (isPublicAnalisa) {
+        return <PublicAnalisaPage santriId={santriId} />;
     }
 
     return <AppProvider><AppContext.Consumer>{({ currentUser }) => currentUser ? <Dashboard /> : <Login />}</AppContext.Consumer></AppProvider>;
