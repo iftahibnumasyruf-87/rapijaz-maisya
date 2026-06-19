@@ -11747,7 +11747,14 @@ const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = 
                 : !(l.name || l.id).toLowerCase().includes('ijazah')
         );
         if (mode === 'raport') {
-            const ttdLayout = available.find(l => (l.name || '').toLowerCase().includes('ttd') || (l.name || '').toLowerCase().includes('tanda tangan') || (l.id || '').toLowerCase().includes('ttd'));
+            // Prioritaskan layout dengan tanda tangan (TTD) — penting untuk public view
+            const ttdLayout = available.find(l => {
+                const nm = (l.name || '').toLowerCase();
+                const id = (l.id || '').toLowerCase();
+                return nm.includes('ttd') || nm.includes('tanda tangan') || nm.includes('tandatangan') ||
+                       nm.includes('signed') || nm.includes('signature') || nm.includes('dengan tanda') ||
+                       id.includes('ttd') || id.includes('tanda') || id.includes('signed');
+            });
             if (ttdLayout) return ttdLayout.id;
         }
         const matched = available.find(l => l.id === mode);
@@ -12678,7 +12685,7 @@ const CetakDokumen = ({ mode = 'raport', isPublicView = false, publicSantriId = 
                             </React.Fragment>
                         ))}
                     </div>
-                ) : <div className="flex items-center justify-center h-full text-gray-400 print:hidden">Pilih santri untuk melihat preview {mode}.</div>}
+                ) : <div className="flex flex-col items-center justify-center h-full text-gray-400 print:hidden gap-3"><div className="flex items-center gap-2 text-lg font-semibold text-gray-500"><span className="inline-block w-4 h-4 rounded-full border-4 border-gray-300 border-t-teal-500 animate-spin"></span>Sedang Menampilkan Data</div><p className="text-sm text-gray-400">Mohon tunggu sebentar...</p></div>}
                 </div>
             </div>
             <style>{`
@@ -14133,9 +14140,11 @@ const PublicAnalisaPageContent = ({ santriId }) => {
     const student = activeStudents.find(s => s.id === santriId);
     if (!student) return (
         <div className="flex flex-col items-center justify-center py-20 text-white">
-            <div className="text-6xl mb-4">🔍</div>
-            <h2 className="text-2xl font-bold mb-2">Santri Tidak Ditemukan</h2>
-            <p className="text-indigo-200 text-sm">Data santri tidak tersedia atau link tidak valid.</p>
+            <div className="flex items-center gap-3 mb-4">
+                <span className="inline-block w-8 h-8 rounded-full border-4 border-indigo-300 border-t-amber-400 animate-spin"></span>
+            </div>
+            <h2 className="text-2xl font-bold mb-2">Sedang Menampilkan Data</h2>
+            <p className="text-indigo-200 text-sm">Mohon tunggu, data sedang dimuat...</p>
         </div>
     );
     
@@ -14151,8 +14160,30 @@ const PublicAnalisaPageContent = ({ santriId }) => {
     const tahun = activeSetting?.tahun || '-';
     const semester = activeSetting?.semester || '-';
     
-    // Split analisa teks menjadi paragraf berdasarkan baris baru
-    const paragraphs = analisa ? analisa.split(/\n+/).filter(p => p.trim()) : [];
+    // Split analisa teks menjadi seksi berdasarkan kata kunci
+    const splitAnalisaIntoSections = (text) => {
+        if (!text) return { akademik: '', sikap: '', kehadiran: '' };
+        // Pisahkan per kalimat
+        const sentenceRegex = /[^.!?\n]+(?:[.!?]+|\n+|$)/g;
+        const sentences = text.match(sentenceRegex) || [text];
+        const akademikKw = ['akademik', 'mata pelajaran', 'pelajaran', 'nilai', 'prestasi', 'belajar', 'materi', 'daya serap', 'kemampuan memahami', 'potensi'];
+        const sikapKw = ['karakter', 'sikap', 'akhlak', 'kepribadian', 'perilaku', 'adab', 'mandiri', 'pembiasaan', 'keteladanan', 'pendampingan'];
+        const kehadiranKw = ['kehadiran', 'hadir', 'izin', 'sakit', 'keterangan', 'disiplin', 'absen', 'tidak hadir', 'tercatat'];
+        let ak = [], sk = [], kh = [], unk = [];
+        sentences.forEach(s => {
+            const lower = s.toLowerCase();
+            const isKh = kehadiranKw.some(kw => lower.includes(kw));
+            const isSk = sikapKw.some(kw => lower.includes(kw));
+            const isAk = akademikKw.some(kw => lower.includes(kw));
+            if (isKh) kh.push(s.trim());
+            else if (isSk) sk.push(s.trim());
+            else if (isAk) ak.push(s.trim());
+            else unk.push(s.trim());
+        });
+        if (unk.length > 0) ak = [...unk, ...ak];
+        return { akademik: ak.join(' '), sikap: sk.join(' '), kehadiran: kh.join(' ') };
+    };
+    const sections = splitAnalisaIntoSections(analisa);
     
     return (
         <div className="max-w-3xl mx-auto mt-6 mb-10 space-y-5">
@@ -14200,7 +14231,7 @@ const PublicAnalisaPageContent = ({ santriId }) => {
                 </p>
             </div>
 
-            {/* Analisa Utama */}
+            {/* Analisa Utama dengan Seksi */}
             <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
                 <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4 flex items-center gap-3">
                     <span className="text-2xl">🧠</span>
@@ -14211,13 +14242,41 @@ const PublicAnalisaPageContent = ({ santriId }) => {
                 </div>
                 <div className="p-6">
                     {analisa ? (
-                        <div className="space-y-4">
-                            {paragraphs.map((para, idx) => (
-                                <p key={idx} className="text-gray-700 leading-relaxed text-[15px] text-justify">
-                                    {idx === 0 && <span className="text-3xl font-serif text-indigo-700 float-left mr-2 leading-none mt-1">{para.charAt(0)}</span>}
-                                    {idx === 0 ? para.slice(1) : para}
-                                </p>
-                            ))}
+                        <div className="space-y-6">
+                            {/* A. Perkembangan Akademik */}
+                            {sections.akademik && (
+                            <div className="border-l-4 border-indigo-500 pl-4">
+                                <h3 className="text-indigo-700 font-bold text-base mb-2 flex items-center gap-2">
+                                    <span className="bg-indigo-100 text-indigo-700 font-bold text-xs px-2 py-0.5 rounded-full">A</span>
+                                    Perkembangan Akademik
+                                </h3>
+                                <p className="text-gray-700 leading-relaxed text-[15px] text-justify">{sections.akademik}</p>
+                            </div>
+                            )}
+                            {/* B. Perkembangan Sikap */}
+                            {sections.sikap && (
+                            <div className="border-l-4 border-purple-500 pl-4">
+                                <h3 className="text-purple-700 font-bold text-base mb-2 flex items-center gap-2">
+                                    <span className="bg-purple-100 text-purple-700 font-bold text-xs px-2 py-0.5 rounded-full">B</span>
+                                    Perkembangan Sikap
+                                </h3>
+                                <p className="text-gray-700 leading-relaxed text-[15px] text-justify">{sections.sikap}</p>
+                            </div>
+                            )}
+                            {/* C. Perkembangan Kedisiplinan dan Kehadiran */}
+                            {sections.kehadiran && (
+                            <div className="border-l-4 border-emerald-500 pl-4">
+                                <h3 className="text-emerald-700 font-bold text-base mb-2 flex items-center gap-2">
+                                    <span className="bg-emerald-100 text-emerald-700 font-bold text-xs px-2 py-0.5 rounded-full">C</span>
+                                    Perkembangan Kedisiplinan dan Kehadiran
+                                </h3>
+                                <p className="text-gray-700 leading-relaxed text-[15px] text-justify">{sections.kehadiran}</p>
+                            </div>
+                            )}
+                            {/* Fallback jika semua seksi kosong */}
+                            {!sections.akademik && !sections.sikap && !sections.kehadiran && (
+                                <p className="text-gray-700 leading-relaxed text-[15px] text-justify">{analisa}</p>
+                            )}
                         </div>
                     ) : (
                         <div className="flex flex-col items-center justify-center py-10 text-gray-400">
