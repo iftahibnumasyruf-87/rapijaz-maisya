@@ -13736,6 +13736,38 @@ const Dashboard = () => {
   const [isSidebarHidden, setIsSidebarHidden] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
+  // PWA Install Prompt states
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [isInstallable, setIsInstallable] = useState(false);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setIsInstallable(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    // Check if running in standalone mode (already installed)
+    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+      setIsInstallable(false);
+    }
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    console.log(`User response to the install prompt: ${outcome}`);
+    setDeferredPrompt(null);
+    setIsInstallable(false);
+  };
+
   // Sidebar dynamic resizer states
   const [sidebarWidth, setSidebarWidth] = useState(() => Number(localStorage.getItem('sidebar_width') || '320'));
   // Sidebar custom themes states
@@ -14027,6 +14059,16 @@ const Dashboard = () => {
               </div>
             )}
           </div>
+          {isInstallable && (
+            <button
+              onClick={handleInstallClick}
+              className={`w-full flex items-center justify-center ${isSidebarCompact ? 'px-0 py-3' : 'gap-2 px-4 py-2'} bg-emerald-600/10 text-emerald-600 hover:bg-emerald-600 hover:text-white rounded-lg transition-all duration-300 mb-2 font-semibold text-sm border border-emerald-500/20 active:scale-95`}
+              title="Install Aplikasi"
+            >
+              <Download size={18} />
+              {!isSidebarCompact && 'Install Aplikasi'}
+            </button>
+          )}
           <button onClick={() => setIsLogoutModalOpen(true)} className={`w-full flex items-center justify-center ${isSidebarCompact ? 'px-0 py-3' : 'gap-2 px-4 py-2'} ${activeThemeObj.logoutText} rounded-lg transition`} title="Keluar">
             <LogOut size={18} />
             {!isSidebarCompact && 'Keluar'}
@@ -14058,7 +14100,26 @@ const Dashboard = () => {
             <h1 className="text-xl font-bold text-gray-800 capitalize">{getMenuLabel()}</h1>
           </div>
           
+          {isInstallable && (
+            <button
+              onClick={handleInstallClick}
+              className="sm:hidden text-emerald-600 hover:text-emerald-700 p-1.5 rounded-lg border border-emerald-500/20 bg-emerald-50 flex items-center gap-1 font-semibold text-xs transition-all duration-300 active:scale-95"
+              title="Install Aplikasi"
+            >
+              <Download size={14} /> Install
+            </button>
+          )}
+
           <div className="hidden sm:flex items-center gap-4">
+              {isInstallable && (
+                <button
+                  onClick={handleInstallClick}
+                  className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white px-3 py-1.5 rounded-lg text-sm font-bold border border-emerald-400/20 flex items-center gap-2 transition-all duration-300 shadow-md hover:shadow-lg active:scale-95 animate-pulse"
+                  title="Install Aplikasi Rapijaz ke HP atau Laptop"
+                >
+                  <Download size={16} /> Install App
+                </button>
+              )}
               <AutoSaveIndicator />
               <PageRefreshButton activeMenu={activeMenu} />
               {isTahunSet ? (
